@@ -109,10 +109,12 @@ class mkPDF:
         f_x = np.array(f_x)
         f_Q2 = np.array(f_Q2)
         f_f = np.array(f_f)
+        
+        dict_f = {}
+        for i, f in enumerate(self.subgrids[0].flav):
+            dict_f[f] = f_f[:,i]
+
         if PID == None:
-            dict_f = {}
-            for i, f in enumerate(self.p[0].flav):
-                dict_f[f] = f_f[:,i]
             return f_x, f_Q2, dict_f
         else:
-            return f_x, f_Q2, f_f[:,PID]
+            return f_x, f_Q2, dict_f[PID]
