@@ -4,6 +4,7 @@ import numpy as np
 #import matplotlib.pyplot as plt
 #import p
 
+float64 = tf.float64
 
 def linear_interpolation(x, xl, xh, yl, yh):
     x = tf.expand_dims(x,1)
@@ -104,11 +105,11 @@ def bicubic_interpolation(a_x, a_Q2, corn_x, corn_Q2, A):
 class subgrid:
     def __init__(self, grid=None):
         
-        self.x = tf.constant(grid[0], dtype=tf.float64)
-        self.Q = tf.constant(grid[1], dtype=tf.float64)
+        self.x = tf.constant(grid[0], dtype=float64)
+        self.Q = tf.constant(grid[1], dtype=float64)
         self.Q2 = tf.pow(self.Q, 2)
         self.flav = grid[2]
-        self.values = tf.constant(grid[3], dtype=tf.float64)
+        self.values = tf.constant(grid[3], dtype=float64)
 
         self.logx = tf.math.log(self.x)
         self.logQ2 = tf.math.log(self.Q2)
@@ -140,10 +141,10 @@ class subgrid:
         return tf.gather(self.values, idx)
 
 
-    #@tf.function(input_signature=[tf.TensorSpec(shape=None, dtype=tf.float64), tf.TensorSpec(shape=None, dtype=tf.float64)])
-    def interpolate_fn(self, a_x, a_Q2):
-        print('\nTracing interpolate with : a_x,  shape' + str(a_x.shape) + '; a_Q2, shape' + str(a_Q2.shape))
-        return self.interpolate(a_x, a_Q2)
+    #@tf.function(input_signature=[tf.TensorSpec(shape=None, dtype=float64), tf.TensorSpec(shape=None, dtype=float64)])
+    #def interpolate_fn(self, a_x, a_Q2):
+    #    print('\nTracing interpolate with : a_x,  shape' + str(a_x.shape) + '; a_Q2, shape' + str(a_Q2.shape))
+    #    return self.interpolate(a_x, a_Q2)
 
 
 

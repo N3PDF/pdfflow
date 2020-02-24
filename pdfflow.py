@@ -4,6 +4,8 @@ import re
 import numpy as np
 import matplotlib.pyplot as plt
 
+float64 = tf.float64
+
 def load_Data(fname):
     #Reads pdf from file and retrieves a list of grids
     #Each grid is a tuple containing numpy arrays (x,Q2, flavours, pdf)
@@ -58,19 +60,20 @@ class mkPDF:
 
         self.subgrids = list(map(subgrid, grids))
 
-    @tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=tf.float64), tf.TensorSpec(shape=[None], dtype=tf.float64)])
-    def _xfxQ2(self, a_x, a_Q2):
+    #@tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=float64), tf.TensorSpec(shape=[None], dtype=float64)])
+    #def _xfxQ2(self, a_x, a_Q2):
         #print('Tracing xfxQ2 with : a_x,  shape ' + str(a_x.shape) + '; a_Q2, shape ' + str(a_Q2.shape))
-        return self._xfxQ2_fn(a_x,a_Q2)
+    #   return self._xfxQ2_fn(a_x,a_Q2)
 
+    @tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=float64), tf.TensorSpec(shape=[None], dtype=float64)])
     def _xfxQ2_fn(self, aa_x, aa_Q2):
         
         a_x = tf.math.log(aa_x, name='logx')
         a_Q2 = tf.math.log(aa_Q2, name='logQ2')
 
-        f_x = tf.TensorArray(dtype=tf.float64, size=0, dynamic_size=True, infer_shape=False, name='f_x')
-        f_Q2 = tf.TensorArray(dtype=tf.float64, size=0, dynamic_size=True, infer_shape=False, name='f_Q2')
-        f_f = tf.TensorArray(dtype=tf.float64, size=0, dynamic_size=True, infer_shape=False, name='f_f')
+        f_x = tf.TensorArray(dtype=float64, size=0, dynamic_size=True, infer_shape=False, name='f_x')
+        f_Q2 = tf.TensorArray(dtype=float64, size=0, dynamic_size=True, infer_shape=False, name='f_Q2')
+        f_f = tf.TensorArray(dtype=float64, size=0, dynamic_size=True, infer_shape=False, name='f_f')
         count = 0
 
         for i in range(len(self.subgrids)):
@@ -104,7 +107,7 @@ class mkPDF:
         return f_x, f_Q2, f_f
 
     def xfxQ2(self, a_x, a_Q2, PID=None):
-        f_x, f_Q2, f_f = self._xfxQ2(a_x, a_Q2)
+        f_x, f_Q2, f_f = self._xfxQ2_fn(a_x, a_Q2)
 
         f_x = np.array(f_x)
         f_Q2 = np.array(f_Q2)

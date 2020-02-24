@@ -5,6 +5,9 @@ import lhapdf
 import matplotlib.pyplot as plt
 from time import time
 import tqdm
+import os
+
+float64 = tf.float64
 
 def slice_test(fixed,v,p,l_pdf):
     '''
@@ -19,7 +22,7 @@ def slice_test(fixed,v,p,l_pdf):
         a_Q2 = np.exp(np.random.uniform(np.log(p.pdf[0].Q2min), np.log(p.pdf[-1].Q2max),[10000,]))
         a_x = np.array([float(v) for i in range(10000)])
 
-    o_x,o_Q2, f = p.xfpxQ2(-4, tf.constant(a_x, dtype=tf.float64), tf.constant(a_Q2,dtype=tf.float64))
+    o_x,o_Q2, f = p.xfpxQ2(-4, tf.constant(a_x, dtype=float64), tf.constant(a_Q2,dtype=float64))
     
     l_f = []
     for i in range(a_x.shape[0]):
@@ -86,14 +89,14 @@ def sort_arrays(a,b,f):
 
 
 def plots(args, a_x, a_Q2, p, l_pdf):
-    writer = tf.summary.create_file_writer(args.logdir)
-    tf.summary.trace_on(graph=True, profiler=True)
+    #writer = tf.summary.create_file_writer(args.logdir)
+    #tf.summary.trace_on(graph=True, profiler=True)
     x, q, f = p.xfxQ2(a_x, a_Q2,args.PID)
-    with writer.as_default():
-        tf.summary.trace_export(
-            name='xfxQ2_trace',
-            step=0,
-            profiler_outdir=args.logdir)
+    #with writer.as_default():
+    #    tf.summary.trace_export(
+    #        name='xfxQ2_trace',
+    #        step=0,
+    #        profiler_outdir=args.logdir)
     
     x,q,f = sort_arrays(x,q,f)
 
@@ -149,34 +152,52 @@ def test(args, n_draws, p, l_pdf):
     a_Q2 = np.exp(np.random.uniform(np.log(args.Q2min), np.log(args.Q2max),[n_draws,]))
     
     start = time()
-    p.xfxQ2(tf.constant(a_x, dtype=tf.float64), tf.constant(a_Q2,dtype=tf.float64), args.PID)
+    p.xfxQ2(tf.constant(a_x, dtype=float64), tf.constant(a_Q2,dtype=float64), args.PID)
     t = time()- start
 
     start = time()
     f_lha = []
     for i in range(a_x.shape[0]):
         f_lha += [l_pdf.xfxQ2(args.PID, float(a_x[i]), float(a_Q2[i]))]
-    f_lha = tf.constant(f_lha, dtype=tf.float64)
+    f_lha = tf.constant(f_lha, dtype=float64)
     tt = time()- start
 
     return t, tt
 
 def test_time(args, p, l_pdf):
-    t = []
-    tt = []
-    n = np.logspace(5,5.5,50)
-    for i in tqdm.tqdm(n):
-        t_, tt_ =  test(args, int(i), p, l_pdf)
-        t += [t_]
-        tt += [tt_]
+    
+    t_pdf = []
+    t_lha = []
+    n = np.logspace(5,5.8,10)
+    for j in tqdm.tqdm(range(10)):
+        t = []
+        tt = []
+        for i in tqdm.tqdm(n):
+            t_, tt_ =  test(args, int(i), p, l_pdf)
+            t += [t_]
+            tt += [tt_]
+        t_pdf += [t]
+        t_lha += [tt]
 
-    t = np.array(t)
-    tt = np.array(tt)
+    t_pdf = np.stack(t_pdf)
+    t_lha = np.stack(t_lha)
+
+
+
+
+
+    
+    
 
     fig = plt.figure(figsize=(15,10.5))
     ax = fig.add_subplot(121)
-    ax.plot(n, t, label='pdfflow')
-    ax.plot(n,tt, label='lhapdf')
+    
+    ax.plot(n, t_pdf.mean(0), color='green', label='pdfflow')
+    ax.errorbar(n,t_pdf.mean(0), ecolor='green',yerr=t_pdf.std(0))
+    
+    ax.plot(n,t_lha.mean(0), color='red', label='lhapdf')
+    ax.errorbar(n,t_lha.mean(0), ecolor='red', yerr=t_lha.std(0))
+    
     ax.title.set_text('Algorithms working times')
     ax.set_xlabel('# points drawn')
     ax.set_ylabel('t [s]')
@@ -184,8 +205,8 @@ def test_time(args, p, l_pdf):
     
     ax = fig.add_subplot(122)
     
-    ax.plot(n, (tt/t-1)*100)
-    ax.title.set_text('Percentage difference in alghorithms')
+    ax.plot(n, (1-t_pdf.mean(0)/t_lha.mean(0))*100)
+    ax.title.set_text('Improvements of pdfflow in percentage')
     ax.set_xlabel('# points drawn')
     ax.set_ylabel('%')
     ax.set_xscale('log')
