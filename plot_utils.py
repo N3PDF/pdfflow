@@ -4,6 +4,7 @@ import numpy as np
 import lhapdf
 import matplotlib.pyplot as plt
 from time import time
+import tqdm
 
 def slice_test(fixed,v,p,l_pdf):
     '''
@@ -85,7 +86,15 @@ def sort_arrays(a,b,f):
 
 
 def plots(args, a_x, a_Q2, p, l_pdf):
+    writer = tf.summary.create_file_writer(args.logdir)
+    tf.summary.trace_on(graph=True, profiler=True)
     x, q, f = p.xfxQ2(a_x, a_Q2,args.PID)
+    with writer.as_default():
+        tf.summary.trace_export(
+            name='xfxQ2_trace',
+            step=0,
+            profiler_outdir=args.logdir)
+    
     x,q,f = sort_arrays(x,q,f)
 
     f_lha = []
@@ -155,20 +164,30 @@ def test(args, n_draws, p, l_pdf):
 def test_time(args, p, l_pdf):
     t = []
     tt = []
-    n = np.logspace(5,7,50)
-    for i in n:
+    n = np.logspace(5,5.5,50)
+    for i in tqdm.tqdm(n):
         t_, tt_ =  test(args, int(i), p, l_pdf)
         t += [t_]
         tt += [tt_]
 
-    plt.figure(figsize=(15,10.5))
-    plt.plot(n, t, label='pdfflow')
-    plt.plot(n,tt, label='lhapdf')
-    plt.xscale('log')
-    plt.yscale('log')
-    plt.suptitle('Algorithms working times')
-    plt.xlabel('# points drawn')
-    plt.ylabel('t [s]')
-    plt.legend()
+    t = np.array(t)
+    tt = np.array(tt)
+
+    fig = plt.figure(figsize=(15,10.5))
+    ax = fig.add_subplot(121)
+    ax.plot(n, t, label='pdfflow')
+    ax.plot(n,tt, label='lhapdf')
+    ax.title.set_text('Algorithms working times')
+    ax.set_xlabel('# points drawn')
+    ax.set_ylabel('t [s]')
+    ax.legend()
+    
+    ax = fig.add_subplot(122)
+    
+    ax.plot(n, (tt/t-1)*100)
+    ax.title.set_text('Percentage difference in alghorithms')
+    ax.set_xlabel('# points drawn')
+    ax.set_ylabel('%')
+    ax.set_xscale('log')
     plt.savefig('time.png')
     plt.close()

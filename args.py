@@ -14,3 +14,5 @@ class Args():
         self.n_draws = 100000
 
         self.PID = 21
+
+        self.logdir = './logs/'

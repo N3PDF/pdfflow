@@ -39,7 +39,10 @@ args.Q2max = p.subgrids[-1].Q2max
 a_x = np.exp(np.random.uniform(np.log(args.xmin), np.log(args.xmax),[args.n_draws,]))
 a_Q2 = np.exp(np.random.uniform(np.log(args.Q2min), np.log(args.Q2max),[args.n_draws,]))
 
+
+print('Printing plots')
 plots(args, a_x, a_Q2, p, l_pdf)
+print('Printing times')
 test_time(args, p, l_pdf)
 
 

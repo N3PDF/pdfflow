@@ -24,6 +24,80 @@ def cubic_interpolation(T, VL, VDL, VH, VDH):
 
     return p0 + m0 + p1 + m1
 
+def remove_edge_stripes(a_x, a_Q2, logx, logQ2):
+        
+    x_stripe = tf.math.logical_or(a_x < logx[1], a_x >= logx[-2])        
+
+    out_x = tf.boolean_mask(a_x, x_stripe)
+    out_Q2 = tf.boolean_mask(a_Q2, x_stripe)
+    in_x = tf.boolean_mask(a_x, ~x_stripe)
+    in_Q2 = tf.boolean_mask(a_Q2, ~x_stripe)
+
+
+    #remove Q2 stripes and concatenate those points with the previous ones
+    Q_stripe = tf.math.logical_or(in_Q2 < logQ2[1], in_Q2 >= logQ2[-2])
+
+
+    out_x = tf.concat([out_x, tf.boolean_mask(in_x, Q_stripe)],0)
+    out_Q2 = tf.concat([out_Q2, tf.boolean_mask(in_Q2, Q_stripe)],0)
+    in_x = tf.boolean_mask(in_x, ~Q_stripe)
+    in_Q2 = tf.boolean_mask(in_Q2, ~Q_stripe)
+    return in_x, in_Q2, out_x, out_Q2
+
+
+def df_dx_func(corn_x, A):
+    #just two kind of derivatives are useful in the x direction if we are interpolating in the [-1,2]x[-1,2] square:
+    #four derivatives in x = 0 for all Qs (:,0,:)
+    #four derivatives in x = 1 for all Qs (:,1,:)
+    #derivatives are returned in a tensor with shape (#draws,2,4)
+
+    lddx = (A[:,:,1,:] - A[:,:,0,:]) / tf.expand_dims(tf.expand_dims(corn_x[:,1] - corn_x[:, 0],1),-1)
+    rddx = (A[:,:,2,:] - A[:,:,1,:]) / tf.expand_dims(tf.expand_dims(corn_x[:,2] - corn_x[:,1],1),-1)
+    left = (lddx+rddx)/2
+
+    lddx = (A[:,:,2,:] - A[:,:,1,:]) / tf.expand_dims(tf.expand_dims(corn_x[:,2] - corn_x[:, 1],1),-1)
+    rddx = (A[:,:,3,:] - A[:,:,2,:]) / tf.expand_dims(tf.expand_dims(corn_x[:,3] - corn_x[:,2],1),-1)
+    right = (lddx+rddx)/2
+    return tf.stack([left, right], 2)
+
+def bilinear_interpolation(a_x, a_Q2, corn_x, corn_Q2, A):
+    f_ql = linear_interpolation(a_x, corn_x[0], corn_x[1], A[:,:,0,0], A[:,:,1,0])
+    f_qh = linear_interpolation(a_x, corn_x[0], corn_x[1], A[:,:,0,1], A[:,:,1,1])
+    return linear_interpolation(a_Q2, corn_Q2[0], corn_Q2[1], f_ql, f_qh)
+
+
+def bicubic_interpolation(a_x, a_Q2, corn_x, corn_Q2, A):
+    df_dx = df_dx_func(corn_x, A)
+        
+    dlogx_1 = corn_x[:,2] - corn_x[:,1]
+    tlogx = tf.expand_dims((a_x - corn_x[:,1])/dlogx_1,1)
+    dlogq_0 = tf.expand_dims(corn_Q2[:,1] - corn_Q2[:,0],1)
+    dlogq_1 = corn_Q2[:,2] - corn_Q2[:,1]
+    dlogq_2 = tf.expand_dims(corn_Q2[:,3] - corn_Q2[:,2],1)
+    tlogq = tf.expand_dims((a_Q2 - corn_Q2[:,1]) / dlogq_1,1)
+
+
+    dlogx_1 = tf.expand_dims(dlogx_1,1)
+    dlogq_1 = tf.expand_dims(dlogq_1,1)
+
+
+    vl = cubic_interpolation(tlogx, A[:,:,1,1], df_dx[:,:,0,1]*dlogx_1, A[:,:,2,1], df_dx[:,:,1,1]*dlogx_1)
+    vh = cubic_interpolation(tlogx, A[:,:,1,2], df_dx[:,:,0,2]*dlogx_1, A[:,:,2,2], df_dx[:,:,1,2]*dlogx_1)
+
+    vll = cubic_interpolation(tlogx, A[:,:,1,0], df_dx[:,:,0,0]*dlogx_1, A[:,:,2,0], df_dx[:,:,1,0]*dlogx_1)
+    vdl = ((vh - vl)/dlogq_1 + (vl - vll)/dlogq_0) / 2
+
+    vhh = cubic_interpolation(tlogx, A[:,:,1,3], df_dx[:,:,0,3]*dlogx_1, A[:,:,2,3], df_dx[:,:,1,3]*dlogx_1)
+    vdh = ((vh - vl)/dlogq_1 + (vhh - vh)/dlogq_2) / 2
+
+    vdl *= dlogq_1
+    vdh *= dlogq_1
+    return cubic_interpolation(tlogq, vl, vdl, vh, vdh)
+
+
+
+
+
 
 
 
@@ -72,25 +146,7 @@ class subgrid:
         return self.interpolate(a_x, a_Q2)
 
 
-    def remove_edge_stripes(self, a_x, a_Q2):
-        
-        x_stripe = tf.math.logical_or(a_x < self.logx[1], a_x >= self.logx[-2])        
 
-        out_x = tf.boolean_mask(a_x, x_stripe)
-        out_Q2 = tf.boolean_mask(a_Q2, x_stripe)
-        in_x = tf.boolean_mask(a_x, ~x_stripe)
-        in_Q2 = tf.boolean_mask(a_Q2, ~x_stripe)
-
-
-        #remove Q2 stripes and concatenate those points with the previous ones
-        Q_stripe = tf.math.logical_or(in_Q2 < self.logQ2[1], in_Q2 >= self.logQ2[-2])
-
-
-        out_x = tf.concat([out_x, tf.boolean_mask(in_x, Q_stripe)],0)
-        out_Q2 = tf.concat([out_Q2, tf.boolean_mask(in_Q2, Q_stripe)],0)
-        in_x = tf.boolean_mask(in_x, ~Q_stripe)
-        in_Q2 = tf.boolean_mask(in_Q2, ~Q_stripe)
-        return in_x, in_Q2, out_x, out_Q2
 
     def two_neighbour_knots(self, a_x, a_Q2):
         #knot indeces of the [0,0] point in the square
@@ -114,8 +170,8 @@ class subgrid:
 
 
     def four_neighbour_knots(self, a_x, a_Q2):
-        x_id = tf.cast(tfp.stats.find_bins(a_x, self.logx), dtype=tf.int64)
-        Q2_id = tf.cast(tfp.stats.find_bins(a_Q2, self.logQ2), dtype=tf.int64)
+        x_id = tf.cast(tfp.stats.find_bins(a_x, self.logx, name='find_bins_logx'), dtype=tf.int64)
+        Q2_id = tf.cast(tfp.stats.find_bins(a_Q2, self.logQ2, name='find_bins_logQ2'), dtype=tf.int64)
         
         corn_x = [tf.gather(self.logx, (x_id-1))] + [tf.gather(self.logx, x_id)] +[tf.gather(self.logx, (x_id+1))] + [tf.gather(self.logx, (x_id+2))]
         corn_Q2 = [tf.gather(self.logQ2, (Q2_id-1))] + [tf.gather(self.logQ2, Q2_id)] + [tf.gather(self.logQ2, (Q2_id+1))] + [tf.gather(self.logQ2, (Q2_id+2))] 
@@ -129,60 +185,6 @@ class subgrid:
         
         return tf.stack(corn_x,1), tf.stack(corn_Q2,1), A
 
-
-    def df_dx(self, corn_x, A):
-        #just two kind of derivatives are useful in the x direction if we are interpolating in the [-1,2]x[-1,2] square:
-        #four derivatives in x = 0 for all Qs (:,0,:)
-        #four derivatives in x = 1 for all Qs (:,1,:)
-        #derivatives are returned in a tensor with shape (#draws,2,4)
-
-        lddx = (A[:,:,1,:] - A[:,:,0,:]) / tf.expand_dims(tf.expand_dims(corn_x[:,1] - corn_x[:, 0],1),-1)
-        rddx = (A[:,:,2,:] - A[:,:,1,:]) / tf.expand_dims(tf.expand_dims(corn_x[:,2] - corn_x[:,1],1),-1)
-        left = (lddx+rddx)/2
-
-        lddx = (A[:,:,2,:] - A[:,:,1,:]) / tf.expand_dims(tf.expand_dims(corn_x[:,2] - corn_x[:, 1],1),-1)
-        rddx = (A[:,:,3,:] - A[:,:,2,:]) / tf.expand_dims(tf.expand_dims(corn_x[:,3] - corn_x[:,2],1),-1)
-        right = (lddx+rddx)/2
-        return tf.stack([left, right], 2)
-
-    def bilinear_interpolation(self, a_x, a_Q2, corn_x, corn_Q2, A):
-        f_ql = linear_interpolation(a_x, corn_x[0], corn_x[1], A[:,:,0,0], A[:,:,1,0])
-        f_qh = linear_interpolation(a_x, corn_x[0], corn_x[1], A[:,:,0,1], A[:,:,1,1])
-        return linear_interpolation(a_Q2, corn_Q2[0], corn_Q2[1], f_ql, f_qh)
-
-
-    def bicubic_interpolation(self, a_x, a_Q2, corn_x, corn_Q2, A):
-        df_dx = self.df_dx(corn_x, A)
-        
-        dlogx_1 = corn_x[:,2] - corn_x[:,1]
-        tlogx = tf.expand_dims((a_x - corn_x[:,1])/dlogx_1,1)
-        dlogq_0 = tf.expand_dims(corn_Q2[:,1] - corn_Q2[:,0],1)
-        dlogq_1 = corn_Q2[:,2] - corn_Q2[:,1]
-        dlogq_2 = tf.expand_dims(corn_Q2[:,3] - corn_Q2[:,2],1)
-        tlogq = tf.expand_dims((a_Q2 - corn_Q2[:,1]) / dlogq_1,1)
-
-
-        dlogx_1 = tf.expand_dims(dlogx_1,1)
-        dlogq_1 = tf.expand_dims(dlogq_1,1)
-
-
-        vl = cubic_interpolation(tlogx, A[:,:,1,1], df_dx[:,:,0,1]*dlogx_1, A[:,:,2,1], df_dx[:,:,1,1]*dlogx_1)
-        vh = cubic_interpolation(tlogx, A[:,:,1,2], df_dx[:,:,0,2]*dlogx_1, A[:,:,2,2], df_dx[:,:,1,2]*dlogx_1)
-
-        vll = cubic_interpolation(tlogx, A[:,:,1,0], df_dx[:,:,0,0]*dlogx_1, A[:,:,2,0], df_dx[:,:,1,0]*dlogx_1)
-        vdl = ((vh - vl)/dlogq_1 + (vl - vll)/dlogq_0) / 2
-
-        vhh = cubic_interpolation(tlogx, A[:,:,1,3], df_dx[:,:,0,3]*dlogx_1, A[:,:,2,3], df_dx[:,:,1,3]*dlogx_1)
-        vdh = ((vh - vl)/dlogq_1 + (vhh - vh)/dlogq_2) / 2
-
-        vdl *= dlogq_1
-        vdh *= dlogq_1
-        return cubic_interpolation(tlogq, vl, vdl, vh, vdh)
-
-        
-
-
-
     def interpolate(self, a_x, a_Q2):
 
         #assert tf.math.reduce_all(tf.math.logical_and(self.xmin <= a_x, a_x <= self.xmax))
@@ -191,7 +193,7 @@ class subgrid:
         #otherwise use bicubic interpolation
         #remove x stripes and put those points in out_x and out_Q2
 
-        in_x, in_Q2, out_x, out_Q2 = self.remove_edge_stripes(a_x, a_Q2)
+        in_x, in_Q2, out_x, out_Q2 = remove_edge_stripes(a_x, a_Q2, self.logx, self.logQ2)
         #print(self.x)
         #print('in x: ',in_x)
         #print('in_Q2: ', in_Q2)
@@ -199,10 +201,10 @@ class subgrid:
         #print('out_Q2', out_Q2)
         #exit()
         a2,a3,a4 = self.two_neighbour_knots(out_x, out_Q2)
-        out_f = self.bilinear_interpolation(out_x,out_Q2,a2,a3,a4)
+        out_f = bilinear_interpolation(out_x,out_Q2,a2,a3,a4)
 
         a2,a3,a4 = self.four_neighbour_knots(in_x, in_Q2)
-        in_f = self.bicubic_interpolation(in_x, in_Q2,a2,a3,a4)
+        in_f = bicubic_interpolation(in_x, in_Q2,a2,a3,a4)
         
         final_x = tf.concat([in_x,out_x],0)
         final_Q2 = tf.concat([in_Q2, out_Q2],0)

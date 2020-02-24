@@ -65,12 +65,12 @@ class mkPDF:
 
     def _xfxQ2_fn(self, aa_x, aa_Q2):
         
-        a_x = tf.math.log(aa_x)
-        a_Q2 = tf.math.log(aa_Q2)
+        a_x = tf.math.log(aa_x, name='logx')
+        a_Q2 = tf.math.log(aa_Q2, name='logQ2')
 
-        f_x = tf.TensorArray(dtype=tf.float64, size=0, dynamic_size=True, infer_shape=False)
-        f_Q2 = tf.TensorArray(dtype=tf.float64, size=0, dynamic_size=True, infer_shape=False)
-        f_f = tf.TensorArray(dtype=tf.float64, size=0, dynamic_size=True, infer_shape=False)
+        f_x = tf.TensorArray(dtype=tf.float64, size=0, dynamic_size=True, infer_shape=False, name='f_x')
+        f_Q2 = tf.TensorArray(dtype=tf.float64, size=0, dynamic_size=True, infer_shape=False, name='f_Q2')
+        f_f = tf.TensorArray(dtype=tf.float64, size=0, dynamic_size=True, infer_shape=False, name='f_f')
         count = 0
 
         for i in range(len(self.subgrids)):
@@ -85,14 +85,14 @@ class mkPDF:
 
             
 
-            if tf.math.logical_not(tf.math.equal(tf.size(in_x), 0)):
-                ff_x, ff_Q2, ff_f = p.interpolate(in_x, in_Q2)
+            #if tf.math.logical_not(tf.math.equal(tf.size(in_x), 0)):
+            ff_x, ff_Q2, ff_f = p.interpolate(in_x, in_Q2)
             
-                f_x = f_x.write(count, ff_x)
-                f_Q2 = f_Q2.write(count, ff_Q2)
-                f_f = f_f.write(count, ff_f)
+            f_x = f_x.write(count, ff_x)
+            f_Q2 = f_Q2.write(count, ff_Q2)
+            f_f = f_f.write(count, ff_f)
 
-                count += 1
+            count += 1
 
         f_x = f_x.concat()
         f_Q2 = f_Q2.concat()
