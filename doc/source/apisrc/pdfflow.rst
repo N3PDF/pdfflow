@@ -13,8 +13,8 @@ pdfflow.pdfflow module
    :show-inheritance:
    :noindex:
 
-vegasflow.subgrid module
-------------------------
+pdfflow.subgrid module
+----------------------
 
 .. automodule:: pdfflow.subgrid
    :members:
