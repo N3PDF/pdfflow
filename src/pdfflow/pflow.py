@@ -1,4 +1,4 @@
-from subgrid import subgrid
+from pdfflow.subgrid import subgrid
 import tensorflow as tf
 import re
 import numpy as np
@@ -28,7 +28,7 @@ def load_Data(fname):
         grid = np.loadtxt(fname, skiprows=(n[i]+4), max_rows=(n[i+1]-n[i]-4))
 
         grids += [(x,Q2,flav,grid)]
-    
+
     return grids
 
 
@@ -46,7 +46,7 @@ class mkPDF:
         f = fname.split('/')
 
         self.fname = self.dirname+'%s/%s_%s.dat'%(f[0],f[0],f[1].zfill(4))
- 
+
 
 
         print('pdfflow loading ' + self.fname)
@@ -67,7 +67,7 @@ class mkPDF:
 
     @tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=float64), tf.TensorSpec(shape=[None], dtype=float64)])
     def _xfxQ2_fn(self, aa_x, aa_Q2):
-        
+
         a_x = tf.math.log(aa_x, name='logx')
         a_Q2 = tf.math.log(aa_Q2, name='logQ2')
 
@@ -86,11 +86,11 @@ class mkPDF:
             a_x = tf.boolean_mask(a_x, ~stripe)
             a_Q2 = tf.boolean_mask(a_Q2, ~stripe)
 
-            
+
 
             #if tf.math.logical_not(tf.math.equal(tf.size(in_x), 0)):
             ff_x, ff_Q2, ff_f = p.interpolate(in_x, in_Q2)
-            
+
             f_x = f_x.write(count, ff_x)
             f_Q2 = f_Q2.write(count, ff_Q2)
             f_f = f_f.write(count, ff_f)
@@ -103,7 +103,7 @@ class mkPDF:
 
         f_x = tf.math.exp(f_x)
         f_Q2 = tf.math.exp(f_Q2)
-        
+
         return f_x, f_Q2, f_f
 
     def xfxQ2(self, a_x, a_Q2, PID=None):
@@ -112,7 +112,7 @@ class mkPDF:
         f_x = np.array(f_x)
         f_Q2 = np.array(f_Q2)
         f_f = np.array(f_f)
-        
+
         dict_f = {}
         for i, f in enumerate(self.subgrids[0].flav):
             dict_f[f] = f_f[:,i]

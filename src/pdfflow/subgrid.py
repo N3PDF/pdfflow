@@ -10,7 +10,7 @@ def linear_interpolation(x, xl, xh, yl, yh):
     x = tf.expand_dims(x,1)
     xl = tf.expand_dims(xl,1)
     xh = tf.expand_dims(xh,1)
-    
+
     return yl + (x - xl) / (xh - xl) * (yh - yl)
 
 def cubic_interpolation(T, VL, VDL, VH, VDH):
@@ -26,8 +26,8 @@ def cubic_interpolation(T, VL, VDL, VH, VDH):
     return p0 + m0 + p1 + m1
 
 def remove_edge_stripes(a_x, a_Q2, logx, logQ2):
-        
-    x_stripe = tf.math.logical_or(a_x < logx[1], a_x >= logx[-2])        
+
+    x_stripe = tf.math.logical_or(a_x < logx[1], a_x >= logx[-2])
 
     out_x = tf.boolean_mask(a_x, x_stripe)
     out_Q2 = tf.boolean_mask(a_Q2, x_stripe)
@@ -69,7 +69,7 @@ def bilinear_interpolation(a_x, a_Q2, corn_x, corn_Q2, A):
 
 def bicubic_interpolation(a_x, a_Q2, corn_x, corn_Q2, A):
     df_dx = df_dx_func(corn_x, A)
-        
+
     dlogx_1 = corn_x[:,2] - corn_x[:,1]
     tlogx = tf.expand_dims((a_x - corn_x[:,1])/dlogx_1,1)
     dlogq_0 = tf.expand_dims(corn_Q2[:,1] - corn_Q2[:,0],1)
@@ -104,7 +104,7 @@ def bicubic_interpolation(a_x, a_Q2, corn_x, corn_Q2, A):
 
 class subgrid:
     def __init__(self, grid=None):
-        
+
         self.x = tf.constant(grid[0], dtype=float64)
         self.Q = tf.constant(grid[1], dtype=float64)
         self.Q2 = tf.pow(self.Q, 2)
@@ -117,12 +117,12 @@ class subgrid:
         self.xmin = np.amin(grid[0])
         self.xmax = np.amax(grid[0])
         self.Qmin = np.amin(grid[1])
-        self.Qmax = np.amax(grid[1]) 
+        self.Qmax = np.amax(grid[1])
         self.Q2min = self.Qmin**2
         self.Q2max = self.Qmax**2
 
-        
-        
+
+
     def print_summary(self):
         print('\n----------- Pdf Summary ----------------')
         print('| Size of the pdf grid: ',self.values.shape, '   |')
@@ -173,9 +173,9 @@ class subgrid:
     def four_neighbour_knots(self, a_x, a_Q2):
         x_id = tf.cast(tfp.stats.find_bins(a_x, self.logx, name='find_bins_logx'), dtype=tf.int64)
         Q2_id = tf.cast(tfp.stats.find_bins(a_Q2, self.logQ2, name='find_bins_logQ2'), dtype=tf.int64)
-        
+
         corn_x = [tf.gather(self.logx, (x_id-1))] + [tf.gather(self.logx, x_id)] +[tf.gather(self.logx, (x_id+1))] + [tf.gather(self.logx, (x_id+2))]
-        corn_Q2 = [tf.gather(self.logQ2, (Q2_id-1))] + [tf.gather(self.logQ2, Q2_id)] + [tf.gather(self.logQ2, (Q2_id+1))] + [tf.gather(self.logQ2, (Q2_id+2))] 
+        corn_Q2 = [tf.gather(self.logQ2, (Q2_id-1))] + [tf.gather(self.logQ2, Q2_id)] + [tf.gather(self.logQ2, (Q2_id+1))] + [tf.gather(self.logQ2, (Q2_id+2))]
 
 
         f0 = tf.stack([self.get_value(x_id-1, Q2_id-1), self.get_value(x_id-1, Q2_id), self.get_value(x_id-1, Q2_id+1), self.get_value(x_id-1, Q2_id+2)], -1)
@@ -183,7 +183,7 @@ class subgrid:
         f2 = tf.stack([self.get_value(x_id+1, Q2_id-1), self.get_value(x_id+1, Q2_id), self.get_value(x_id+1, Q2_id+1), self.get_value(x_id+1, Q2_id+2)], -1)
         f3 = tf.stack([self.get_value(x_id+2, Q2_id-1), self.get_value(x_id+2, Q2_id), self.get_value(x_id+2, Q2_id+1), self.get_value(x_id+2, Q2_id+2)], -1)
         A = tf.stack([f0,f1,f2,f3], 2)
-        
+
         return tf.stack(corn_x,1), tf.stack(corn_Q2,1), A
 
     def interpolate(self, a_x, a_Q2):
@@ -206,11 +206,11 @@ class subgrid:
 
         a2,a3,a4 = self.four_neighbour_knots(in_x, in_Q2)
         in_f = bicubic_interpolation(in_x, in_Q2,a2,a3,a4)
-        
+
         final_x = tf.concat([in_x,out_x],0)
         final_Q2 = tf.concat([in_Q2, out_Q2],0)
         final_f = tf.concat([in_f, out_f],0)
-        
+
         #final_x = out_x
         #final_Q2 = out_Q2
         #final_f = out_f
