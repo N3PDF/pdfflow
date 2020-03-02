@@ -1,10 +1,9 @@
 import tensorflow as tf
 import tensorflow_probability as tfp
 import numpy as np
-#import matplotlib.pyplot as plt
-#import p
 
 float64 = tf.float64
+int64 = tf.int64
 
 def linear_interpolation(x, xl, xh, yl, yh):
     x = tf.expand_dims(x,1)
@@ -29,11 +28,15 @@ def remove_edge_stripes(a_x, a_Q2, logx, logQ2):
 
     x_stripe = tf.math.logical_or(a_x < logx[1], a_x >= logx[-2])
 
+
+
+
     out_x = tf.boolean_mask(a_x, x_stripe)
     out_Q2 = tf.boolean_mask(a_Q2, x_stripe)
+    out_index = tf.squeeze(tf.where(x_stripe))
     in_x = tf.boolean_mask(a_x, ~x_stripe)
     in_Q2 = tf.boolean_mask(a_Q2, ~x_stripe)
-
+    in_index = tf.squeeze(tf.where(~x_stripe))
 
     #remove Q2 stripes and concatenate those points with the previous ones
     Q_stripe = tf.math.logical_or(in_Q2 < logQ2[1], in_Q2 >= logQ2[-2])
@@ -41,9 +44,11 @@ def remove_edge_stripes(a_x, a_Q2, logx, logQ2):
 
     out_x = tf.concat([out_x, tf.boolean_mask(in_x, Q_stripe)],0)
     out_Q2 = tf.concat([out_Q2, tf.boolean_mask(in_Q2, Q_stripe)],0)
+    out_index = tf.concat([out_index, tf.boolean_mask(in_index, Q_stripe)],0)
     in_x = tf.boolean_mask(in_x, ~Q_stripe)
     in_Q2 = tf.boolean_mask(in_Q2, ~Q_stripe)
-    return in_x, in_Q2, out_x, out_Q2
+    in_index = tf.boolean_mask(in_index, ~Q_stripe)
+    return in_x, in_Q2, in_index, out_x, out_Q2, out_index
 
 
 def df_dx_func(corn_x, A):
@@ -109,6 +114,8 @@ class subgrid:
         self.Q = tf.constant(grid[1], dtype=float64)
         self.Q2 = tf.pow(self.Q, 2)
         self.flav = grid[2]
+        self.num_flav = tf.constant([len(self.flav)])
+
         self.values = tf.constant(grid[3], dtype=float64)
 
         self.logx = tf.math.log(self.x)
@@ -141,18 +148,11 @@ class subgrid:
         return tf.gather(self.values, idx)
 
 
-    #@tf.function(input_signature=[tf.TensorSpec(shape=None, dtype=float64), tf.TensorSpec(shape=None, dtype=float64)])
-    #def interpolate_fn(self, a_x, a_Q2):
-    #    print('\nTracing interpolate with : a_x,  shape' + str(a_x.shape) + '; a_Q2, shape' + str(a_Q2.shape))
-    #    return self.interpolate(a_x, a_Q2)
-
-
-
 
     def two_neighbour_knots(self, a_x, a_Q2):
         #knot indeces of the [0,0] point in the square
-        x_id = tf.cast(tfp.stats.find_bins(a_x, self.logx), dtype=tf.int64)
-        Q2_id = tf.cast(tfp.stats.find_bins(a_Q2, self.logQ2), dtype=tf.int64)
+        x_id = tf.cast(tfp.stats.find_bins(a_x, self.logx), dtype=int64)
+        Q2_id = tf.cast(tfp.stats.find_bins(a_Q2, self.logQ2), dtype=int64)
 
         #corner coordinates
         corn_x = [tf.gather(self.logx, x_id)] + [tf.gather(self.logx, x_id + 1)]
@@ -171,8 +171,8 @@ class subgrid:
 
 
     def four_neighbour_knots(self, a_x, a_Q2):
-        x_id = tf.cast(tfp.stats.find_bins(a_x, self.logx, name='find_bins_logx'), dtype=tf.int64)
-        Q2_id = tf.cast(tfp.stats.find_bins(a_Q2, self.logQ2, name='find_bins_logQ2'), dtype=tf.int64)
+        x_id = tf.cast(tfp.stats.find_bins(a_x, self.logx, name='find_bins_logx'), dtype=int64)
+        Q2_id = tf.cast(tfp.stats.find_bins(a_Q2, self.logQ2, name='find_bins_logQ2'), dtype=int64)
 
         corn_x = [tf.gather(self.logx, (x_id-1))] + [tf.gather(self.logx, x_id)] +[tf.gather(self.logx, (x_id+1))] + [tf.gather(self.logx, (x_id+2))]
         corn_Q2 = [tf.gather(self.logQ2, (Q2_id-1))] + [tf.gather(self.logQ2, Q2_id)] + [tf.gather(self.logQ2, (Q2_id+1))] + [tf.gather(self.logQ2, (Q2_id+2))]
@@ -194,26 +194,19 @@ class subgrid:
         #otherwise use bicubic interpolation
         #remove x stripes and put those points in out_x and out_Q2
 
-        in_x, in_Q2, out_x, out_Q2 = remove_edge_stripes(a_x, a_Q2, self.logx, self.logQ2)
-        #print(self.x)
-        #print('in x: ',in_x)
-        #print('in_Q2: ', in_Q2)
-        #print('out_x: ', out_x)
-        #print('out_Q2', out_Q2)
-        #exit()
+
+
+        in_x, in_Q2, in_index, out_x, out_Q2, out_index = remove_edge_stripes(a_x, a_Q2, self.logx, self.logQ2)
+
         a2,a3,a4 = self.two_neighbour_knots(out_x, out_Q2)
         out_f = bilinear_interpolation(out_x,out_Q2,a2,a3,a4)
 
         a2,a3,a4 = self.four_neighbour_knots(in_x, in_Q2)
         in_f = bicubic_interpolation(in_x, in_Q2,a2,a3,a4)
 
-        final_x = tf.concat([in_x,out_x],0)
-        final_Q2 = tf.concat([in_Q2, out_Q2],0)
-        final_f = tf.concat([in_f, out_f],0)
+        size = tf.shape(a_x)
+        size = tf.cast(tf.concat([size, self.num_flav], 0), int64)
 
-        #final_x = out_x
-        #final_Q2 = out_Q2
-        #final_f = out_f
+        final_f = tf.scatter_nd(tf.expand_dims(out_index,-1), out_f, size) + tf.scatter_nd(tf.expand_dims(in_index,-1), in_f, size)
 
-
-        return final_x, final_Q2, final_f
+        return final_f

@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 float64 = tf.float64
+int64 = tf.int64
 
 def load_Data(fname):
     #Reads pdf from file and retrieves a list of grids
@@ -60,10 +61,6 @@ class mkPDF:
 
         self.subgrids = list(map(subgrid, grids))
 
-    #@tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=float64), tf.TensorSpec(shape=[None], dtype=float64)])
-    #def _xfxQ2(self, a_x, a_Q2):
-        #print('Tracing xfxQ2 with : a_x,  shape ' + str(a_x.shape) + '; a_Q2, shape ' + str(a_Q2.shape))
-    #   return self._xfxQ2_fn(a_x,a_Q2)
 
     @tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=float64), tf.TensorSpec(shape=[None], dtype=float64)])
     def _xfxQ2_fn(self, aa_x, aa_Q2):
@@ -71,9 +68,9 @@ class mkPDF:
         a_x = tf.math.log(aa_x, name='logx')
         a_Q2 = tf.math.log(aa_Q2, name='logQ2')
 
-        f_x = tf.TensorArray(dtype=float64, size=0, dynamic_size=True, infer_shape=False, name='f_x')
-        f_Q2 = tf.TensorArray(dtype=float64, size=0, dynamic_size=True, infer_shape=False, name='f_Q2')
+        f_idx = tf.TensorArray(dtype=int64, size=0, dynamic_size=True, infer_shape=False, name='f_idx')
         f_f = tf.TensorArray(dtype=float64, size=0, dynamic_size=True, infer_shape=False, name='f_f')
+
         count = 0
 
         for i in range(len(self.subgrids)):
@@ -83,41 +80,33 @@ class mkPDF:
 
             in_x = tf.boolean_mask(a_x, stripe)
             in_Q2 = tf.boolean_mask(a_Q2, stripe)
-            a_x = tf.boolean_mask(a_x, ~stripe)
-            a_Q2 = tf.boolean_mask(a_Q2, ~stripe)
 
+            ff_idx = tf.cast(tf.where(stripe), dtype=int64)
 
+            
 
-            #if tf.math.logical_not(tf.math.equal(tf.size(in_x), 0)):
-            ff_x, ff_Q2, ff_f = p.interpolate(in_x, in_Q2)
+            ff_f = p.interpolate(in_x, in_Q2)
 
-            f_x = f_x.write(count, ff_x)
-            f_Q2 = f_Q2.write(count, ff_Q2)
+            f_idx = f_idx.write(count, ff_idx)
             f_f = f_f.write(count, ff_f)
 
             count += 1
 
-        f_x = f_x.concat()
-        f_Q2 = f_Q2.concat()
+        f_idx = f_idx.concat()
         f_f = f_f.concat()
 
-        f_x = tf.math.exp(f_x)
-        f_Q2 = tf.math.exp(f_Q2)
 
-        return f_x, f_Q2, f_f
+
+        return tf.scatter_nd(f_idx, f_f, tf.shape(f_f,out_type=int64))
 
     def xfxQ2(self, a_x, a_Q2, PID=None):
-        f_x, f_Q2, f_f = self._xfxQ2_fn(a_x, a_Q2)
-
-        f_x = np.array(f_x)
-        f_Q2 = np.array(f_Q2)
-        f_f = np.array(f_f)
+        f_f = np.array(self._xfxQ2_fn(a_x, a_Q2))
 
         dict_f = {}
         for i, f in enumerate(self.subgrids[0].flav):
             dict_f[f] = f_f[:,i]
 
         if PID == None:
-            return f_x, f_Q2, dict_f
+            return dict_f
         else:
-            return f_x, f_Q2, dict_f[PID]
+            return dict_f[PID]
