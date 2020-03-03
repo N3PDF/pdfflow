@@ -2,7 +2,6 @@ from pdfflow.subgrid import subgrid
 import tensorflow as tf
 import re
 import numpy as np
-import matplotlib.pyplot as plt
 
 float64 = tf.float64
 
