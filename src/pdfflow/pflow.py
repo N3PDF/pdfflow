@@ -34,10 +34,6 @@ def load_Data(fname):
 
 
 
-
-
-
-
 class mkPDF:
     def __init__(self, fname, dirname='./local/share/LHAPDF/'):
         '''
@@ -63,7 +59,7 @@ class mkPDF:
 
 
     @tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=float64), tf.TensorSpec(shape=[None], dtype=float64)])
-    def _xfxQ2_fn(self, aa_x, aa_Q2):
+    def _xfxQ2(self, aa_x, aa_Q2):
 
         a_x = tf.math.log(aa_x, name='logx')
         a_Q2 = tf.math.log(aa_Q2, name='logQ2')
@@ -100,7 +96,7 @@ class mkPDF:
         return tf.scatter_nd(f_idx, f_f, tf.shape(f_f,out_type=int64))
 
     def xfxQ2(self, a_x, a_Q2, PID=None):
-        f_f = np.array(self._xfxQ2_fn(a_x, a_Q2))
+        f_f = np.array(self._xfxQ2(a_x, a_Q2))
 
         dict_f = {}
         for i, f in enumerate(self.subgrids[0].flav):
