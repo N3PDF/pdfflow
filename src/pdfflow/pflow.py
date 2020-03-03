@@ -2,7 +2,6 @@ from pdfflow.subgrid import subgrid
 import tensorflow as tf
 import re
 import numpy as np
-import matplotlib.pyplot as plt
 
 float64 = tf.float64
 int64 = tf.int64
@@ -58,7 +57,7 @@ class mkPDF:
         self.subgrids = list(map(subgrid, grids))
 
 
-    #@tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=float64), tf.TensorSpec(shape=[None], dtype=float64)])
+    @tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=float64), tf.TensorSpec(shape=[None], dtype=float64)])
     def _xfxQ2(self, aa_x, aa_Q2):
 
         a_x = tf.math.log(aa_x, name='logx')
@@ -91,7 +90,8 @@ class mkPDF:
         f_idx = f_idx.concat()
         f_f = f_f.concat()
 
-        return tf.scatter_nd(f_idx, f_f, f_f.shape)
+        # This will force recompilation as the shape of f_f is dynamic
+        return tf.scatter_nd(f_idx, f_f, tf.shape(f_f, out_type=int64))
 
     def xfxQ2(self, a_x, a_Q2, PID=None):
         f_f = np.array(self._xfxQ2(a_x, a_Q2))

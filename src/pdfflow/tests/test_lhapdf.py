@@ -23,10 +23,10 @@ def dict_update(old_dict, new_dict):
             old_dict[key].append(item)
 
 def get_pdfvals(xarr, qarr):
-    lhapdf = lhapdf.mkPDF(TESTPDF)
+    lhapdf_pdf = lhapdf.mkPDF(TESTPDF)
     res = {}
     for x, q in zip(xarr, qarr):
-        dict_update(res, lhapdf.xfxQ2(x, q))
+        dict_update(res, lhapdf_pdf.xfxQ2(x, q))
     return res
 
 def test_accuracy(atol=1e-6):
