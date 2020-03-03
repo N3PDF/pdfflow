@@ -6,9 +6,10 @@ import pdfflow.pflow as pdf
 import numpy as np
 import subprocess as sp
 
-TESTPDF = "NNPDF31_nlo_as_0118/0"
+TESTPDF = "NNPDF31_nlo_as_0118"
 FLAVS = [1,2,21]
 DIRNAME = sp.run(['lhapdf-config', '--datadir'], stdout=sp.PIPE).stdout.strip().decode()
+sp.run(['lhapdf', 'install', TESTPDF])
 
 XARR = np.random.rand(10)
 QMIN = 40 # For now avoid getting close to the danger zone
@@ -23,6 +24,7 @@ def dict_update(old_dict, new_dict):
             old_dict[key].append(item)
 
 def get_pdfvals(xarr, qarr):
+    # Install the TESTPDF
     lhapdf_pdf = lhapdf.mkPDF(TESTPDF)
     res = {}
     for x, q in zip(xarr, qarr):
@@ -30,7 +32,7 @@ def get_pdfvals(xarr, qarr):
     return res
 
 def test_accuracy(atol=1e-6):
-    pdfflow = pdf.mkPDF(TESTPDF, f"{DIRNAME}/")
+    pdfflow = pdf.mkPDF(f"{TESTPDF}/0", f"{DIRNAME}/")
     flow_values = pdfflow.xfxQ2(XARR, QARR)
     lhapdf_values = get_pdfvals(XARR, QARR)
     for f in FLAVS:
