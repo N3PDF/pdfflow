@@ -155,10 +155,46 @@ class subgrid:
         Q2_id = tf.cast(tfp.stats.find_bins(a_Q2, self.logQ2), dtype=int64)
 
         #corner coordinates
-        corn_x = [tf.gather(self.logx, x_id)] + [tf.gather(self.logx, x_id + 1)]
-        corn_Q2 = [tf.gather(self.logQ2, Q2_id)] + [tf.gather(self.logQ2, Q2_id + 1)]
+
+        corn_x_id = tf.stack([x_id, x_id+1],0)
+        corn_Q2_id = tf.stack([Q2_id, Q2_id+1],0) 
+        
+        corn_x = tf.gather(self.logx, corn_x_id)
+        corn_Q2 = tf.gather(self.logQ2, corn_Q2_id)
+
+        s = tf.size(self.Q2, out_type=tf.int64)
+        x_id = x_id * s
+
+        a = tf.stack([x_id+Q2_id, x_id+Q2_id+1])
+        b = tf.stack([x_id+Q2_id+s, x_id+Q2_id+s])
+
+        A_id = tf.stack([a,b])
+        A = tf.gather(self.values, A_id)
+        A = tf.transpose(A, perm=[2,3,0,1])
+        #print(A.shape)
+
+        #[[x_id+Q2_id, x_id+Q2_id+1],[x_id+Q2_id+tf.size(self.Q2), x_id+Q2_id+tf.size(self.Q2)]
+
+
+        '''
+        print(self.logx.shape)
+        print(self.Q2.shape)
+        print(x_id.shape)
+        print(Q2_id.shape)
+
+        print(self.values.shape)
+
+
+        print(corn_x.shape)
+        print(corn_Q2.shape)
+        exit()
 
         #pdf values
+
+
+
+        A = tf.gather(self.values, A_id)
+
         f00 = self.get_value(x_id, Q2_id)
         f01 = self.get_value(x_id, Q2_id+1)
         f10 = self.get_value(x_id+1, Q2_id)
@@ -167,6 +203,7 @@ class subgrid:
         A1 = tf.stack([f00,f01], axis=2)
         A2 = tf.stack([f10,f11], axis=2)
         A = tf.stack([A1,A2], axis=2)
+        '''
         return corn_x, corn_Q2, A
 
 

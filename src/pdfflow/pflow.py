@@ -103,4 +103,7 @@ class mkPDF:
         if PID == None:
             return dict_f
         else:
+            #must decide how to retrieve the pid
+            #if having a dictionary to select the right row
+            #if just input the row (this way gluon pid can't be 21)
             return dict_f[PID]
