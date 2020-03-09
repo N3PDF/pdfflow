@@ -57,7 +57,7 @@ class mkPDF:
         self.subgrids = list(map(subgrid, grids))
 
 
-    @tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=float64), tf.TensorSpec(shape=[None], dtype=float64)])
+    #@tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=float64), tf.TensorSpec(shape=[None], dtype=float64)])
     def _xfxQ2(self, aa_x, aa_Q2):
 
         a_x = tf.math.log(aa_x, name='logx')
@@ -94,7 +94,7 @@ class mkPDF:
         return tf.scatter_nd(f_idx, f_f, tf.shape(f_f, out_type=int64))
 
     def xfxQ2(self, a_x, a_Q2, PID=None):
-        f_f = np.array(self._xfxQ2(a_x, a_Q2))
+        f_f = self._xfxQ2(a_x, a_Q2).numpy()
 
         dict_f = {}
         for i, f in enumerate(self.subgrids[0].flav):
@@ -104,6 +104,6 @@ class mkPDF:
             return dict_f
         else:
             #must decide how to retrieve the pid
-            #if having a dictionary to select the right row
+            #if having a dictionary to select the right row or
             #if just input the row (this way gluon pid can't be 21)
             return dict_f[PID]
