@@ -158,7 +158,7 @@ def test(n_draws, p, l_pdf, xmin, xmax, Q2min, Q2max):
     start = time()
     f_lha = []
     for i in range(a_x.shape[0]):
-        f_lha += [l_pdf.xfxQ2(float(a_x[i]), float(a_Q2[i]))]
+        l_pdf.xfxQ2(float(a_x[i]), float(a_Q2[i]))
     tt = time()- start
 
     return t, tt

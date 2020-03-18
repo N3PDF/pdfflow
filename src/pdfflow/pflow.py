@@ -103,12 +103,12 @@ class mkPDF:
             if type(PID)==int:
                 PID=[PID]
         
-            PID = tf.expand_dims(tf.constant(PID),-1)
+            PID = tf.expand_dims(tf.constant(PID, dtype=int64),-1)
             idx = tf.where(tf.equal(self.flavor_scheme, PID))[:,1]
             u, i = tf.unique(idx)
         else:
-            idx = tf.range(len(self.flavor_scheme))
-            u = idx
+            idx = tf.range(len(self.flavor_scheme),dtype=int64)
+            u = i =idx
         #print(idx)
         #print(u)
         f_f = self._xfxQ2(a_x, a_Q2, u).numpy()
