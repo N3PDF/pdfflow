@@ -114,7 +114,6 @@ class subgrid:
         self.Q = tf.constant(grid[1], dtype=float64)
         self.Q2 = tf.pow(self.Q, 2)
         self.flav = grid[2]
-        #self.num_flav = tf.constant([len(self.flav)])
 
         self.values = tf.constant(grid[3], dtype=float64)
 
@@ -193,7 +192,6 @@ class subgrid:
         #otherwise use bicubic interpolation
         
         self.actual_values = tf.gather(self.values, u, axis=-1)
-        #print(self.actual_values.shape)
         
         in_x, in_Q2, in_index, out_x, out_Q2, out_index = remove_edge_stripes(a_x, a_Q2, self.logx, self.logQ2)
 

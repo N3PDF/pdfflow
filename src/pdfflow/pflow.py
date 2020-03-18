@@ -58,7 +58,7 @@ class mkPDF:
         self.flavor_scheme = self.subgrids[0].flav
 
 
-    #@tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=float64), tf.TensorSpec(shape=[None], dtype=float64), tf.TensorSpec(shape=[None], dtype=int64)])
+    @tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=float64), tf.TensorSpec(shape=[None], dtype=float64), tf.TensorSpec(shape=[None], dtype=int64)])
     def _xfxQ2(self, aa_x, aa_Q2, u):
 
         a_x = tf.math.log(aa_x, name='logx')
@@ -99,16 +99,19 @@ class mkPDF:
         #must feed a mask for flavors to _xfxQ2
         #if PID is None, the mask is set to true everywhere
         #PID must be a list of PIDs
-        if type(PID)==int:
-            PID=[PID]
+        if PID is not None:
+            if type(PID)==int:
+                PID=[PID]
         
-        PID = tf.expand_dims(tf.constant(PID),-1)
-        idx = tf.where(tf.equal(self.flavor_scheme, PID))[:,1]
-        u, _ = tf.unique(idx)
+            PID = tf.expand_dims(tf.constant(PID),-1)
+            idx = tf.where(tf.equal(self.flavor_scheme, PID))[:,1]
+            u, i = tf.unique(idx)
+        else:
+            idx = tf.range(len(self.flavor_scheme))
+            u = idx
+        #print(idx)
         #print(u)
-        
-        
-
         f_f = self._xfxQ2(a_x, a_Q2, u).numpy()
+        f_f = tf.gather(f_f,i,axis=1)
 
         return tf.squeeze(f_f)
