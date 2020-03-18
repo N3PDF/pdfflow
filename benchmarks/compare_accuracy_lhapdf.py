@@ -56,9 +56,7 @@ def main(pdfname, pid):
     for iq2 in q2:
         vl = np.array([l_pdf.xfxQ2(pid, ix, iq2) for ix in x])
         vp = p.xfxQ2(x, [iq2]*len(x), pid)
-        #xp,Qp,vp = p.xfxQ2(x, [iq2]*len(x), pid)
-        #xp, Qp, vp = sort_arrays_xQ(xp,Qp,vp)
-        #assert np.any(xp==x)
+        
         plt.plot(x, np.abs(vp-vl)/(np.abs(vl)+EPS), label='$Q=%.2e$' % iq2**0.5)
     plt.hlines(1e-3, plt.xlim()[0], plt.xlim()[1], linestyles='dotted')
     plt.xscale('log')
@@ -73,9 +71,7 @@ def main(pdfname, pid):
     for iq2 in q2:
         vl = np.array([l_pdf.xfxQ2(pid, ix, iq2) for ix in x])
         vp = p.xfxQ2(x, [iq2]*len(x), pid)
-        #xp,Qp,vp = p.xfxQ2(x, [iq2]*len(x), pid)
-        #xp, Qp, vp = sort_arrays_xQ(xp,Qp,vp)
-        #assert np.any(xp==x)
+        
         plt.plot(x, np.abs(vp-vl), label='$Q=%.2e$' % iq2**0.5)
     plt.xscale('log')
     plt.yscale('log')
@@ -91,9 +87,7 @@ def main(pdfname, pid):
     for ix in x:
         vl = np.array([l_pdf.xfxQ2(pid, ix, iq2) for iq2 in q2])
         vp = p.xfxQ2([ix]*len(q2), q2, pid)
-        #xp,Qp,vp = p.xfxQ2([ix]*len(q2), q2, pid)
-        #xp, Qp, vp = sort_arrays_Qx(xp,Qp,vp)
-        #assert np.any(Qp==q2)
+        
         plt.plot(q2**0.5, np.abs(vp-vl)/(np.abs(vl)+EPS), label='$x=%.2e$' % ix)
     plt.hlines(1e-3, plt.xlim()[0], plt.xlim()[1], linestyles='dotted')
     plt.xscale('log')
@@ -108,9 +102,7 @@ def main(pdfname, pid):
     for ix in x:
         vl = np.array([l_pdf.xfxQ2(pid, ix, iq2) for iq2 in q2])
         vp = p.xfxQ2([ix]*len(q2), q2, pid)
-        #xp,Qp,vp = p.xfxQ2([ix]*len(q2), q2, pid)
-        #xp, Qp, vp = sort_arrays_Qx(xp,Qp,vp)
-        #assert np.any(Qp==q2)
+        
         plt.plot(q2**0.5, np.abs(vp-vl), label='$x=%.2e$' % ix)
     plt.xscale('log')
     plt.yscale('log')

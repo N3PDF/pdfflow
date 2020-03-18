@@ -114,7 +114,7 @@ class subgrid:
         self.Q = tf.constant(grid[1], dtype=float64)
         self.Q2 = tf.pow(self.Q, 2)
         self.flav = grid[2]
-        self.num_flav = tf.constant([len(self.flav)])
+        #self.num_flav = tf.constant([len(self.flav)])
 
         self.values = tf.constant(grid[3], dtype=float64)
 
@@ -137,17 +137,6 @@ class subgrid:
         print('| Q2 is in [%2e, %2e]|'%(self.Q2min, self.Q2max))
         print('----------------------------------------\n')
 
-    def get_value(self, a_x_id, a_Q2_id):
-        '''
-        Returns the pdf value in a knot point
-        Parameters:
-            a_x_id, tensor of x indeces, shape: [#draws]
-            a_Q2_id, tensor of Q2 indeces, shape: [#draws]
-        '''
-        idx = a_x_id * self.Q2.shape[0] + a_Q2_id
-        return tf.gather(self.values, idx)
-
-
 
     def two_neighbour_knots(self, a_x, a_Q2):
         #knot indeces of the [0,0] point in the square
@@ -169,7 +158,7 @@ class subgrid:
         b = tf.stack([x+Q2_id+s, x+Q2_id+s+1])
 
         A_id = tf.stack([a,b])
-        A = tf.gather(self.values, A_id)
+        A = tf.gather(self.actual_values, A_id)
         
         return corn_x, corn_Q2, A
 
@@ -195,15 +184,16 @@ class subgrid:
         d = tf.stack([x+Q2_id+2*s-1, x+Q2_id+2*s, x+Q2_id+2*s+1, x+Q2_id+2*s+2])
 
         A_id = tf.stack([a,b,c,d])
-        A = tf.gather(self.values, A_id)
+        A = tf.gather(self.actual_values, A_id)
         
         return corn_x, corn_Q2, A
 
-    def interpolate(self, a_x, a_Q2):
+    def interpolate(self, a_x, a_Q2, u):
         #find which points are near the edges and linear interpolate between them
         #otherwise use bicubic interpolation
-        #remove x stripes and put those points in out_x and out_Q2
-
+        
+        self.actual_values = tf.gather(self.values, u, axis=-1)
+        
         in_x, in_Q2, in_index, out_x, out_Q2, out_index = remove_edge_stripes(a_x, a_Q2, self.logx, self.logQ2)
 
         a2,a3,a4 = self.two_neighbour_knots(out_x, out_Q2)
@@ -213,7 +203,7 @@ class subgrid:
         in_f = bicubic_interpolation(in_x, in_Q2,a2,a3,a4)
 
         size = tf.shape(a_x)
-        size = tf.cast(tf.concat([size, self.num_flav], 0), int64)
+        size = tf.cast(tf.concat([size, tf.shape(u)], 0), int64)
 
         final_f = tf.scatter_nd(tf.expand_dims(out_index,-1), out_f, size) + tf.scatter_nd(tf.expand_dims(in_index,-1), in_f, size)
 

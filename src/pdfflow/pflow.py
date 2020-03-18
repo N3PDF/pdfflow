@@ -55,10 +55,11 @@ class mkPDF:
 
 
         self.subgrids = list(map(subgrid, grids))
+        self.flavor_scheme = self.subgrids[0].flav
 
 
-    #@tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=float64), tf.TensorSpec(shape=[None], dtype=float64)])
-    def _xfxQ2(self, aa_x, aa_Q2):
+    #@tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=float64), tf.TensorSpec(shape=[None], dtype=float64), tf.TensorSpec(shape=[None], dtype=int64)])
+    def _xfxQ2(self, aa_x, aa_Q2, u):
 
         a_x = tf.math.log(aa_x, name='logx')
         a_Q2 = tf.math.log(aa_Q2, name='logQ2')
@@ -80,7 +81,7 @@ class mkPDF:
 
             
 
-            ff_f = p.interpolate(in_x, in_Q2)
+            ff_f = p.interpolate(in_x, in_Q2, u)
 
             f_idx = f_idx.write(count, ff_idx)
             f_f = f_f.write(count, ff_f)
@@ -94,16 +95,21 @@ class mkPDF:
         return tf.scatter_nd(f_idx, f_f, tf.shape(f_f, out_type=int64))
 
     def xfxQ2(self, a_x, a_Q2, PID=None):
-        f_f = self._xfxQ2(a_x, a_Q2).numpy()
 
-        dict_f = {}
-        for i, f in enumerate(self.subgrids[0].flav):
-            dict_f[int(f)] = f_f[:,i]
+        #must feed a mask for flavors to _xfxQ2
+        #if PID is None, the mask is set to true everywhere
+        #PID must be a list of PIDs
+        if type(PID)==int:
+            PID=[PID]
+        
+        PID = tf.expand_dims(tf.constant(PID),-1)
+        idx = tf.where(tf.equal(self.flavor_scheme, PID))[:,1]
+        u, _ = tf.unique(idx)
+        print(u)
+        
+        
 
-        if PID == None:
-            return dict_f
-        else:
-            #must decide how to retrieve the pid
-            #if having a dictionary to select the right row or
-            #if just input the row (this way gluon pid can't be 21)
-            return dict_f[PID]
+        f_f = self._xfxQ2(a_x, a_Q2, u).numpy()
+
+        #print(f_f.shape)
+        return f_f
