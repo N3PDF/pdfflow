@@ -193,6 +193,7 @@ class subgrid:
         #otherwise use bicubic interpolation
         
         self.actual_values = tf.gather(self.values, u, axis=-1)
+        #print(self.actual_values.shape)
         
         in_x, in_Q2, in_index, out_x, out_Q2, out_index = remove_edge_stripes(a_x, a_Q2, self.logx, self.logQ2)
 

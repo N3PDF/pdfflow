@@ -105,11 +105,10 @@ class mkPDF:
         PID = tf.expand_dims(tf.constant(PID),-1)
         idx = tf.where(tf.equal(self.flavor_scheme, PID))[:,1]
         u, _ = tf.unique(idx)
-        print(u)
+        #print(u)
         
         
 
         f_f = self._xfxQ2(a_x, a_Q2, u).numpy()
 
-        #print(f_f.shape)
-        return f_f
+        return tf.squeeze(f_f)

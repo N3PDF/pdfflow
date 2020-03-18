@@ -6,6 +6,7 @@ import argparse
 import subprocess as sp
 import numpy as np
 import matplotlib.pyplot as plt
+import time
 '''
 def sort_arrays_Qx(a,b,f):
     a = np.array(a)
@@ -117,4 +118,6 @@ def main(pdfname, pid):
 
 if __name__ == "__main__":
     args = vars(parser.parse_args())
+    start = time.time()
     main(**args)
+    print(time.time()-start)
