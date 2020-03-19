@@ -57,8 +57,8 @@ class mkPDF:
         self.flavor_scheme = self.subgrids[0].flav
 
 
-    @tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=float64), tf.TensorSpec(shape=[None], dtype=float64), tf.TensorSpec(shape=[None], dtype=int64)])
-    def _xfxQ2(self, aa_x, aa_Q2, u):
+    @tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=int64),tf.TensorSpec(shape=[None], dtype=float64), tf.TensorSpec(shape=[None], dtype=float64)])
+    def _xfxQ2(self, u, aa_x, aa_Q2):
 
         a_x = tf.math.log(aa_x, name='logx')
         a_Q2 = tf.math.log(aa_Q2, name='logQ2')
@@ -80,7 +80,7 @@ class mkPDF:
 
             
 
-            ff_f = p.interpolate(in_x, in_Q2, u)
+            ff_f = p.interpolate(u, in_x, in_Q2)
 
             f_idx = f_idx.write(count, ff_idx)
             f_f = f_f.write(count, ff_f)
@@ -105,7 +105,7 @@ class mkPDF:
         idx = tf.where(tf.equal(self.flavor_scheme, PID))[:,1]
         u, i = tf.unique(idx)
 
-        f_f = self._xfxQ2(a_x, a_Q2, u).numpy()
+        f_f = self._xfxQ2(u, a_x, a_Q2).numpy()
         '''
         if asdict == True:
             res = {}

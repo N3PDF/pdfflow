@@ -187,7 +187,7 @@ class subgrid:
         
         return corn_x, corn_Q2, A
 
-    def interpolate(self, a_x, a_Q2, u):
+    def interpolate(self, u, a_x, a_Q2):
         #find which points are near the edges and linear interpolate between them
         #otherwise use bicubic interpolation
         
