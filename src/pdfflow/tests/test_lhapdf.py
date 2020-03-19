@@ -34,7 +34,7 @@ def get_pdfvals(xarr, qarr):
 def asdict(vals, FLAVS, scheme):
     res = {}
     for k in FLAVS:
-        col = int(tf.where(tf.equal(scheme, k))[0,0])
+        col = np.where(np.equal(scheme, k))[0][0]
         res[k] = vals[:,col]
     return res
 
@@ -47,3 +47,6 @@ def test_accuracy(atol=1e-6):
     lhapdf_values = get_pdfvals(XARR, QARR)
     for f in FLAVS:
         np.testing.assert_allclose(flow_values[f], lhapdf_values[f], atol=atol)
+
+
+test_accuracy()
