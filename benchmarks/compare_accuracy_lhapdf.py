@@ -6,6 +6,7 @@ import argparse
 import subprocess as sp
 import numpy as np
 import matplotlib.pyplot as plt
+import time
 '''
 def sort_arrays_Qx(a,b,f):
     a = np.array(a)
@@ -55,10 +56,8 @@ def main(pdfname, pid):
     q2 = np.array([1.65, 3, 5, 10, 50, 1e2, 2e2, 5e2, 1e3, 2e3, 5e3], dtype=float)**2
     for iq2 in q2:
         vl = np.array([l_pdf.xfxQ2(pid, ix, iq2) for ix in x])
-        vp = p.xfxQ2(x, [iq2]*len(x), pid)
-        #xp,Qp,vp = p.xfxQ2(x, [iq2]*len(x), pid)
-        #xp, Qp, vp = sort_arrays_xQ(xp,Qp,vp)
-        #assert np.any(xp==x)
+        vp = p.xfxQ2(pid, x, [iq2]*len(x))
+
         plt.plot(x, np.abs(vp-vl)/(np.abs(vl)+EPS), label='$Q=%.2e$' % iq2**0.5)
     plt.hlines(1e-3, plt.xlim()[0], plt.xlim()[1], linestyles='dotted')
     plt.xscale('log')
@@ -72,10 +71,8 @@ def main(pdfname, pid):
     plt.subplot(2, 2, 3)
     for iq2 in q2:
         vl = np.array([l_pdf.xfxQ2(pid, ix, iq2) for ix in x])
-        vp = p.xfxQ2(x, [iq2]*len(x), pid)
-        #xp,Qp,vp = p.xfxQ2(x, [iq2]*len(x), pid)
-        #xp, Qp, vp = sort_arrays_xQ(xp,Qp,vp)
-        #assert np.any(xp==x)
+        vp = p.xfxQ2(pid, x, [iq2]*len(x))
+        
         plt.plot(x, np.abs(vp-vl), label='$Q=%.2e$' % iq2**0.5)
     plt.xscale('log')
     plt.yscale('log')
@@ -90,10 +87,8 @@ def main(pdfname, pid):
     plt.subplot(2, 2, 2)
     for ix in x:
         vl = np.array([l_pdf.xfxQ2(pid, ix, iq2) for iq2 in q2])
-        vp = p.xfxQ2([ix]*len(q2), q2, pid)
-        #xp,Qp,vp = p.xfxQ2([ix]*len(q2), q2, pid)
-        #xp, Qp, vp = sort_arrays_Qx(xp,Qp,vp)
-        #assert np.any(Qp==q2)
+        vp = p.xfxQ2(pid, [ix]*len(q2), q2)
+        
         plt.plot(q2**0.5, np.abs(vp-vl)/(np.abs(vl)+EPS), label='$x=%.2e$' % ix)
     plt.hlines(1e-3, plt.xlim()[0], plt.xlim()[1], linestyles='dotted')
     plt.xscale('log')
@@ -107,10 +102,8 @@ def main(pdfname, pid):
     plt.subplot(2, 2, 4)
     for ix in x:
         vl = np.array([l_pdf.xfxQ2(pid, ix, iq2) for iq2 in q2])
-        vp = p.xfxQ2([ix]*len(q2), q2, pid)
-        #xp,Qp,vp = p.xfxQ2([ix]*len(q2), q2, pid)
-        #xp, Qp, vp = sort_arrays_Qx(xp,Qp,vp)
-        #assert np.any(Qp==q2)
+        vp = p.xfxQ2(pid, [ix]*len(q2), q2)
+        
         plt.plot(q2**0.5, np.abs(vp-vl), label='$x=%.2e$' % ix)
     plt.xscale('log')
     plt.yscale('log')
@@ -125,4 +118,6 @@ def main(pdfname, pid):
 
 if __name__ == "__main__":
     args = vars(parser.parse_args())
+    start=time.time()
     main(**args)
+    print(time.time()-start)    

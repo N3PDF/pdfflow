@@ -2,7 +2,6 @@ from pdfflow.subgrid import subgrid
 import tensorflow as tf
 import re
 import numpy as np
-import matplotlib.pyplot as plt
 
 float64 = tf.float64
 int64 = tf.int64
@@ -33,7 +32,6 @@ def load_Data(fname):
     return grids
 
 
-
 class mkPDF:
     def __init__(self, fname, dirname='./local/share/LHAPDF/'):
         '''
@@ -56,10 +54,11 @@ class mkPDF:
 
 
         self.subgrids = list(map(subgrid, grids))
+        self.flavor_scheme = self.subgrids[0].flav
 
 
-    @tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=float64), tf.TensorSpec(shape=[None], dtype=float64)])
-    def _xfxQ2(self, aa_x, aa_Q2):
+    @tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=int64),tf.TensorSpec(shape=[None], dtype=float64), tf.TensorSpec(shape=[None], dtype=float64)])
+    def _xfxQ2(self, u, aa_x, aa_Q2):
 
         a_x = tf.math.log(aa_x, name='logx')
         a_Q2 = tf.math.log(aa_Q2, name='logQ2')
@@ -81,7 +80,7 @@ class mkPDF:
 
             
 
-            ff_f = p.interpolate(in_x, in_Q2)
+            ff_f = p.interpolate(u, in_x, in_Q2)
 
             f_idx = f_idx.write(count, ff_idx)
             f_f = f_f.write(count, ff_f)
@@ -91,18 +90,38 @@ class mkPDF:
         f_idx = f_idx.concat()
         f_f = f_f.concat()
 
+        # This will force recompilation as the shape of f_f is dynamic
+        return tf.scatter_nd(f_idx, f_f, tf.shape(f_f, out_type=int64))
+
+    def xfxQ2(self, PID, a_x, a_Q2):
+
+        #must feed a mask for flavors to _xfxQ2
+        #if PID is None, the mask is set to true everywhere
+        #PID must be a list of PIDs
+        if type(PID)==int:
+            PID=[PID]
+        
+        PID = tf.expand_dims(tf.constant(PID, dtype=int64),-1)
+        idx = tf.where(tf.equal(self.flavor_scheme, PID))[:,1]
+        u, i = tf.unique(idx)
+
+        f_f = self._xfxQ2(u, a_x, a_Q2).numpy()
+        '''
+        if asdict == True:
+            res = {}
+            for i in range(len(PID)):
+                k = int(PID[i])
+                col = int(tf.where(tf.equal(idx,i))[0,0])
+                res[k] = f_f[:,col]
+            return res
+        '''
+
+        f_f = tf.gather(f_f,i,axis=1)
+
+        return tf.squeeze(f_f)
 
 
-        return tf.scatter_nd(f_idx, f_f, tf.shape(f_f,out_type=int64))
-
-    def xfxQ2(self, a_x, a_Q2, PID=None):
-        f_f = np.array(self._xfxQ2(a_x, a_Q2))
-
-        dict_f = {}
-        for i, f in enumerate(self.subgrids[0].flav):
-            dict_f[f] = f_f[:,i]
-
-        if PID == None:
-            return dict_f
-        else:
-            return dict_f[PID]
+    def xfxQ2_allpid(self, a_x, a_Q2):
+    	#return all the flavors
+    	PID = self.flavor_scheme
+    	return self.xfxQ2(PID, a_x, a_Q2)

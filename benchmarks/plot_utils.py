@@ -91,7 +91,7 @@ def sort_arrays(a,b,f):
 def plots(PID, a_x, a_Q2, p, l_pdf, xmin, xmax, Q2min, Q2max):
     #writer = tf.summary.create_file_writer(args.logdir)
     #tf.summary.trace_on(graph=True, profiler=True)
-    f = p.xfxQ2(a_x, a_Q2, PID)
+    f = p.xfxQ2(PID, a_x, a_Q2)
     #with writer.as_default():
     #    tf.summary.trace_export(
     #        name='xfxQ2_trace',
@@ -152,13 +152,13 @@ def test(n_draws, p, l_pdf, xmin, xmax, Q2min, Q2max):
     a_Q2 = np.exp(np.random.uniform(np.log(Q2min), np.log(Q2max),[n_draws,]))
 
     start = time()
-    p.xfxQ2(tf.constant(a_x, dtype=float64), tf.constant(a_Q2,dtype=float64))
+    p.xfxQ2_allpid(tf.constant(a_x, dtype=float64), tf.constant(a_Q2,dtype=float64))
     t = time()- start
 
     start = time()
     f_lha = []
     for i in range(a_x.shape[0]):
-        f_lha += [l_pdf.xfxQ2(float(a_x[i]), float(a_Q2[i]))]
+        l_pdf.xfxQ2(float(a_x[i]), float(a_Q2[i]))
     tt = time()- start
 
     return t, tt

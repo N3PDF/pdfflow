@@ -5,7 +5,7 @@ import lhapdf
 import argparse
 import subprocess as sp
 import numpy as np
-
+import time
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--pdfname", "-p", default="NNPDF31_nlo_as_0118/0", type=str, help='The PDF set name/replica number.')
@@ -42,4 +42,6 @@ def main(pdfname, n_draws, pid):
 
 if __name__ == "__main__":
     args = vars(parser.parse_args())
+    start=time.time()
     main(**args)
+    print(time.time()-start)
