@@ -42,8 +42,6 @@ class mkPDF:
 
         self.fname = self.dirname+'%s/%s_%s.dat'%(f[0],f[0],f[1].zfill(4))
 
-
-
         print('pdfflow loading ' + self.fname)
         grids = load_Data(self.fname)
         #[(x,Q2,flav,knots), ...]
@@ -52,10 +50,8 @@ class mkPDF:
             if not np.all(flav[i]  == flav[i+1]):
                 print('Flavor schemes do not match across all the subgrids ---> algorithm will break !')
 
-
         self.subgrids = list(map(subgrid, grids))
         self.flavor_scheme = self.subgrids[0].flav
-
 
     @tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=int64),tf.TensorSpec(shape=[None], dtype=float64), tf.TensorSpec(shape=[None], dtype=float64)])
     def _xfxQ2(self, u, aa_x, aa_Q2):
@@ -72,14 +68,10 @@ class mkPDF:
             p = self.subgrids[i]
             stripe = tf.math.logical_and(a_Q2 >= tf.math.log(p.Q2min), a_Q2 < tf.math.log(p.Q2max))
 
-
             in_x = tf.boolean_mask(a_x, stripe)
             in_Q2 = tf.boolean_mask(a_Q2, stripe)
 
             ff_idx = tf.cast(tf.where(stripe), dtype=int64)
-
-            
-
             ff_f = p.interpolate(u, in_x, in_Q2)
 
             f_idx = f_idx.write(count, ff_idx)
@@ -100,22 +92,12 @@ class mkPDF:
         #PID must be a list of PIDs
         if type(PID)==int:
             PID=[PID]
-        
+
         PID = tf.expand_dims(tf.constant(PID, dtype=int64),-1)
         idx = tf.where(tf.equal(self.flavor_scheme, PID))[:,1]
         u, i = tf.unique(idx)
 
         f_f = self._xfxQ2(u, a_x, a_Q2).numpy()
-        '''
-        if asdict == True:
-            res = {}
-            for i in range(len(PID)):
-                k = int(PID[i])
-                col = int(tf.where(tf.equal(idx,i))[0,0])
-                res[k] = f_f[:,col]
-            return res
-        '''
-
         f_f = tf.gather(f_f,i,axis=1)
 
         return tf.squeeze(f_f)
