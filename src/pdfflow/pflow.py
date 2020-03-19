@@ -93,22 +93,17 @@ class mkPDF:
         # This will force recompilation as the shape of f_f is dynamic
         return tf.scatter_nd(f_idx, f_f, tf.shape(f_f, out_type=int64))
 
-    def xfxQ2(self, a_x, a_Q2, PID=None):
+    def xfxQ2(self, PID, a_x, a_Q2):
 
         #must feed a mask for flavors to _xfxQ2
         #if PID is None, the mask is set to true everywhere
         #PID must be a list of PIDs
-        if PID is not None:
-            if type(PID)==int:
-                PID=[PID]
+        if type(PID)==int:
+            PID=[PID]
         
-            PID = tf.expand_dims(tf.constant(PID, dtype=int64),-1)
-            idx = tf.where(tf.equal(self.flavor_scheme, PID))[:,1]
-            u, i = tf.unique(idx)
-        else:
-            PID = self.flavor_scheme
-            idx = tf.range(len(self.flavor_scheme),dtype=int64)
-            u = i =idx
+        PID = tf.expand_dims(tf.constant(PID, dtype=int64),-1)
+        idx = tf.where(tf.equal(self.flavor_scheme, PID))[:,1]
+        u, i = tf.unique(idx)
 
         f_f = self._xfxQ2(a_x, a_Q2, u).numpy()
         '''
@@ -121,8 +116,12 @@ class mkPDF:
             return res
         '''
 
-
         f_f = tf.gather(f_f,i,axis=1)
 
         return tf.squeeze(f_f)
 
+
+    def xfxQ2_allpid(self, a_x, a_Q2):
+    	#return all the flavors
+    	PID = self.flavor_scheme
+    	return self.xfxQ2(PID, a_x, a_Q2)
