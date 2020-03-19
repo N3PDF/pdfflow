@@ -32,7 +32,6 @@ def load_Data(fname):
     return grids
 
 
-
 class mkPDF:
     def __init__(self, fname, dirname='./local/share/LHAPDF/'):
         '''
@@ -94,7 +93,7 @@ class mkPDF:
         # This will force recompilation as the shape of f_f is dynamic
         return tf.scatter_nd(f_idx, f_f, tf.shape(f_f, out_type=int64))
 
-    def xfxQ2(self, a_x, a_Q2, PID=None):
+    def xfxQ2(self, a_x, a_Q2, PID=None, asdict=False):
 
         #must feed a mask for flavors to _xfxQ2
         #if PID is None, the mask is set to true everywhere
@@ -109,9 +108,19 @@ class mkPDF:
         else:
             idx = tf.range(len(self.flavor_scheme),dtype=int64)
             u = i =idx
-        #print(idx)
-        #print(u)
+
         f_f = self._xfxQ2(a_x, a_Q2, u).numpy()
+
+        if asdict == True:
+            res = {}
+            for i in range(len(u)):
+                k = int(u[i])
+                col = int(tf.where(tf.equal(idx,i))[0,0])
+                res[k] = f_f[:,col]
+            return res
+
+
         f_f = tf.gather(f_f,i,axis=1)
 
         return tf.squeeze(f_f)
+

@@ -33,7 +33,7 @@ def get_pdfvals(xarr, qarr):
 
 def test_accuracy(atol=1e-6):
     pdfflow = pdf.mkPDF(f"{TESTPDF}/0", f"{DIRNAME}/")
-    flow_values = pdfflow.xfxQ2(XARR, QARR)
+    flow_values = pdfflow.xfxQ2(XARR, QARR, asdict=True)
     lhapdf_values = get_pdfvals(XARR, QARR)
     for f in FLAVS:
         np.testing.assert_allclose(flow_values[f], lhapdf_values[f], atol=atol)
