@@ -1,4 +1,3 @@
-import pdfflow
 import tensorflow as tf
 import numpy as np
 import lhapdf
@@ -8,13 +7,14 @@ import tqdm
 import os
 
 float64 = tf.float64
-
+EPS = np.finfo(float).eps
+'''
 def slice_test(fixed,v,p,l_pdf):
-    '''
-    Prints xf versus x or Q2 depending on the fixed flag
-    fixed: string, either x or Q2
+'''
+    #Prints xf versus x or Q2 depending on the fixed flag
+    #fixed: string, either x or Q2
 
-    '''
+'''
     if 'Q2' in fixed:
         a_x = np.exp(np.random.uniform(np.log(p.pdf[0].xmin), np.log(p.pdf[-1].xmax),[10000,]))
         a_Q2 = np.array([float(v) for i in range(10000)])
@@ -23,7 +23,7 @@ def slice_test(fixed,v,p,l_pdf):
         a_x = np.array([float(v) for i in range(10000)])
 
     o_x,o_Q2, f = p.xfpxQ2(-4, tf.constant(a_x, dtype=float64), tf.constant(a_Q2,dtype=float64))
-    
+
     l_f = []
     for i in range(a_x.shape[0]):
         l_f += [l_pdf.xfxQ2(-4, a_x[i], a_Q2[i])]
@@ -84,39 +84,39 @@ def sort_arrays(a,b,f):
     ind = np.argsort(aa)
 
     return np.take_along_axis(aa,ind,0), np.take_along_axis(bb,ind,0), np.take_along_axis(ff,ind,0)
+'''
 
 
 
-
-def plots(args, a_x, a_Q2, p, l_pdf):
+def plots(PID, a_x, a_Q2, p, l_pdf, xmin, xmax, Q2min, Q2max):
     #writer = tf.summary.create_file_writer(args.logdir)
     #tf.summary.trace_on(graph=True, profiler=True)
-    x, q, f = p.xfxQ2(a_x, a_Q2,args.PID)
+    f = p.xfxQ2(PID, a_x, a_Q2)
     #with writer.as_default():
     #    tf.summary.trace_export(
     #        name='xfxQ2_trace',
     #        step=0,
     #        profiler_outdir=args.logdir)
-    
-    x,q,f = sort_arrays(x,q,f)
+
+    #x,q,f = sort_arrays(x,q,f)
 
     f_lha = []
     for i in range(a_x.shape[0]):
-        f_lha += [l_pdf.xfxQ2(args.PID,float(a_x[i]), float(a_Q2[i]))]
+        f_lha += [l_pdf.xfxQ2(PID,float(a_x[i]), float(a_Q2[i]))]
     f_lha = np.array(f_lha)
-    _, _, f_sort = sort_arrays(a_x, a_Q2, f_lha)
+    #_, _, f_sort = sort_arrays(a_x, a_Q2, f_lha)
 
     fig = plt.figure(figsize=(20,16))
 
     ax = fig.add_subplot(311)
-    z = ax.scatter(x, q, c=f)
+    z = ax.scatter(a_x, a_Q2, c=f)
     ax.title.set_text('pdfflow algorithm')
     ax.set_xlabel('x')
     ax.set_ylabel('Q^2 [Gev^2]')
     ax.set_xscale('log')
     ax.set_yscale('log')
-    ax.set_xlim((args.xmin, args.xmax))
-    ax.set_ylim((args.Q2min, args.Q2max))
+    ax.set_xlim((xmin, xmax))
+    ax.set_ylim((Q2min, Q2max))
     fig.colorbar(z, ax=ax)
 
     ax = fig.add_subplot(312)
@@ -126,8 +126,8 @@ def plots(args, a_x, a_Q2, p, l_pdf):
     ax.set_ylabel('Q^2 [Gev^2]')
     ax.set_xscale('log')
     ax.set_yscale('log')
-    ax.set_xlim((args.xmin, args.xmax))
-    ax.set_ylim((args.Q2min, args.Q2max))
+    ax.set_xlim((xmin, xmax))
+    ax.set_ylim((Q2min, Q2max))
     fig.colorbar(z, ax=ax)
 
     ax = fig.add_subplot(313)
@@ -136,9 +136,9 @@ def plots(args, a_x, a_Q2, p, l_pdf):
     ax.set_ylabel('Q^2 [Gev^2]')
     ax.set_xscale('log')
     ax.set_yscale('log')
-    ax.set_xlim((args.xmin, args.xmax))
-    ax.set_ylim((args.Q2min, args.Q2max)) 
-    z = ax.scatter(x,q, c=np.abs(f-f_sort)/f_sort)
+    ax.set_xlim((xmin, xmax))
+    ax.set_ylim((Q2min, Q2max))
+    z = ax.scatter(a_x,a_Q2, c=np.abs(f-f_lha)/(np.abs(f_lha)+EPS))
     fig.colorbar(z, ax=ax)
 
     plt.savefig('interpolation.png')
@@ -147,25 +147,24 @@ def plots(args, a_x, a_Q2, p, l_pdf):
 
 
 
-def test(args, n_draws, p, l_pdf):
-    a_x = np.random.uniform(args.xmin, args.xmax,[n_draws,])
-    a_Q2 = np.exp(np.random.uniform(np.log(args.Q2min), np.log(args.Q2max),[n_draws,]))
-    
+def test(n_draws, p, l_pdf, xmin, xmax, Q2min, Q2max):
+    a_x = np.random.uniform(xmin, xmax,[n_draws,])
+    a_Q2 = np.exp(np.random.uniform(np.log(Q2min), np.log(Q2max),[n_draws,]))
+
     start = time()
-    p.xfxQ2(tf.constant(a_x, dtype=float64), tf.constant(a_Q2,dtype=float64), args.PID)
+    p.xfxQ2_allpid(tf.constant(a_x, dtype=float64), tf.constant(a_Q2,dtype=float64))
     t = time()- start
 
     start = time()
     f_lha = []
     for i in range(a_x.shape[0]):
-        f_lha += [l_pdf.xfxQ2(args.PID, float(a_x[i]), float(a_Q2[i]))]
-    f_lha = tf.constant(f_lha, dtype=float64)
+        l_pdf.xfxQ2(float(a_x[i]), float(a_Q2[i]))
     tt = time()- start
 
     return t, tt
 
-def test_time(args, p, l_pdf):
-    
+def test_time(p, l_pdf, xmin, xmax, Q2min, Q2max):
+
     t_pdf = []
     t_lha = []
     n = np.logspace(5,5.8,10)
@@ -173,7 +172,7 @@ def test_time(args, p, l_pdf):
         t = []
         tt = []
         for i in tqdm.tqdm(n):
-            t_, tt_ =  test(args, int(i), p, l_pdf)
+            t_, tt_ =  test(int(i), p, l_pdf, xmin, xmax, Q2min, Q2max)
             t += [t_]
             tt += [tt_]
         t_pdf += [t]
@@ -182,33 +181,44 @@ def test_time(args, p, l_pdf):
     t_pdf = np.stack(t_pdf)
     t_lha = np.stack(t_lha)
 
+    avg_l = t_lha.mean(0)
+    avg_p = t_pdf.mean(0)
+    std_l = t_lha.std(0)
+    std_p = t_pdf.std(0)
+    std_ratio = np.sqrt((std_p/avg_l)**2 + (avg_p*std_l/(avg_l)**2)**2)
 
-
-
-
-    
-    
 
     fig = plt.figure(figsize=(15,10.5))
     ax = fig.add_subplot(121)
-    
-    ax.plot(n, t_pdf.mean(0), color='green', label='pdfflow')
-    ax.errorbar(n,t_pdf.mean(0), ecolor='green',yerr=t_pdf.std(0))
-    
-    ax.plot(n,t_lha.mean(0), color='red', label='lhapdf')
-    ax.errorbar(n,t_lha.mean(0), ecolor='red', yerr=t_lha.std(0))
-    
+
+    #ax.plot(n, avg_p,label='pdfflow')
+    ax.errorbar(n,avg_p,yerr=std_p,label='pdfflow')
+
+    #ax.plot(n,avg_l,label='lhapdf')
+    ax.errorbar(n,avg_l,yerr=std_l,label='lhapdf')
+
     ax.title.set_text('Algorithms working times')
     ax.set_xlabel('# points drawn')
     ax.set_ylabel('t [s]')
     ax.legend()
-    
-    ax = fig.add_subplot(122)
-    
-    ax.plot(n, (1-t_pdf.mean(0)/t_lha.mean(0))*100)
+
+    ax = fig.add_subplot(222)
+
+    #ax.plot(n,np.abs(avg_l-avg_p))
+    ax.errorbar(n,np.abs(avg_l-avg_p),yerr=np.sqrt(std_l**2+std_p**2))
+    ax.title.set_text('Absolute improvements of pdfflow')
+    ax.set_xlabel('# points drawn')
+    ax.set_ylabel('t [s]')
+    ax.set_xscale('log')
+
+    ax = fig.add_subplot(224)
+
+    #ax.plot(n,np.abs((1-avg_p)/avg_l)*100)
+    ax.errorbar(n,np.abs((1-avg_p)/avg_l)*100,yerr=std_ratio*100)
     ax.title.set_text('Improvements of pdfflow in percentage')
     ax.set_xlabel('# points drawn')
     ax.set_ylabel('%')
     ax.set_xscale('log')
+
     plt.savefig('time.png')
     plt.close()
