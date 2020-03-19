@@ -4,6 +4,7 @@ import re
 import numpy as np
 
 float64 = tf.float64
+int64 = tf.int64
 
 def load_Data(fname):
     #Reads pdf from file and retrieves a list of grids
@@ -31,11 +32,6 @@ def load_Data(fname):
     return grids
 
 
-
-
-
-
-
 class mkPDF:
     def __init__(self, fname, dirname='./local/share/LHAPDF/'):
         '''
@@ -46,8 +42,6 @@ class mkPDF:
 
         self.fname = self.dirname+'%s/%s_%s.dat'%(f[0],f[0],f[1].zfill(4))
 
-
-
         print('pdfflow loading ' + self.fname)
         grids = load_Data(self.fname)
         #[(x,Q2,flav,knots), ...]
@@ -56,67 +50,59 @@ class mkPDF:
             if not np.all(flav[i]  == flav[i+1]):
                 print('Flavor schemes do not match across all the subgrids ---> algorithm will break !')
 
-
         self.subgrids = list(map(subgrid, grids))
+        self.flavor_scheme = self.subgrids[0].flav
 
-    #@tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=float64), tf.TensorSpec(shape=[None], dtype=float64)])
-    #def _xfxQ2(self, a_x, a_Q2):
-        #print('Tracing xfxQ2 with : a_x,  shape ' + str(a_x.shape) + '; a_Q2, shape ' + str(a_Q2.shape))
-    #   return self._xfxQ2_fn(a_x,a_Q2)
-
-    @tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=float64), tf.TensorSpec(shape=[None], dtype=float64)])
-    def _xfxQ2_fn(self, aa_x, aa_Q2):
+    @tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=int64),tf.TensorSpec(shape=[None], dtype=float64), tf.TensorSpec(shape=[None], dtype=float64)])
+    def _xfxQ2(self, u, aa_x, aa_Q2):
 
         a_x = tf.math.log(aa_x, name='logx')
         a_Q2 = tf.math.log(aa_Q2, name='logQ2')
 
-        f_x = tf.TensorArray(dtype=float64, size=0, dynamic_size=True, infer_shape=False, name='f_x')
-        f_Q2 = tf.TensorArray(dtype=float64, size=0, dynamic_size=True, infer_shape=False, name='f_Q2')
+        f_idx = tf.TensorArray(dtype=int64, size=0, dynamic_size=True, infer_shape=False, name='f_idx')
         f_f = tf.TensorArray(dtype=float64, size=0, dynamic_size=True, infer_shape=False, name='f_f')
+
         count = 0
 
         for i in range(len(self.subgrids)):
             p = self.subgrids[i]
             stripe = tf.math.logical_and(a_Q2 >= tf.math.log(p.Q2min), a_Q2 < tf.math.log(p.Q2max))
 
-
             in_x = tf.boolean_mask(a_x, stripe)
             in_Q2 = tf.boolean_mask(a_Q2, stripe)
-            a_x = tf.boolean_mask(a_x, ~stripe)
-            a_Q2 = tf.boolean_mask(a_Q2, ~stripe)
 
+            ff_idx = tf.cast(tf.where(stripe), dtype=int64)
+            ff_f = p.interpolate(u, in_x, in_Q2)
 
-
-            #if tf.math.logical_not(tf.math.equal(tf.size(in_x), 0)):
-            ff_x, ff_Q2, ff_f = p.interpolate(in_x, in_Q2)
-
-            f_x = f_x.write(count, ff_x)
-            f_Q2 = f_Q2.write(count, ff_Q2)
+            f_idx = f_idx.write(count, ff_idx)
             f_f = f_f.write(count, ff_f)
 
             count += 1
 
-        f_x = f_x.concat()
-        f_Q2 = f_Q2.concat()
+        f_idx = f_idx.concat()
         f_f = f_f.concat()
 
-        f_x = tf.math.exp(f_x)
-        f_Q2 = tf.math.exp(f_Q2)
+        # This will force recompilation as the shape of f_f is dynamic
+        return tf.scatter_nd(f_idx, f_f, tf.shape(f_f, out_type=int64))
 
-        return f_x, f_Q2, f_f
+    def xfxQ2(self, PID, a_x, a_Q2):
 
-    def xfxQ2(self, a_x, a_Q2, PID=None):
-        f_x, f_Q2, f_f = self._xfxQ2_fn(a_x, a_Q2)
+        #must feed a mask for flavors to _xfxQ2
+        #if PID is None, the mask is set to true everywhere
+        #PID must be a list of PIDs
+        if type(PID)==int:
+            PID=[PID]
 
-        f_x = np.array(f_x)
-        f_Q2 = np.array(f_Q2)
-        f_f = np.array(f_f)
+        PID = tf.expand_dims(tf.constant(PID, dtype=int64),-1)
+        idx = tf.where(tf.equal(self.flavor_scheme, PID))[:,1]
+        u, i = tf.unique(idx)
 
-        dict_f = {}
-        for i, f in enumerate(self.subgrids[0].flav):
-            dict_f[f] = f_f[:,i]
+        f_f = self._xfxQ2(u, a_x, a_Q2).numpy()
+        f_f = tf.gather(f_f,i,axis=1)
 
-        if PID == None:
-            return f_x, f_Q2, dict_f
-        else:
-            return f_x, f_Q2, dict_f[PID]
+        return tf.squeeze(f_f)
+
+    def xfxQ2_allpid(self, a_x, a_Q2):
+    	#return all the flavors
+    	PID = self.flavor_scheme
+    	return self.xfxQ2(PID, a_x, a_Q2)
