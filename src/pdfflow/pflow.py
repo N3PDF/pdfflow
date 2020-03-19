@@ -120,7 +120,6 @@ class mkPDF:
 
         return tf.squeeze(f_f)
 
-
     def xfxQ2_allpid(self, a_x, a_Q2):
     	#return all the flavors
     	PID = self.flavor_scheme
