@@ -93,7 +93,7 @@ class mkPDF:
         # This will force recompilation as the shape of f_f is dynamic
         return tf.scatter_nd(f_idx, f_f, tf.shape(f_f, out_type=int64))
 
-    def xfxQ2(self, a_x, a_Q2, PID=None, asdict=False):
+    def xfxQ2(self, a_x, a_Q2, PID=None):
 
         #must feed a mask for flavors to _xfxQ2
         #if PID is None, the mask is set to true everywhere
@@ -111,7 +111,7 @@ class mkPDF:
             u = i =idx
 
         f_f = self._xfxQ2(a_x, a_Q2, u).numpy()
-
+        '''
         if asdict == True:
             res = {}
             for i in range(len(PID)):
@@ -119,6 +119,7 @@ class mkPDF:
                 col = int(tf.where(tf.equal(idx,i))[0,0])
                 res[k] = f_f[:,col]
             return res
+        '''
 
 
         f_f = tf.gather(f_f,i,axis=1)
