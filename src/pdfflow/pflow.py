@@ -106,6 +106,7 @@ class mkPDF:
             idx = tf.where(tf.equal(self.flavor_scheme, PID))[:,1]
             u, i = tf.unique(idx)
         else:
+            PID = self.flavor_scheme
             idx = tf.range(len(self.flavor_scheme),dtype=int64)
             u = i =idx
 
@@ -113,8 +114,8 @@ class mkPDF:
 
         if asdict == True:
             res = {}
-            for i in range(len(u)):
-                k = int(u[i])
+            for i in range(len(PID)):
+                k = int(PID[i])
                 col = int(tf.where(tf.equal(idx,i))[0,0])
                 res[k] = f_f[:,col]
             return res
