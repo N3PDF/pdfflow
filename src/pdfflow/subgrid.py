@@ -24,28 +24,38 @@ def cubic_interpolation(T, VL, VDL, VH, VDH):
 
     return p0 + m0 + p1 + m1
 
-def remove_edge_stripes(a_x, a_Q2, logx, logQ2):
+def select_edge_stripes(a_x, a_q2, log_x, log_q2):
+    """
+    Find the values in the last bin in the logx or logq2 array
 
-    x_stripe = tf.math.logical_or(a_x < logx[1], a_x >= logx[-2])
+    Parameters
+    ----------
+        a_x: tf.tensor
+            query of values of log(x)
+        a_q2: tf.tensor
+            query of values of log(q2)
+        logx: tf.tensor
+            array of values of log(x) of the subgrid
+        logq2: tf.tensor
+            array of values of log(q2) of the subgrid
 
-    out_x = tf.boolean_mask(a_x, x_stripe)
-    out_Q2 = tf.boolean_mask(a_Q2, x_stripe)
-    out_index = tf.squeeze(tf.where(x_stripe))
-    in_x = tf.boolean_mask(a_x, ~x_stripe)
-    in_Q2 = tf.boolean_mask(a_Q2, ~x_stripe)
-    in_index = tf.squeeze(tf.where(~x_stripe))
 
-    #remove Q2 stripes and concatenate those points with the previous ones
-    Q_stripe = tf.math.logical_or(in_Q2 < logQ2[1], in_Q2 >= logQ2[-2])
+    """
+    x_stripe = tf.math.logical_or(a_x < log_x[1], a_x >= log_x[-2])
+    q2_stripe = tf.math.logical_or(a_q2 < log_q2[1], a_q2 >= log_q2[-2])
+    # Select the values that are close to the edge of x or q2
+    striper = tf.math.logical_or(x_stripe, q2_stripe)
 
+    # Strip them out
+    out_x = tf.boolean_mask(a_x, striper)
+    out_q2 = tf.boolean_mask(a_q2, striper)
 
-    out_x = tf.concat([out_x, tf.boolean_mask(in_x, Q_stripe)],0)
-    out_Q2 = tf.concat([out_Q2, tf.boolean_mask(in_Q2, Q_stripe)],0)
-    out_index = tf.concat([out_index, tf.boolean_mask(in_index, Q_stripe)],0)
-    in_x = tf.boolean_mask(in_x, ~Q_stripe)
-    in_Q2 = tf.boolean_mask(in_Q2, ~Q_stripe)
-    in_index = tf.boolean_mask(in_index, ~Q_stripe)
-    return in_x, in_Q2, in_index, out_x, out_Q2, out_index
+    in_x = tf.boolean_mask(a_x, ~striper)
+    in_q2 = tf.boolean_mask(a_q2, ~striper)
+
+    out_index = tf.squeeze(tf.where(striper))
+    in_index = tf.squeeze(tf.where(~striper))
+    return in_x, in_q2, in_index, out_x, out_q2, out_index
 
 
 def df_dx_func(corn_x, A):
@@ -99,6 +109,7 @@ def bicubic_interpolation(a_x, a_Q2, corn_x, corn_Q2, A):
 
 
 # Utility functions
+@tf.function
 def two_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
     """
     Parameters
@@ -137,6 +148,7 @@ def two_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
     
     return corn_x, corn_Q2, A
 
+@tf.function
 def four_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
     """
     Parameters
@@ -227,6 +239,16 @@ class Subgrid:
         """
         return four_neighbour_knots(a_x, a_q2, self.log_x, self.log_q2, actual_values)
 
+    def default_interpolation(self, a_x, a_q2, actual_values):
+        a2, a3, a4 = two_neighbour_knots(a_x, a_q2, self.log_x, self.log_q2, actual_values)
+        out_f = bilinear_interpolation(a_x, a_q2, a2, a3, a4)
+        return out_f
+
+    def edge_interpolation(self, a_x, a_q2, actual_values):
+        a2, a3, a4 = four_neighbour_knots(a_x, a_q2, self.log_x, self.log_q2, actual_values)
+        in_f = bicubic_interpolation(a_x, a_q2, a2, a3, a4)
+        return in_f
+
     def interpolate(self, u, a_x, a_Q2):
         """ find which points are near the edges and linear interpolate between them
         otherwise use bicubic interpolation
@@ -239,7 +261,9 @@ class Subgrid:
                 query of values of log(q2)
         """
         actual_values = tf.gather(self.grid_values, u, axis = -1)
-        in_x, in_Q2, in_index, out_x, out_Q2, out_index = remove_edge_stripes(a_x, a_Q2, self.log_x, self.log_q2)
+
+        in_x, in_Q2, in_index, out_x, out_Q2, out_index = select_edge_stripes(a_x, a_Q2, self.log_x, self.log_q2)
+
         a2,a3,a4 = self.two_neighbour_knots(out_x, out_Q2, actual_values)
         out_f = bilinear_interpolation(out_x,out_Q2,a2,a3,a4)
 
