@@ -5,6 +5,10 @@ import numpy as np
 float64 = tf.float64
 int64 = tf.int64
 
+def act_on_empty(input_tensor, fn_true, fn_false):
+    idx0 = tf.shape(input_tensor)[0]
+    return tf.cond(idx0 == 0, fn_true, fn_false)
+
 def linear_interpolation(x, xl, xh, yl, yh):
     x = tf.expand_dims(x,1)
     xl = tf.expand_dims(xl,1)
@@ -216,38 +220,34 @@ class Subgrid:
 
         self.grid_values = tf.constant(grid[3], dtype=float64)
 
-    def two_neighbour_knots(self, a_x, a_q2, actual_values):
-        """
+    def edge_interpolation(self, a_x, a_q2, actual_values):
+        """ 
+        Interpolation to use near the border 
+
         Parameters
         ----------
             a_x: tf.tensor
-                vaues of x (not true? values of log(x) -check-)
+                query of values of log(x)
             a_q2: tf.tensor
-                values of q2
+                query of values of log(q2)
         """
-        return two_neighbour_knots(a_x, a_q2, self.log_x, self.log_q2, actual_values)
-
-    def four_neighbour_knots(self, a_x, a_q2, actual_values):
-        """
-        Parameters
-        ----------
-            a_x: tf.tensor
-                vaues of x (not true? values of log(x) -check-)
-            a_q2: tf.tensor
-                values of q2
-
-        """
-        return four_neighbour_knots(a_x, a_q2, self.log_x, self.log_q2, actual_values)
+        a2, a3, a4 = two_neighbour_knots(a_x, a_q2, self.log_x, self.log_q2, actual_values)
+        result = bilinear_interpolation(a_x, a_q2, a2, a3, a4)
+        return result
 
     def default_interpolation(self, a_x, a_q2, actual_values):
-        a2, a3, a4 = two_neighbour_knots(a_x, a_q2, self.log_x, self.log_q2, actual_values)
-        out_f = bilinear_interpolation(a_x, a_q2, a2, a3, a4)
-        return out_f
+        """ 
 
-    def edge_interpolation(self, a_x, a_q2, actual_values):
+        Parameters
+        ----------
+            a_x: tf.tensor
+                query of values of log(x)
+            a_q2: tf.tensor
+                query of values of log(q2)
+        """
         a2, a3, a4 = four_neighbour_knots(a_x, a_q2, self.log_x, self.log_q2, actual_values)
-        in_f = bicubic_interpolation(a_x, a_q2, a2, a3, a4)
-        return in_f
+        result = bicubic_interpolation(a_x, a_q2, a2, a3, a4)
+        return result
 
     def interpolate(self, u, a_x, a_Q2):
         """ find which points are near the edges and linear interpolate between them
@@ -261,17 +261,21 @@ class Subgrid:
                 query of values of log(q2)
         """
         actual_values = tf.gather(self.grid_values, u, axis = -1)
-
-        in_x, in_Q2, in_index, out_x, out_Q2, out_index = select_edge_stripes(a_x, a_Q2, self.log_x, self.log_q2)
-
-        a2,a3,a4 = self.two_neighbour_knots(out_x, out_Q2, actual_values)
-        out_f = bilinear_interpolation(out_x,out_Q2,a2,a3,a4)
-
-        a2,a3,a4 = self.four_neighbour_knots(in_x, in_Q2, actual_values)
-        in_f = bicubic_interpolation(in_x, in_Q2,a2,a3,a4)
-
         size = tf.shape(a_x)
-        size = tf.cast(tf.concat([size, tf.shape(u)], 0), int64)
+        shape = tf.cast(tf.concat([size, tf.shape(u)], 0), int64)
+        empty_fn = lambda: tf.constant(0.0, dtype=float64)
 
-        final_f = tf.scatter_nd(tf.expand_dims(out_index,-1), out_f, size) + tf.scatter_nd(tf.expand_dims(in_index,-1), in_f, size)
-        return final_f
+        in_x, in_q2, in_index, out_x, out_q2, out_index = select_edge_stripes(a_x, a_Q2, self.log_x, self.log_q2)
+
+        def edge_fn():
+            out_f = self.edge_interpolation(out_x, out_q2, actual_values)
+            return tf.scatter_nd(tf.expand_dims(out_index,-1), out_f, shape)
+
+        def insi_fn():
+            in_f = self.default_interpolation(in_x, in_q2, actual_values)
+            return tf.scatter_nd(tf.expand_dims(in_index,-1), in_f, shape)
+
+        edge_res = act_on_empty(out_x, empty_fn, edge_fn)
+        insi_res = act_on_empty(in_x, empty_fn, insi_fn)
+
+        return edge_res + insi_res

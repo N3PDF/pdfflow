@@ -11,9 +11,9 @@ FLAVS = [1,2,21]
 DIRNAME = sp.run(['lhapdf-config', '--datadir'], stdout=sp.PIPE).stdout.strip().decode()
 sp.run(['lhapdf', 'install', TESTPDF])
 
-XARR = np.random.rand(100)
+XARR = np.random.rand(10)
 QMIN = 40 # For now avoid getting close to the danger zone
-QARR = np.random.rand(100)*300 + QMIN
+QARR = np.random.rand(10)*300 + QMIN
 
 def dict_update(old_dict, new_dict):
     if not old_dict:
