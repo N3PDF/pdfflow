@@ -1,4 +1,4 @@
-from pdfflow.subgrid import subgrid
+from pdfflow.subgrid import Subgrid
 import tensorflow as tf
 import re
 import numpy as np
@@ -50,7 +50,7 @@ class mkPDF:
             if not np.all(flav[i]  == flav[i+1]):
                 print('Flavor schemes do not match across all the subgrids ---> algorithm will break !')
 
-        self.subgrids = list(map(subgrid, grids))
+        self.subgrids = list(map(Subgrid, grids))
         self.flavor_scheme = tf.cast(self.subgrids[0].flav, dtype=tf.int64)
 
     @tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=int64),tf.TensorSpec(shape=[None], dtype=float64), tf.TensorSpec(shape=[None], dtype=float64)])
@@ -66,7 +66,7 @@ class mkPDF:
 
         for i in range(len(self.subgrids)):
             p = self.subgrids[i]
-            stripe = tf.math.logical_and(a_Q2 >= tf.math.log(p.Q2min), a_Q2 < tf.math.log(p.Q2max))
+            stripe = tf.math.logical_and(a_Q2 >= p.log_q2min, a_Q2 < p.log_q2max)
 
             in_x = tf.boolean_mask(a_x, stripe)
             in_Q2 = tf.boolean_mask(a_Q2, stripe)

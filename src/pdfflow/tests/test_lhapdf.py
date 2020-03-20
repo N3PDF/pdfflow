@@ -37,3 +37,6 @@ def test_accuracy(atol=1e-6):
     lhapdf_values = get_pdfvals(XARR, QARR)
     for i, f in enumerate(FLAVS):
         np.testing.assert_allclose(flow_values[:,i], lhapdf_values[f], atol=atol)
+
+if __name__ == "__main__":
+    test_accuracy()
