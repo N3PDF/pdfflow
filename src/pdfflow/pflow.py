@@ -51,7 +51,7 @@ class mkPDF:
                 print('Flavor schemes do not match across all the subgrids ---> algorithm will break !')
 
         self.subgrids = list(map(subgrid, grids))
-        self.flavor_scheme = self.subgrids[0].flav
+        self.flavor_scheme = tf.cast(self.subgrids[0].flav, dtype=tf.int64)
 
     @tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=int64),tf.TensorSpec(shape=[None], dtype=float64), tf.TensorSpec(shape=[None], dtype=float64)])
     def _xfxQ2(self, u, aa_x, aa_Q2):
@@ -97,7 +97,7 @@ class mkPDF:
         idx = tf.where(tf.equal(self.flavor_scheme, PID))[:,1]
         u, i = tf.unique(idx)
 
-        f_f = self._xfxQ2(u, a_x, a_Q2).numpy()
+        f_f = self._xfxQ2(u, a_x, a_Q2)
         f_f = tf.gather(f_f,i,axis=1)
 
         return tf.squeeze(f_f)
