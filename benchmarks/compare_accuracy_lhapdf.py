@@ -53,7 +53,7 @@ def main(pdfname, pid):
     plt.figure(figsize=(16.0, 12.0))
     plt.subplot(2, 2, 1)
     x = np.logspace(-9, 0, 10000, dtype=float)
-    q2 = np.array([7e4], dtype=float)**2
+    q2 = np.array([1.66,7e4], dtype=float)**2
     #q2 = np.array([1.65, 3, 4.8, 10, 50, 1e2, 2e2, 5e2, 1e3, 2e3, 5e3], dtype=float)**2
     for iq2 in q2:
         vl = np.array([l_pdf.xfxQ2(pid, ix, iq2) for ix in x])
@@ -83,7 +83,7 @@ def main(pdfname, pid):
     plt.xlabel('x')
     plt.legend()
 
-    x = np.array([1.1e-9], dtype=float)
+    x = np.array([1.1e-9,0.989], dtype=float)
     #x = np.array([1.1e-9,1e-8, 1e-6, 1e-4, 0.01, 0.1, 0.2, 0.5, 0.8,0.989], dtype=float)
     q2 = np.logspace(np.log10(1.65), 5, 10000, dtype=float)**2
     plt.subplot(2, 2, 2)
@@ -111,7 +111,6 @@ def main(pdfname, pid):
     plt.yscale('log')
     plt.ylim([1e-5, 10])
     plt.title('%s, flav = %d' % (pdfname, pid))
-    plt.vlines(4.92,ymin=1e-5,ymax=1e1,colors='k')
     plt.ylabel(r'$|f_{pdfflow} - f_{lhapdf}|$')
     plt.xlabel('Q')
     plt.legend()
