@@ -65,7 +65,7 @@ def main(pdfname, pid):
     plt.yscale('log')
     plt.ylim([1e-5, 10])
     plt.title('%s, flav = %d' % (pdfname, pid))
-    plt.ylabel(r'$|f_{pdfflow} - f_{lhapdf}|/(|f_{lhapdf}|+eps$')
+    plt.ylabel(r'$|f_{pdfflow} - f_{lhapdf}|/(|f_{lhapdf}|+eps$)')
     plt.xlabel('x')
     plt.legend()
 
