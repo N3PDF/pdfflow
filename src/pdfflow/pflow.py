@@ -82,7 +82,6 @@ class mkPDF:
             
             res += act_on_empty(f_idx, empty_fn, gen_fun)
 
-
         return res
 
 
