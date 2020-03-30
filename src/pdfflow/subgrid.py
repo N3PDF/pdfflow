@@ -1,6 +1,9 @@
 import tensorflow as tf
 import tensorflow_probability as tfp
 import numpy as np
+from pdfflow.selection import *
+from pdfflow.neighbour_knots import *
+from pdfflow.interpolations import *
 
 float64 = tf.float64
 int64 = tf.int64
@@ -8,7 +11,7 @@ int64 = tf.int64
 def act_on_empty(input_tensor, fn_true, fn_false):
     idx0 = tf.shape(input_tensor)[0]
     return tf.cond(idx0 == 0, fn_true, fn_false)
-
+'''
 def linear_interpolation(x, xl, xh, yl, yh):
     x = tf.expand_dims(x,1)
     xl = tf.expand_dims(xl,1)
@@ -913,7 +916,7 @@ def c3_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
     A = tf.gather(actual_values, A_id)
     
     return corn_x, corn_Q2, A
-
+'''
 
 class Subgrid:
     """
@@ -1099,6 +1102,7 @@ class Subgrid:
         c1_x, c1_q2, c1_index = select_c1(a_x, a_Q2, self.log_x, self.log_q2)
         c2_x, c2_q2, c2_index = select_c2(a_x, a_Q2, self.log_x, self.log_q2)
         c3_x, c3_q2, c3_index = select_c3(a_x, a_Q2, self.log_x, self.log_q2)
+        ex_x, ex_q2, ex_index = select_extra_stripe(a_x, a_Q2, self.log_x, self.log_q2)
 
         #print('l' ,l_x.shape, l_q2.shape, l_index.shape)
         #print('r' ,r_x.shape, r_q2.shape, r_index.shape)
@@ -1148,6 +1152,10 @@ class Subgrid:
             c3_f = self.c3_interpolation(c3_x, c3_q2, actual_values)
             return tf.scatter_nd(tf.expand_dims(c3_index,-1), c3_f, shape)
 
+        def ex_fn():
+            ex_f = self.ex_interpolation(ex_x, ex_q2, actual_values)
+            return tf.scatter_nd(tf.expand_dims(ex_index,-1), ex_f, shape)
+
         ledge_res = act_on_empty(l_x, empty_fn, ledge_fn)
         redge_res = act_on_empty(r_x, empty_fn, redge_fn)
         uedge_res = act_on_empty(u_x, empty_fn, uedge_fn)
@@ -1157,7 +1165,9 @@ class Subgrid:
         c1_res = act_on_empty(c1_x, empty_fn, c1_fn)
         c2_res = act_on_empty(c2_x, empty_fn, c2_fn)
         c3_res = act_on_empty(c3_x, empty_fn, c3_fn)
+        ex_res = act_on_empty(ex_x, empty_fn, ex_fn)
 
         return ledge_res + redge_res + uedge_res\
                + dedge_res + insi_res \
-               + c0_res + c1_res + c2_res + c3_res
+               + c0_res + c1_res + c2_res + c3_res\
+               + ex_res
