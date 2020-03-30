@@ -2,9 +2,8 @@ import tensorflow as tf
 
 def linear_interpolation(x, xl, xh, yl, yh):
     x = tf.expand_dims(x,1)
-    xl = tf.expand_dims(xl,1)
-    xh = tf.expand_dims(xh,1)
-
+    xl = tf.expand_dims(xl,0)
+    xh = tf.expand_dims(xh,0)
     return yl + (x - xl) / (xh - xl) * (yh - yl)
 
 def cubic_interpolation(T, VL, VDL, VH, VDH):
@@ -171,8 +170,8 @@ def lower_bicubic_interpolation(a_x, a_Q2, corn_x, corn_Q2, A):
     dlogx_1 = tf.expand_dims(dlogx_1,1)
     dlogq_1 = tf.expand_dims(dlogq_1,1)
 
-    vl = cubic_interpolation(tlogx, A[1,0], df_dx[0,1]*dlogx_1, A[2,0], df_dx[1,1]*dlogx_1)
-    vh = cubic_interpolation(tlogx, A[1,1], df_dx[0,2]*dlogx_1, A[2,1], df_dx[1,2]*dlogx_1)
+    vl = cubic_interpolation(tlogx, A[1,0], df_dx[0,0]*dlogx_1, A[2,0], df_dx[1,0]*dlogx_1)
+    vh = cubic_interpolation(tlogx, A[1,1], df_dx[0,1]*dlogx_1, A[2,1], df_dx[1,1]*dlogx_1)
     
     vdl = (vh - vl) / dlogq_1
 
@@ -186,8 +185,8 @@ def lower_bicubic_interpolation(a_x, a_Q2, corn_x, corn_Q2, A):
 def c0_bicubic_interpolation(a_x, a_Q2, corn_x, corn_Q2, A):
     df_dx = l_df_dx_func(corn_x, A)
 
-    dlogx_1 = corn_x[2] - corn_x[1]
-    tlogx = tf.expand_dims((a_x - corn_x[1])/dlogx_1,1)
+    dlogx_1 = corn_x[1] - corn_x[0]
+    tlogx = tf.expand_dims((a_x - corn_x[0])/dlogx_1,1)
     dlogq_1 = corn_Q2[1] - corn_Q2[0]
     dlogq_2 = tf.expand_dims(corn_Q2[2] - corn_Q2[1],1)
     tlogq = tf.expand_dims((a_Q2 - corn_Q2[0]) / dlogq_1,1)
@@ -195,12 +194,12 @@ def c0_bicubic_interpolation(a_x, a_Q2, corn_x, corn_Q2, A):
     dlogx_1 = tf.expand_dims(dlogx_1,1)
     dlogq_1 = tf.expand_dims(dlogq_1,1)
 
-    vl = cubic_interpolation(tlogx, A[1,0], df_dx[0,1]*dlogx_1, A[2,0], df_dx[1,1]*dlogx_1)
-    vh = cubic_interpolation(tlogx, A[1,1], df_dx[0,2]*dlogx_1, A[2,1], df_dx[1,2]*dlogx_1)
-    
+    vl = cubic_interpolation(tlogx, A[0,0], df_dx[0,0]*dlogx_1, A[1,0], df_dx[1,0]*dlogx_1)
+    vh = cubic_interpolation(tlogx, A[0,1], df_dx[0,1]*dlogx_1, A[1,1], df_dx[1,1]*dlogx_1)
+
     vdl = (vh - vl) / dlogq_1
 
-    vhh = cubic_interpolation(tlogx, A[1,2], df_dx[0,2]*dlogx_1, A[2,2], df_dx[1,2]*dlogx_1)
+    vhh = cubic_interpolation(tlogx, A[0,2], df_dx[0,2]*dlogx_1, A[1,2], df_dx[1,2]*dlogx_1)
     vdh = (vdl + (vhh - vh)/dlogq_2) / 2.0
 
     vdl *= dlogq_1
@@ -219,8 +218,8 @@ def c1_bicubic_interpolation(a_x, a_Q2, corn_x, corn_Q2, A):
     dlogx_1 = tf.expand_dims(dlogx_1,1)
     dlogq_1 = tf.expand_dims(dlogq_1,1)
 
-    vl = cubic_interpolation(tlogx, A[1,0], df_dx[0,1]*dlogx_1, A[2,0], df_dx[1,1]*dlogx_1)
-    vh = cubic_interpolation(tlogx, A[1,1], df_dx[0,2]*dlogx_1, A[2,1], df_dx[1,2]*dlogx_1)
+    vl = cubic_interpolation(tlogx, A[1,0], df_dx[0,0]*dlogx_1, A[2,0], df_dx[1,0]*dlogx_1)
+    vh = cubic_interpolation(tlogx, A[1,1], df_dx[0,1]*dlogx_1, A[2,1], df_dx[1,1]*dlogx_1)
     
     vdl = (vh - vl) / dlogq_1
 
@@ -258,8 +257,8 @@ def c2_bicubic_interpolation(a_x, a_Q2, corn_x, corn_Q2, A):
 def c3_bicubic_interpolation(a_x, a_Q2, corn_x, corn_Q2, A):
     df_dx = l_df_dx_func(corn_x, A)
 
-    dlogx_1 = corn_x[2] - corn_x[1]
-    tlogx = tf.expand_dims((a_x - corn_x[1])/dlogx_1,1)
+    dlogx_1 = corn_x[1] - corn_x[0]
+    tlogx = tf.expand_dims((a_x - corn_x[0])/dlogx_1,1)
     dlogq_0 = tf.expand_dims(corn_Q2[1] - corn_Q2[0],1)
     dlogq_1 = corn_Q2[2] - corn_Q2[1]
     tlogq = tf.expand_dims((a_Q2 - corn_Q2[1]) / dlogq_1,1)
@@ -267,11 +266,11 @@ def c3_bicubic_interpolation(a_x, a_Q2, corn_x, corn_Q2, A):
     dlogx_1 = tf.expand_dims(dlogx_1,1)
     dlogq_1 = tf.expand_dims(dlogq_1,1)
 
-    vl = cubic_interpolation(tlogx, A[1,1], df_dx[0,1]*dlogx_1, A[2,1], df_dx[1,1]*dlogx_1)
-    vh = cubic_interpolation(tlogx, A[1,2], df_dx[0,2]*dlogx_1, A[2,2], df_dx[1,2]*dlogx_1)
+    vl = cubic_interpolation(tlogx, A[0,1], df_dx[0,1]*dlogx_1, A[1,1], df_dx[1,1]*dlogx_1)
+    vh = cubic_interpolation(tlogx, A[0,2], df_dx[0,2]*dlogx_1, A[1,2], df_dx[1,2]*dlogx_1)
 
     vdh = (vh - vl) / dlogq_1
-    vll = cubic_interpolation(tlogx, A[1,0], df_dx[0,0]*dlogx_1, A[2,0], df_dx[1,0]*dlogx_1)
+    vll = cubic_interpolation(tlogx, A[0,0], df_dx[0,0]*dlogx_1, A[1,0], df_dx[1,0]*dlogx_1)
 
     vdl = (vdh + (vl - vll)/dlogq_0) / 2.0
 

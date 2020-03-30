@@ -287,4 +287,3 @@ def select_extra_stripe(a_x, a_q2, log_x, log_q2):
     out_index = tf.squeeze(tf.where(stripe),-1)
 
     return out_x, out_q2, out_index
-

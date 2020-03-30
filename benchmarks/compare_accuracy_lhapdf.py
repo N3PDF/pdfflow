@@ -38,7 +38,7 @@ def sort_arrays_xQ(a,b,f):
 '''
 parser = argparse.ArgumentParser()
 parser.add_argument("--pdfname", "-p", default="NNPDF31_nlo_as_0118/0", type=str, help='The PDF set name/replica number.')
-parser.add_argument("--pid", default=21, type=int, help='The flavour PID.')
+parser.add_argument("--pid", default=-3, type=int, help='The flavour PID.')
 DIRNAME = sp.run(['lhapdf-config','--datadir'], stdout=sp.PIPE, universal_newlines=True).stdout.strip('\n') + '/'
 EPS = np.finfo(float).eps
 
@@ -52,12 +52,25 @@ def main(pdfname, pid):
 
     plt.figure(figsize=(16.0, 12.0))
     plt.subplot(2, 2, 1)
-    x = np.logspace(-9, 0, 10000, dtype=float)
-    q2 = np.array([1.66,7e4], dtype=float)**2
+    #x = np.logspace(-11, 0, 2, dtype=float)
+    x = np.logspace(-10,0,100, dtype=float)
+    #x = np.array([1e-9], dtype=float)
+    q2 = np.array([1.66,4.37,2.5], dtype=float)**2
     #q2 = np.array([1.65, 3, 4.8, 10, 50, 1e2, 2e2, 5e2, 1e3, 2e3, 5e3], dtype=float)**2
     for iq2 in q2:
         vl = np.array([l_pdf.xfxQ2(pid, ix, iq2) for ix in x])
         vp = p.xfxQ2(pid, x, [iq2]*len(x))
+        #print('lhapdf value', vl)
+        #print('pdfflow value', vp)
+        #exit()
+        #print('Coefficiente angolare lhapdf:', (vl[-3]-vl[-2])/(x[-3]-x[-2]))
+        #print('Coefficiente angolare pdfflow:', (vp[0]-vp[-10])/(x[0]-x[-10]))
+        #plt.plot(vl[-1],label='vl')
+        #plt.plot(vp[:-1],label='vp')
+        #plt.legend()
+        #plt.yscale('log')
+        #plt.show()
+        #exit()
 
         plt.plot(x, np.abs(vp-vl)/(np.abs(vl)+EPS), label='$Q=%.2e$' % iq2**0.5)
     plt.hlines(1e-3, plt.xlim()[0], plt.xlim()[1], linestyles='dotted')
@@ -83,9 +96,9 @@ def main(pdfname, pid):
     plt.xlabel('x')
     plt.legend()
 
-    x = np.array([1.1e-9,0.989], dtype=float)
+    x = np.array([1e-10,1.1e-9,0.989], dtype=float)
     #x = np.array([1.1e-9,1e-8, 1e-6, 1e-4, 0.01, 0.1, 0.2, 0.5, 0.8,0.989], dtype=float)
-    q2 = np.logspace(np.log10(1.65), 5, 10000, dtype=float)**2
+    q2 = np.logspace(np.log10(1.65), np.log10(5.6), 10, dtype=float)**2
     plt.subplot(2, 2, 2)
     for ix in x:
         vl = np.array([l_pdf.xfxQ2(pid, ix, iq2) for iq2 in q2])

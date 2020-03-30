@@ -55,7 +55,7 @@ class mkPDF:
 
         # Generate switch cases
 
-    @tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=int64),tf.TensorSpec(shape=[None], dtype=float64), tf.TensorSpec(shape=[None], dtype=float64)])
+    #@tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=int64),tf.TensorSpec(shape=[None], dtype=float64), tf.TensorSpec(shape=[None], dtype=float64)])
     def _xfxQ2(self, u, aa_x, aa_Q2):
 
         a_x = tf.math.log(aa_x, name='logx')
