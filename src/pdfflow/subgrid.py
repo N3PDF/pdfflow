@@ -1075,6 +1075,38 @@ class Subgrid:
         result = default_bicubic_interpolation(a_x, a_q2, a2, a3, a4)
         return result
 
+    def lowx_extrapolation(self, a_x, a_q2, actual_values):
+        """ 
+        Extrapolation in low x regime 
+
+        Parameters
+        ----------
+            a_x: tf.tensor
+                query of values of log(x)
+            a_q2: tf.tensor
+                query of values of log(q2)
+        """
+        a2, a4 = lowx_extra_knots(a_x, a_q2, self.log_x, self.log_q2, actual_values)
+        print(a_x.shape)
+        print(a2[0].shape)
+        print(a2[1].shape)
+        print(a4[0].shape)
+        print(a4[1].shape)
+
+        mask = tf.math.logical_and(a4[0] > 1E3, a4[1] > 1E3)
+
+        def true_mask():
+            x = a_x
+            xl = a2[0]
+            xh = a2[1]
+            yl = tf.math.log(a4[0])
+            yh = tf.math.log(a4[1])
+            return tf.math.exp(linear_interpolation(x,xl,xh,yl,yh))
+        def false_mask():
+            return linear_interpolation(a_x, a2[0], a2[1], a4[0], a4[1])
+        
+        return tf.where(mask, true_mask(), false_mask())
+
     def interpolate(self, u, a_x, a_Q2):
         """ 
         Find which points are near the edges and linear interpolate between them
@@ -1153,7 +1185,7 @@ class Subgrid:
             return tf.scatter_nd(tf.expand_dims(c3_index,-1), c3_f, shape)
 
         def ex_fn():
-            ex_f = self.ex_interpolation(ex_x, ex_q2, actual_values)
+            ex_f = self.lowx_extrapolation(ex_x, ex_q2, actual_values)
             return tf.scatter_nd(tf.expand_dims(ex_index,-1), ex_f, shape)
 
         ledge_res = act_on_empty(l_x, empty_fn, ledge_fn)
