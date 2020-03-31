@@ -1,4 +1,4 @@
-from pdfflow.subgrid import subgrid
+from pdfflow.subgrid import Subgrid, act_on_empty
 import tensorflow as tf
 import re
 import numpy as np
@@ -50,8 +50,10 @@ class mkPDF:
             if not np.all(flav[i]  == flav[i+1]):
                 print('Flavor schemes do not match across all the subgrids ---> algorithm will break !')
 
-        self.subgrids = list(map(subgrid, grids))
-        self.flavor_scheme = self.subgrids[0].flav
+        self.subgrids = list(map(Subgrid, grids))
+        self.flavor_scheme = tf.cast(self.subgrids[0].flav, dtype=tf.int64)
+
+        # Generate switch cases
 
     @tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=int64),tf.TensorSpec(shape=[None], dtype=float64), tf.TensorSpec(shape=[None], dtype=float64)])
     def _xfxQ2(self, u, aa_x, aa_Q2):
@@ -59,31 +61,30 @@ class mkPDF:
         a_x = tf.math.log(aa_x, name='logx')
         a_Q2 = tf.math.log(aa_Q2, name='logQ2')
 
-        f_idx = tf.TensorArray(dtype=int64, size=0, dynamic_size=True, infer_shape=False, name='f_idx')
-        f_f = tf.TensorArray(dtype=float64, size=0, dynamic_size=True, infer_shape=False, name='f_f')
+        size = tf.shape(a_x)
+        shape = tf.cast(tf.concat([size, tf.shape(u)], 0), int64)
+        empty_fn = lambda: tf.constant(0.0, dtype=float64)
 
         count = 0
+        l_idx = []
+        res = tf.zeros(shape, dtype=float64)
 
-        for i in range(len(self.subgrids)):
-            p = self.subgrids[i]
-            stripe = tf.math.logical_and(a_Q2 >= tf.math.log(p.Q2min), a_Q2 < tf.math.log(p.Q2max))
+        for subgrid in self.subgrids:
+            # Check whether any points go through
+            stripe = tf.math.logical_and(a_Q2 >= subgrid.log_q2min, a_Q2 < subgrid.log_q2max)
+            f_idx = tf.where(stripe)
 
-            in_x = tf.boolean_mask(a_x, stripe)
-            in_Q2 = tf.boolean_mask(a_Q2, stripe)
+            def gen_fun():
+                in_x = tf.boolean_mask(a_x, stripe)
+                in_Q2 = tf.boolean_mask(a_Q2, stripe)
+                ff_f = subgrid.interpolate(u, in_x, in_Q2)
+                return tf.scatter_nd(f_idx, ff_f, shape)
+            
+            res += act_on_empty(f_idx, empty_fn, gen_fun)
 
-            ff_idx = tf.cast(tf.where(stripe), dtype=int64)
-            ff_f = p.interpolate(u, in_x, in_Q2)
 
-            f_idx = f_idx.write(count, ff_idx)
-            f_f = f_f.write(count, ff_f)
+        return res
 
-            count += 1
-
-        f_idx = f_idx.concat()
-        f_f = f_f.concat()
-
-        # This will force recompilation as the shape of f_f is dynamic
-        return tf.scatter_nd(f_idx, f_f, tf.shape(f_f, out_type=int64))
 
     def xfxQ2(self, PID, a_x, a_Q2):
 
@@ -97,7 +98,7 @@ class mkPDF:
         idx = tf.where(tf.equal(self.flavor_scheme, PID))[:,1]
         u, i = tf.unique(idx)
 
-        f_f = self._xfxQ2(u, a_x, a_Q2).numpy()
+        f_f = self._xfxQ2(u, a_x, a_Q2)
         f_f = tf.gather(f_f,i,axis=1)
 
         return tf.squeeze(f_f)
