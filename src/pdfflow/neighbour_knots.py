@@ -62,10 +62,9 @@ def four_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
     Q2_id = tf.cast(tfp.stats.find_bins(a_q2, log_q2, name='find_bins_logQ2'), dtype=int64)
 
     corn_x_id = tf.stack([x_id-1, x_id, x_id+1, x_id+2],0)
-    corn_Q2_id = tf.stack([Q2_id-1, Q2_id, Q2_id+1, Q2_id+2],0)       
+    corn_Q2_id = tf.stack([Q2_id-1, Q2_id, Q2_id+1, Q2_id+2],0)
 
     corn_x = tf.gather(log_x, corn_x_id)
-
     corn_Q2 = tf.gather(log_q2, corn_Q2_id)
 
     s = tf.size(log_q2, out_type=tf.int64)
@@ -177,10 +176,9 @@ def u_four_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
     Q2_id = tf.cast(tfp.stats.find_bins(a_q2, log_q2, name='find_bins_logQ2'), dtype=int64)
 
     corn_x_id = tf.stack([x_id-1, x_id, x_id+1, x_id+2],0)
-    corn_Q2_id = tf.stack([Q2_id-1, Q2_id, Q2_id+1],0)       
+    corn_Q2_id = tf.stack([Q2_id-1, Q2_id, Q2_id+1],0)
 
     corn_x = tf.gather(log_x, corn_x_id)
-
     corn_Q2 = tf.gather(log_q2, corn_Q2_id)
 
     s = tf.size(log_q2, out_type=tf.int64)

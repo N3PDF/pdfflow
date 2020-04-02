@@ -6,6 +6,20 @@ def linear_interpolation(x, xl, xh, yl, yh):
     xh = tf.expand_dims(xh,0)
     return yl + (x - xl) / (xh - xl) * (yh - yl)
 
+def extrapolate_linear(x, xl, xh, yl, yh):
+    mask = tf.math.logical_and(yl > 1E-3, yh > 1E-3)
+    #print(mask)
+    def true_mask():
+        a = tf.math.log(yl)
+        b = tf.math.log(yh)
+        #print('res',linear_interpolation(x, xl, xh, a, b))
+        return tf.math.exp(linear_interpolation(x, xl, xh, a, b))
+    def false_mask():
+        return linear_interpolation(x, xl, xh, yl, yh)
+
+    return tf.where(mask, true_mask(), false_mask())
+
+
 def cubic_interpolation(T, VL, VDL, VH, VDH):
     t2 = T*T
     t3 = t2*T
