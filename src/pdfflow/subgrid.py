@@ -348,8 +348,8 @@ class Subgrid:
 
         x, q2 = tf.meshgrid(a_x, corn_q2)
 
-        fq2Min = tf.squeeze(self.interpolate(u, x[0], q2[0]))
-        fq2Min1 = tf.squeeze(self.interpolate(u, x[0], q2[0] * 1.01))
+        fq2Min = self.interpolate(u, x[0], q2[0])
+        fq2Min1 = self.interpolate(u, x[0], q2[0] * 1.01)
 
         a_q2 = tf.math.exp(a_q2)
         corn_q2 = tf.math.exp(corn_q2)
@@ -362,11 +362,16 @@ class Subgrid:
             ),
             tf.constant(1, dtype=float64),
         )
-
+        corn_q2 = tf.expand_dims(corn_q2,1)
+        a_q2 = tf.expand_dims(a_q2,1)
+        #print('anom',anom.shape)
+        #print('a_q2',a_q2.shape)
+        #print('corn_q2',corn_q2.shape)
         res = fq2Min * tf.math.pow(
             a_q2 / corn_q2, anom * a_q2 / corn_q2 + 1.0 - a_q2 / corn_q2
         )
-        return tf.expand_dims(res, 1)
+        #print('res',res.shape)
+        return res
 
     def highq2_extrapolation(self, u, a_x, a_q2):
         """ 
@@ -445,10 +450,10 @@ class Subgrid:
 
         fq2Min1 = extrapolate_linear(a_x, corn_x[0], corn_x[1], f[2:3], f[3:])
 
-        fq2Min = tf.squeeze(fq2Min)
-        fq2Min1 = tf.squeeze(fq2Min1)
+        #fq2Min = tf.squeeze(fq2Min)
+        #fq2Min1 = tf.squeeze(fq2Min1)
 
-        a_q2 = tf.math.exp(a_q2)
+        a_q2 = tf.expand_dims(tf.math.exp(a_q2),1)
         corn_q2 = tf.math.exp(corn_q2[0])
 
         mask = tf.math.abs(fq2Min) >= 1e-5
@@ -462,4 +467,4 @@ class Subgrid:
             a_q2 / corn_q2, anom * a_q2 / corn_q2 + 1.0 - a_q2 / corn_q2
         )
 
-        return tf.expand_dims(res, 1)
+        return res

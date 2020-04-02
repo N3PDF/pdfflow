@@ -42,8 +42,8 @@ def main(pdfname, n_draws, pid):
 
     print('Printing plots')
     plots(pid, a_x, a_Q2, p, l_pdf, xmin, xmax, Q2min, Q2max)
-    #print('Printing times')
-    #test_time(p, l_pdf, xmin, xmax, Q2min, Q2max)
+    print('Printing times')
+    test_time(p, l_pdf, xmin, xmax, Q2min, Q2max)
 
 
 if __name__ == "__main__":
