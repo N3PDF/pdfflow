@@ -1,9 +1,9 @@
 import tensorflow as tf
 import tensorflow_probability as tfp
-#float64 = tf.float64
+float64 = tf.float64
 int64 = tf.int64
 
-#@tf.function
+@tf.function
 def two_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
     """
     Parameters
@@ -42,7 +42,7 @@ def two_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
     
     return corn_x, corn_Q2, A
 
-#@tf.function
+@tf.function
 def four_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
     """
     Parameters
@@ -80,7 +80,7 @@ def four_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
     
     return corn_x, corn_Q2, A
 
-#@tf.function
+@tf.function
 def l_four_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
     """
     Parameters
@@ -118,7 +118,7 @@ def l_four_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
     
     return corn_x, corn_Q2, A
 
-#@tf.function
+@tf.function
 def r_four_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
     """
     Parameters
@@ -156,7 +156,7 @@ def r_four_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
     
     return corn_x, corn_Q2, A
 
-#@tf.function
+@tf.function
 def u_four_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
     """
     Parameters
@@ -194,7 +194,7 @@ def u_four_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
     
     return corn_x, corn_Q2, A
 
-#@tf.function
+@tf.function
 def d_four_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
     """
     Parameters
@@ -233,7 +233,7 @@ def d_four_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
     
     return corn_x, corn_Q2, A
 
-#@tf.function
+@tf.function
 def c0_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
     """
     Parameters
@@ -277,7 +277,7 @@ def c0_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
 
     return corn_x, corn_Q2, A
 
-#@tf.function
+@tf.function
 def c1_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
     """
     Parameters
@@ -315,7 +315,7 @@ def c1_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
     
     return corn_x, corn_Q2, A
 
-#@tf.function
+@tf.function
 def c2_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
     """
     Parameters
@@ -353,7 +353,7 @@ def c2_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
     
     return corn_x, corn_Q2, A
 
-#@tf.function
+@tf.function
 def c3_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
     """
     Parameters
@@ -391,7 +391,7 @@ def c3_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
     
     return corn_x, corn_Q2, A
 
-#@tf.function
+@tf.function
 def lowx_extra_knots(a_x, a_q2, log_x, log_q2, actual_values):
     """
     Parameters
