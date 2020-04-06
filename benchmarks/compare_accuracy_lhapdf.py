@@ -52,8 +52,8 @@ def main(pdfname, pid):
 
     plt.figure(figsize=(16.0, 12.0))
     plt.subplot(2, 2, 1)
-    x = np.logspace(-9, 0, 1000, dtype=float)
-    q2 = np.array([1.65, 3, 5, 10, 50, 1e2, 2e2, 5e2, 1e3, 2e3, 5e3], dtype=float)**2
+    x = np.logspace(-11,0,100, dtype=float)
+    q2 = np.array([0.1,1.65,1.7,4.92,1e2,1e5,2e6], dtype=float)**2
     for iq2 in q2:
         vl = np.array([l_pdf.xfxQ2(pid, ix, iq2) for ix in x])
         vp = p.xfxQ2(pid, x, [iq2]*len(x))
@@ -64,7 +64,7 @@ def main(pdfname, pid):
     plt.yscale('log')
     plt.ylim([1e-5, 10])
     plt.title('%s, flav = %d' % (pdfname, pid))
-    plt.ylabel(r'$|f_{pdfflow} - f_{lhapdf}|/(|f_{lhapdf}|+eps$')
+    plt.ylabel(r'$|f_{pdfflow} - f_{lhapdf}|/(|f_{lhapdf}|+eps$)')
     plt.xlabel('x')
     plt.legend()
 
@@ -82,8 +82,8 @@ def main(pdfname, pid):
     plt.xlabel('x')
     plt.legend()
 
-    x = np.array([1e-8, 1e-6, 1e-4, 0.01, 0.1, 0.2, 0.5, 0.8], dtype=float)
-    q2 = np.logspace(0.5, 4.9, 1000, dtype=float)**2
+    x = np.array([1e-10,1e-9,5e-7,1.1e-9,0.5,0.99], dtype=float)
+    q2 = np.logspace(-2, 7, 100, dtype=float)**2
     plt.subplot(2, 2, 2)
     for ix in x:
         vl = np.array([l_pdf.xfxQ2(pid, ix, iq2) for iq2 in q2])
@@ -95,7 +95,7 @@ def main(pdfname, pid):
     plt.yscale('log')
     plt.ylim([1e-5, 10])
     plt.title('%s, flav = %d' % (pdfname, pid))
-    plt.ylabel(r'$|f_{pdfflow} - f_{lhapdf}|/(|f_{lhapdf}|+eps$')
+    plt.ylabel(r'$|f_{pdfflow} - f_{lhapdf}|/(|f_{lhapdf}|+eps$)')
     plt.xlabel('Q')
     plt.legend()
 
