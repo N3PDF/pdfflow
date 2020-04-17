@@ -52,8 +52,8 @@ def main(pdfname, pid):
 
     plt.figure(figsize=(16.0, 12.0))
     plt.subplot(2, 2, 1)
-    x = np.logspace(-11,0,100, dtype=float)
-    q2 = np.array([0.1,1.65,1.7,4.92,1e2,1e5,2e6], dtype=float)**2
+    x = np.logspace(-11,0,10000, dtype=float)
+    q2 = np.array([0.1,1.65,1.7,4.92,1e2,1e3,1e4,1e5,1e6,2e6], dtype=float)**2
     for iq2 in q2:
         vl = np.array([l_pdf.xfxQ2(pid, ix, iq2) for ix in x])
         vp = p.xfxQ2(pid, x, [iq2]*len(x))
@@ -82,8 +82,8 @@ def main(pdfname, pid):
     plt.xlabel('x')
     plt.legend()
 
-    x = np.array([1e-10,1e-9,5e-7,1.1e-9,0.5,0.99], dtype=float)
-    q2 = np.logspace(-2, 7, 100, dtype=float)**2
+    x = np.array([1e-10,1e-9,1.1e-9,5e-7,1e-6,1e-4,1e-2,0.5,0.99], dtype=float)
+    q2 = np.logspace(-3, 7, 10000, dtype=float)**2
     plt.subplot(2, 2, 2)
     for ix in x:
         vl = np.array([l_pdf.xfxQ2(pid, ix, iq2) for iq2 in q2])
@@ -118,6 +118,8 @@ def main(pdfname, pid):
 
 if __name__ == "__main__":
     args = vars(parser.parse_args())
+    if args['pid'] == 0:
+    	args['pid'] = 21
     start=time.time()
     main(**args)
     print(time.time()-start)    
