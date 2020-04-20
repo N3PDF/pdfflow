@@ -1,4 +1,8 @@
-from pdfflow.subgrid import Subgrid, act_on_empty
+from pdfflow.subgrid import Subgrid
+from pdfflow.subgrid import act_on_empty
+from pdfflow.functions import inner_subgrid
+from pdfflow.functions import first_subgrid
+from pdfflow.functions import last_subgrid
 import tensorflow as tf
 import re
 import numpy as np
@@ -55,11 +59,12 @@ class mkPDF:
 
         self.subgrids = list(map(Subgrid, grids))
         self.flavor_scheme = tf.cast(self.subgrids[0].flav, dtype=tf.int64)
-        self.subgrids[-1].flag = tf.constant(1, dtype=int64)
+        self.subgrids[-1].flag = tf.constant(-1, dtype=int64)
+        self.subgrids[0].flag = tf.constant(0, dtype=int64)
 
-        # Generate switch cases
-
-    @tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=int64),tf.TensorSpec(shape=[None], dtype=float64), tf.TensorSpec(shape=[None], dtype=float64)])
+    #@tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=int64),
+    #             tf.TensorSpec(shape=[None], dtype=float64),
+    #             tf.TensorSpec(shape=[None], dtype=float64)])
     def _xfxQ2(self, u, aa_x, aa_q2):
 
         a_x = tf.math.log(aa_x, name="logx")
@@ -70,105 +75,37 @@ class mkPDF:
         empty_fn = lambda: tf.constant(0.0, dtype=float64)
 
         count = 0
-        l_idx = []
+        #l_idx = []
         res = tf.zeros(shape, dtype=float64)
+        
+        res += first_subgrid(u, a_x, a_q2,
+                             self.subgrids[0].log_x,
+                             self.subgrids[0].log_xmin,
+                             self.subgrids[0].log_xmax,
+                             self.subgrids[0].log_q2,
+                             self.subgrids[0].log_q2min,
+                             self.subgrids[0].log_q2max,
+                             self.subgrids[0].grid_values,
+                             shape)
+        
+        for s in self.subgrids[1:-1]:
+            res += inner_subgrid(u, a_x, a_q2,
+                                 s.log_x, s.log_xmin, s.log_xmax,
+                                 s.log_q2, s.log_q2min, s.log_q2max,
+                                 s.grid_values,
+                                 shape)
 
-        for subgrid in self.subgrids:
-            # print('flag', subgrid.flag)
-            # Check whether any points go through
-            valid = tf.math.logical_and(
-                a_x >= subgrid.log_xmin, a_x <= subgrid.log_xmax
-            )
-            stripe = tf.math.logical_and(
-                a_q2 >= subgrid.log_q2min, a_q2 <= subgrid.log_q2max
-            )
-            in_stripe = tf.math.logical_and(valid, stripe)
-            lowx_stripe = tf.math.logical_and(a_x < subgrid.log_xmin, stripe)
-
-            in_f_idx = tf.where(in_stripe)
-            lowx_f_idx = tf.where(lowx_stripe)
-
-            def in_fun():
-                in_x = tf.boolean_mask(a_x, in_stripe)
-                in_q2 = tf.boolean_mask(a_q2, in_stripe)
-                ff_f = subgrid.interpolate(u, in_x, in_q2)
-                return tf.scatter_nd(in_f_idx, ff_f, shape)
-
-            def lowx_fun():
-                in_x = tf.boolean_mask(a_x, lowx_stripe)
-                in_q2 = tf.boolean_mask(a_q2, lowx_stripe)
-                ff_f = subgrid.lowx_extrapolation(u, in_x, in_q2)
-                return tf.scatter_nd(lowx_f_idx, ff_f, shape)
-
-            inside = act_on_empty(in_f_idx, empty_fn, in_fun)
-
-            lowx = act_on_empty(lowx_f_idx, empty_fn, lowx_fun)
-
-            res += inside + lowx
-        # --------------------------------------------------------------------
-        # low q2
-        x_stripe = tf.math.logical_and(
-            a_x >= self.subgrids[0].log_xmin, a_x <= self.subgrids[0].log_xmax
-        )
-        q2_stripe = a_q2 < self.subgrids[0].log_q2min
-        stripe = tf.math.logical_and(x_stripe, q2_stripe)
-
-        f_idx = tf.where(stripe)
-
-        def gen_fun():
-            in_x = tf.boolean_mask(a_x, stripe)
-            in_q2 = tf.boolean_mask(a_q2, stripe)
-            ff_f = self.subgrids[0].lowq2_extrapolation(u, in_x, in_q2)
-            return tf.scatter_nd(f_idx, ff_f, shape)
-
-        res += act_on_empty(f_idx, empty_fn, gen_fun)
-        # --------------------------------------------------------------------
-
-        # high q2
-        x_stripe = tf.math.logical_and(
-            a_x >= self.subgrids[-1].log_xmin, a_x <= self.subgrids[-1].log_xmax
-        )
-        q2_stripe = a_q2 > self.subgrids[-1].log_q2max
-        stripe = tf.math.logical_and(x_stripe, q2_stripe)
-
-        f_idx = tf.where(stripe)
-
-        def gen_fun():
-            in_x = tf.boolean_mask(a_x, stripe)
-            in_q2 = tf.boolean_mask(a_q2, stripe)
-            ff_f = self.subgrids[-1].highq2_extrapolation(u, in_x, in_q2)
-            return tf.scatter_nd(f_idx, ff_f, shape)
-
-        res += act_on_empty(f_idx, empty_fn, gen_fun)
-        # --------------------------------------------------------------------
-        # low x high q2
-        stripe = tf.math.logical_and(
-            a_x < self.subgrids[-1].log_xmin, a_q2 > self.subgrids[-1].log_q2max
-        )
-
-        f_idx = tf.where(stripe)
-
-        def gen_fun():
-            in_x = tf.boolean_mask(a_x, stripe)
-            in_q2 = tf.boolean_mask(a_q2, stripe)
-            ff_f = self.subgrids[-1].lowx_highq2_extrapolation(u, in_x, in_q2)
-            return tf.scatter_nd(f_idx, ff_f, shape)
-
-        res += act_on_empty(f_idx, empty_fn, gen_fun)
-        # --------------------------------------------------------------------
-        # low x low q2
-        stripe = tf.math.logical_and(
-            a_x < self.subgrids[0].log_xmin, a_q2 < self.subgrids[0].log_q2min
-        )
-        f_idx = tf.where(stripe)
-
-        def gen_fun():
-            in_x = tf.boolean_mask(a_x, stripe)
-            in_q2 = tf.boolean_mask(a_q2, stripe)
-            ff_f = self.subgrids[0].lowx_lowq2_extrapolation(u, in_x, in_q2)
-            return tf.scatter_nd(f_idx, ff_f, shape)
-
-        res += act_on_empty(f_idx, empty_fn, gen_fun)
+        
+        res += last_subgrid(u, a_x, a_q2,
+                            self.subgrids[-1].log_x,
+                            self.subgrids[-1].log_xmin,
+                            self.subgrids[-1].log_xmax,
+                            self.subgrids[-1].log_q2,
+                            self.subgrids[-1].log_q2min,
+                            self.subgrids[-1].log_q2max,
+                            self.subgrids[-1].grid_values,
+                            shape)
+        
         return res
 
     def xfxQ2(self, PID, a_x, a_q2):
