@@ -21,17 +21,23 @@ def main(pdfname, n_draws, pid):
 
     p = pdf.mkPDF(pdfname, DIRNAME)
 
-    for pp in p.subgrids:
-        pp.print_summary()
+    #for pp in p.subgrids:
+    #    pp.print_summary()
 
     l_pdf = lhapdf.mkPDF(pdfname)
 
-    xmin = p.subgrids[0].xmin
-    xmax = p.subgrids[0].xmax
-    Q2min = p.subgrids[0].Q2min
-    Q2max = p.subgrids[-1].Q2max
+    xmin = np.exp(p.subgrids[0].log_xmin)
+    xmax = np.exp(p.subgrids[0].log_xmax)
+    Q2min = np.sqrt(np.exp(p.subgrids[0].log_q2min))
+    Q2max = np.sqrt(np.exp(p.subgrids[-1].log_q2max))
+    #a_x = np.logspace(xmin,xmax,n_draws)
+    #a_Q2 = np.logspace(Q2min,Q2max,n_draws)
 
+
+    
     a_x = np.exp(np.random.uniform(np.log(xmin), np.log(xmax),[n_draws,]))
+    print(a_x.min())
+    print(a_x.max())
     a_Q2 = np.exp(np.random.uniform(np.log(Q2min), np.log(Q2max),[n_draws,]))
 
     print('Printing plots')
