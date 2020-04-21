@@ -8,7 +8,7 @@ float64 = tf.float64
 int64 = tf.int64
 
 def act_on_empty(input_tensor, fn_true, fn_false):
-    print('act on empty')
+    #print('act on empty')
     idx0 = tf.shape(input_tensor)[0]
     return tf.cond(idx0 == 0, fn_true, fn_false)
 

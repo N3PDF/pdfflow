@@ -113,6 +113,7 @@ class mkPDF:
             PID = [PID]
 
         PID = tf.expand_dims(tf.constant(PID, dtype=int64), -1)
+        PID = tf.where(PID==0, 21, PID)
         idx = tf.where(tf.equal(self.flavor_scheme, PID))[:, 1]
         u, i = tf.unique(idx)
 
