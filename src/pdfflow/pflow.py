@@ -67,8 +67,8 @@ class mkPDF:
     #             tf.TensorSpec(shape=[None], dtype=float64)])
     def _xfxQ2(self, u, aa_x, aa_q2):
 
-        a_x = tf.math.log(aa_x, name="logx")
-        a_q2 = tf.math.log(aa_q2, name="logq2")
+        a_x = tf.cast(tf.math.log(aa_x, name="logx"), float64)
+        a_q2 = tf.cast(tf.math.log(aa_q2, name="logq2"), float64)
 
         size = tf.shape(a_x)
         shape = tf.cast(tf.concat([size, tf.shape(u)], 0), int64)
