@@ -8,6 +8,7 @@ float64 = tf.float64
 int64 = tf.int64
 
 def act_on_empty(input_tensor, fn_true, fn_false):
+    print('act on empty')
     idx0 = tf.shape(input_tensor)[0]
     return tf.cond(idx0 == 0, fn_true, fn_false)
 
@@ -47,6 +48,11 @@ class Subgrid:
 
         #self.flag = tf.constant(1, dtype=int64)
 
+@tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None,None],dtype=float64)])
 def ledge_interpolation(a_x, a_q2, log_x, log_q2, actual_values):
     """ 
     Interpolation to use near the border in x
@@ -58,11 +64,17 @@ def ledge_interpolation(a_x, a_q2, log_x, log_q2, actual_values):
         a_q2: tf.tensor
             query of values of log(q2)
     """
+    #print('ledge inter')
     a2, a3, a4 = l_four_neighbour_knots(a_x, a_q2, log_x, log_q2,
                                         actual_values)
     result = left_bicubic_interpolation(a_x, a_q2, a2, a3, a4)
     return result
 
+@tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None,None],dtype=float64)])
 def redge_interpolation(a_x, a_q2, log_x, log_q2, actual_values):
     """ 
     Interpolation to use near the border in x
@@ -74,11 +86,17 @@ def redge_interpolation(a_x, a_q2, log_x, log_q2, actual_values):
         a_q2: tf.tensor
             query of values of log(q2)
     """
+    #print('redge inter')
     a2, a3, a4 = r_four_neighbour_knots(a_x, a_q2, log_x, log_q2,
                                         actual_values)
     result = right_bicubic_interpolation(a_x, a_q2, a2, a3, a4)
     return result
 
+@tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None,None],dtype=float64)])
 def uedge_interpolation(a_x, a_q2, log_x, log_q2, actual_values):
     """ 
     Interpolation to use near the upper border in q2.
@@ -91,11 +109,17 @@ def uedge_interpolation(a_x, a_q2, log_x, log_q2, actual_values):
         a_q2: tf.tensor
             query of values of log(q2)
     """
+    #print('uedge inter')
     a2, a3, a4 = u_four_neighbour_knots(a_x, a_q2, log_x, log_q2,
                                         actual_values)
     result = upper_bicubic_interpolation(a_x, a_q2, a2, a3, a4)
     return result
 
+@tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None,None],dtype=float64)])
 def dedge_interpolation(a_x, a_q2, log_x, log_q2, actual_values):
     """ 
     Interpolation to use near the lower border in x
@@ -108,11 +132,17 @@ def dedge_interpolation(a_x, a_q2, log_x, log_q2, actual_values):
         a_q2: tf.tensor
             query of values of log(q2)
     """
+    #print('dedge inter')
     a2, a3, a4 = d_four_neighbour_knots(a_x, a_q2, log_x, log_q2,
                                         actual_values)
     result = lower_bicubic_interpolation(a_x, a_q2, a2, a3, a4)
     return result
 
+@tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None,None],dtype=float64)])
 def c0_interpolation(a_x, a_q2, log_x, log_q2, actual_values):
     """ 
     Parameters
@@ -122,11 +152,17 @@ def c0_interpolation(a_x, a_q2, log_x, log_q2, actual_values):
         a_q2: tf.tensor
             query of values of log(q2)
     """
+    #print('c0 inter')
     a2, a3, a4 = c0_neighbour_knots(a_x, a_q2, log_x, log_q2,
                                     actual_values)
     result = c0_bicubic_interpolation(a_x, a_q2, a2, a3, a4)
     return result
 
+@tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None,None],dtype=float64)])
 def c1_interpolation(a_x, a_q2, log_x, log_q2, actual_values):
     """ 
     Parameters
@@ -136,11 +172,17 @@ def c1_interpolation(a_x, a_q2, log_x, log_q2, actual_values):
         a_q2: tf.tensor
             query of values of log(q2)
     """
+    #print('c1 inter')
     a2, a3, a4 = c1_neighbour_knots(a_x, a_q2, log_x, log_q2,
                                     actual_values)
     result = c1_bicubic_interpolation(a_x, a_q2, a2, a3, a4)
     return result
 
+@tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None,None],dtype=float64)])
 def c2_interpolation(a_x, a_q2, log_x, log_q2, actual_values):
     """ 
     Parameters
@@ -150,11 +192,17 @@ def c2_interpolation(a_x, a_q2, log_x, log_q2, actual_values):
         a_q2: tf.tensor
             query of values of log(q2)
     """
+    #print('c2 inter')
     a2, a3, a4 = c2_neighbour_knots(a_x, a_q2, log_x, log_q2,
                                     actual_values)
     result = c2_bicubic_interpolation(a_x, a_q2, a2, a3, a4)
     return result
 
+@tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None,None],dtype=float64)])
 def c3_interpolation(a_x, a_q2, log_x, log_q2, actual_values):
     """ 
     Parameters
@@ -164,11 +212,17 @@ def c3_interpolation(a_x, a_q2, log_x, log_q2, actual_values):
         a_q2: tf.tensor
             query of values of log(q2)
     """
+    #print('c3 inter')
     a2, a3, a4 = c3_neighbour_knots(a_x, a_q2, log_x, log_q2,
                                     actual_values)
     result = c3_bicubic_interpolation(a_x, a_q2, a2, a3, a4)
     return result
 
+@tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None,None],dtype=float64)])
 def default_interpolation(a_x, a_q2, log_x, log_q2, actual_values):
     """ 
     Parameters
@@ -178,11 +232,22 @@ def default_interpolation(a_x, a_q2, log_x, log_q2, actual_values):
         a_q2: tf.tensor
             query of values of log(q2)
     """
+    #print('default inter')
     a2, a3, a4 = four_neighbour_knots(a_x, a_q2, log_x, log_q2,
                                         actual_values)
     result = default_bicubic_interpolation(a_x, a_q2, a2, a3, a4)
     return result
 
+@tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=int64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[], dtype=float64),
+                              tf.TensorSpec(shape=[], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[], dtype=float64),
+                              tf.TensorSpec(shape=[], dtype=float64),
+                              tf.TensorSpec(shape=[None,None],dtype=float64)])
 def interpolate(u, a_x, a_q2,
                 log_x, log_xmin, log_xmax,
                 log_q2, log_q2min, log_q2max,
@@ -195,6 +260,7 @@ def interpolate(u, a_x, a_q2,
         a_q2: tf.tensor
             query of values of log(q2)
     """
+    #print('inter')
     actual_values = tf.gather(values, u, axis=-1)
     size = tf.shape(a_x)
     shape = tf.cast(tf.concat([size, tf.shape(u)], 0), int64)
@@ -260,6 +326,16 @@ def interpolate(u, a_x, a_q2,
     return ledge_res + redge_res + uedge_res + dedge_res + insi_res\
            + c0_res + c1_res + c2_res + c3_res
 
+@tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=int64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[], dtype=float64),
+                              tf.TensorSpec(shape=[], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[], dtype=float64),
+                              tf.TensorSpec(shape=[], dtype=float64),
+                              tf.TensorSpec(shape=[None,None],dtype=float64)])
 def lowx_extrapolation(u, a_x, a_q2,
                        log_x, log_xmin, log_xmax,
                        log_q2, log_q2min, log_q2max,
@@ -274,6 +350,7 @@ def lowx_extrapolation(u, a_x, a_q2,
         a_q2: tf.tensor
             query of values of log(q2)
     """
+    #print('lowx extra')
     x_id = tf.constant([0, 1], dtype=int64)
     corn_x = tf.gather(log_x, x_id)
 
@@ -290,10 +367,21 @@ def lowx_extrapolation(u, a_x, a_q2,
 
     return extrapolate_linear(a_x, corn_x[0], corn_x[1], yl, yh)
 
+@tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=int64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[], dtype=float64),
+                              tf.TensorSpec(shape=[], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[], dtype=float64),
+                              tf.TensorSpec(shape=[], dtype=float64),
+                              tf.TensorSpec(shape=[None,None],dtype=float64)])
 def lowq2_extrapolation(u, a_x, a_q2,
                         log_x, log_xmin, log_xmax,
                         log_q2, log_q2min, log_q2max,
                         values):
+    #print('lowq2 extra')
     q2_id = tf.constant([0], dtype=int64)
     corn_q2 = tf.gather(log_q2, q2_id)
 
@@ -326,6 +414,16 @@ def lowq2_extrapolation(u, a_x, a_q2,
     #print('res',res.shape)
     return res
 
+@tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=int64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[], dtype=float64),
+                              tf.TensorSpec(shape=[], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[], dtype=float64),
+                              tf.TensorSpec(shape=[], dtype=float64),
+                              tf.TensorSpec(shape=[None,None],dtype=float64)])
 def last_interpolation(u, a_x, a_q2,
                        log_x, log_xmin, log_xmax,
                        log_q2, log_q2min, log_q2max,
@@ -338,6 +436,7 @@ def last_interpolation(u, a_x, a_q2,
         a_q2: tf.tensor
             query of values of log(q2)
     """
+    #print('last inter')
     empty_fn = lambda: tf.constant(0.0, dtype=float64)
     size = tf.shape(a_x)
     shape = tf.cast(tf.concat([size, tf.shape(u)], 0), int64)
@@ -389,7 +488,16 @@ def last_interpolation(u, a_x, a_q2,
 
     return ll_res + l_res + c_res + r_res
 
-
+@tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=int64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[], dtype=float64),
+                              tf.TensorSpec(shape=[], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[], dtype=float64),
+                              tf.TensorSpec(shape=[], dtype=float64),
+                              tf.TensorSpec(shape=[None,None],dtype=float64)])
 def highq2_extrapolation(u, a_x, a_q2,
                          log_x, log_xmin, log_xmax,
                          log_q2, log_q2min, log_q2max,
@@ -404,6 +512,7 @@ def highq2_extrapolation(u, a_x, a_q2,
         a_q2: tf.tensor
             query of values of log(q2)
     """
+    #print('highq2 extr')
     s = tf.size(log_q2, out_type=int64)
     q2_id = tf.stack([s - 1, s - 2])
 
@@ -422,6 +531,16 @@ def highq2_extrapolation(u, a_x, a_q2,
 
     return extrapolate_linear(a_q2, corn_q2[0], corn_q2[1], yl, yh)
 
+@tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=int64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[], dtype=float64),
+                              tf.TensorSpec(shape=[], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[], dtype=float64),
+                              tf.TensorSpec(shape=[], dtype=float64),
+                              tf.TensorSpec(shape=[None,None],dtype=float64)])
 def lowx_highq2_extrapolation(u, a_x, a_q2,
                               log_x, log_xmin, log_xmax,
                               log_q2, log_q2min, log_q2max,
@@ -436,6 +555,7 @@ def lowx_highq2_extrapolation(u, a_x, a_q2,
         a_q2: tf.tensor
             query of values of log(q2)
     """
+    #print('lowx highq2 extr')
     x_id = tf.constant([0, 1], dtype=int64)
     s = tf.size(log_q2, out_type=int64)
     q2_id = tf.stack([s - 1, s - 2])
@@ -462,6 +582,16 @@ def lowx_highq2_extrapolation(u, a_x, a_q2,
 
     return extrapolate_linear(a_x, corn_x[0], corn_x[1], fxMin, fxMin1)
 
+@tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=int64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[], dtype=float64),
+                              tf.TensorSpec(shape=[], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[], dtype=float64),
+                              tf.TensorSpec(shape=[], dtype=float64),
+                              tf.TensorSpec(shape=[None,None],dtype=float64)])
 def lowx_lowq2_extrapolation(u, a_x, a_q2,
                              log_x, log_xmin, log_xmax,
                              log_q2, log_q2min, log_q2max,
@@ -476,6 +606,7 @@ def lowx_lowq2_extrapolation(u, a_x, a_q2,
         a_q2: tf.tensor
             query of values of log(q2)
     """
+    #print('lowx lowq2 extr')
     x_id = tf.constant([0, 1], dtype=int64)
     q2_id = tf.stack([0, 0])
 
@@ -507,5 +638,3 @@ def lowx_lowq2_extrapolation(u, a_x, a_q2,
                                 anom * a_q2 / corn_q2 + 1.0 - a_q2 / corn_q2)
 
     return res
-
-

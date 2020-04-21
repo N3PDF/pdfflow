@@ -1,5 +1,4 @@
 from pdfflow.subgrid import Subgrid
-from pdfflow.subgrid import act_on_empty
 from pdfflow.functions import inner_subgrid
 from pdfflow.functions import first_subgrid
 from pdfflow.functions import last_subgrid
@@ -62,9 +61,6 @@ class mkPDF:
         self.subgrids[-1].flag = tf.constant(-1, dtype=int64)
         self.subgrids[0].flag = tf.constant(0, dtype=int64)
 
-    #@tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=int64),
-    #             tf.TensorSpec(shape=[None], dtype=float64),
-    #             tf.TensorSpec(shape=[None], dtype=float64)])
     def _xfxQ2(self, u, aa_x, aa_q2):
 
         a_x = tf.cast(tf.math.log(aa_x, name="logx"), float64)

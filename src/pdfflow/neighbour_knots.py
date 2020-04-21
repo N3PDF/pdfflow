@@ -3,7 +3,7 @@ import tensorflow_probability as tfp
 float64 = tf.float64
 int64 = tf.int64
 
-@tf.function
+#@tf.function
 def two_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
     """
     Parameters
@@ -19,6 +19,7 @@ def two_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
         actual_values: tf.tensor
             values of the grid
     """
+    #print('retrace 2 nk')
     #knot indeces of the [0,0] point in the square
     x_id = tf.cast(tfp.stats.find_bins(a_x, log_x), dtype=int64)
     Q2_id = tf.cast(tfp.stats.find_bins(a_q2, log_q2), dtype=int64)
@@ -42,7 +43,11 @@ def two_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
     
     return corn_x, corn_Q2, A
 
-@tf.function
+@tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None,None], dtype=float64)])
 def four_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
     """
     Parameters
@@ -58,6 +63,7 @@ def four_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
         actual_values: tf.tensor
             values of the grid
     """
+    #print('retrace 4 nk')
     x_id = tf.cast(tfp.stats.find_bins(a_x, log_x, name='find_bins_logx'), dtype=int64)
     Q2_id = tf.cast(tfp.stats.find_bins(a_q2, log_q2, name='find_bins_logQ2'), dtype=int64)
 
@@ -80,7 +86,11 @@ def four_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
     
     return corn_x, corn_Q2, A
 
-@tf.function
+@tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None,None], dtype=float64)])
 def l_four_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
     """
     Parameters
@@ -96,6 +106,7 @@ def l_four_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
         actual_values: tf.tensor
             values of the grid
     """
+    #print('retrace l4 nk')
     x_id = tf.cast(tfp.stats.find_bins(a_x, log_x, name='find_bins_logx'), dtype=int64)
     Q2_id = tf.cast(tfp.stats.find_bins(a_q2, log_q2, name='find_bins_logQ2'), dtype=int64)
 
@@ -118,7 +129,11 @@ def l_four_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
     
     return corn_x, corn_Q2, A
 
-@tf.function
+@tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None,None], dtype=float64)])
 def r_four_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
     """
     Parameters
@@ -134,6 +149,7 @@ def r_four_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
         actual_values: tf.tensor
             values of the grid
     """
+    #print('retrace r4 nk')
     x_id = tf.cast(tfp.stats.find_bins(a_x, log_x, name='find_bins_logx'), dtype=int64)
     Q2_id = tf.cast(tfp.stats.find_bins(a_q2, log_q2, name='find_bins_logQ2'), dtype=int64)
 
@@ -156,7 +172,11 @@ def r_four_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
     
     return corn_x, corn_Q2, A
 
-@tf.function
+@tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None,None], dtype=float64)])
 def u_four_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
     """
     Parameters
@@ -172,6 +192,7 @@ def u_four_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
         actual_values: tf.tensor
             values of the grid
     """
+    #print('retrace u4 nk')
     x_id = tf.cast(tfp.stats.find_bins(a_x, log_x, name='find_bins_logx'), dtype=int64)
     Q2_id = tf.cast(tfp.stats.find_bins(a_q2, log_q2, name='find_bins_logQ2'), dtype=int64)
 
@@ -194,7 +215,11 @@ def u_four_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
     
     return corn_x, corn_Q2, A
 
-@tf.function
+@tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None,None], dtype=float64)])
 def d_four_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
     """
     Parameters
@@ -210,6 +235,7 @@ def d_four_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
         actual_values: tf.tensor
             values of the grid
     """
+    #print('retrace d4 nk')
     x_id = tf.cast(tfp.stats.find_bins(a_x, log_x, name='find_bins_logx'), dtype=int64)
     Q2_id = tf.cast(tfp.stats.find_bins(a_q2, log_q2, name='find_bins_logQ2'), dtype=int64)
 
@@ -233,7 +259,11 @@ def d_four_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
     
     return corn_x, corn_Q2, A
 
-@tf.function
+@tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None,None], dtype=float64)])
 def c0_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
     """
     Parameters
@@ -249,6 +279,7 @@ def c0_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
         actual_values: tf.tensor
             values of the grid
     """
+    #print('retrace c0 nk')
     x_id = tf.cast(tfp.stats.find_bins(a_x, log_x, name='find_bins_logx'), dtype=int64)
     Q2_id = tf.cast(tfp.stats.find_bins(a_q2, log_q2, name='find_bins_logQ2'), dtype=int64)
 
@@ -277,7 +308,11 @@ def c0_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
 
     return corn_x, corn_Q2, A
 
-@tf.function
+@tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None,None], dtype=float64)])
 def c1_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
     """
     Parameters
@@ -293,6 +328,7 @@ def c1_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
         actual_values: tf.tensor
             values of the grid
     """
+    #print('retrace c1 nk')
     x_id = tf.cast(tfp.stats.find_bins(a_x, log_x, name='find_bins_logx'), dtype=int64)
     Q2_id = tf.cast(tfp.stats.find_bins(a_q2, log_q2, name='find_bins_logQ2'), dtype=int64)
 
@@ -315,7 +351,11 @@ def c1_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
     
     return corn_x, corn_Q2, A
 
-@tf.function
+@tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None,None], dtype=float64)])
 def c2_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
     """
     Parameters
@@ -331,6 +371,7 @@ def c2_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
         actual_values: tf.tensor
             values of the grid
     """
+    #print('retrace c2 nk')
     x_id = tf.cast(tfp.stats.find_bins(a_x, log_x, name='find_bins_logx'), dtype=int64)
     Q2_id = tf.cast(tfp.stats.find_bins(a_q2, log_q2, name='find_bins_logQ2'), dtype=int64)
 
@@ -353,7 +394,11 @@ def c2_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
     
     return corn_x, corn_Q2, A
 
-@tf.function
+@tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None,None], dtype=float64)])
 def c3_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
     """
     Parameters
@@ -369,6 +414,7 @@ def c3_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
         actual_values: tf.tensor
             values of the grid
     """
+    #print('retrace c3 nk')
     x_id = tf.cast(tfp.stats.find_bins(a_x, log_x, name='find_bins_logx'), dtype=int64)
     Q2_id = tf.cast(tfp.stats.find_bins(a_q2, log_q2, name='find_bins_logQ2'), dtype=int64)
 
@@ -391,7 +437,11 @@ def c3_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
     
     return corn_x, corn_Q2, A
 
-@tf.function
+@tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None], dtype=float64),
+                              tf.TensorSpec(shape=[None,None], dtype=float64)])
 def lowx_extra_knots(a_x, a_q2, log_x, log_q2, actual_values):
     """
     Parameters
@@ -407,6 +457,7 @@ def lowx_extra_knots(a_x, a_q2, log_x, log_q2, actual_values):
         actual_values: tf.tensor
             values of the grid
     """
+    #print('retrace lowx nk')
     #knot indeces of the [0,0] point in the square
     x_id = tf.constant([0,1], dtype=int64)
     Q2_id = tf.cast(tfp.stats.find_bins(a_q2, log_q2), dtype=int64)

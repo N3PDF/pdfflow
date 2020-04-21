@@ -27,7 +27,7 @@ def inner_subgrid(u, a_x, a_q2,
                   log_q2, log_q2min, log_q2max,
                   values, shape):
     """Inner subgrid interpolation"""
-    print('retrace inner subgrid')
+    #print('retrace inner subgrid')
     empty_fn = lambda: tf.constant(0.0, dtype=float64)
 
     valid = tf.math.logical_and(a_x >= log_xmin, a_x <= log_xmax)
@@ -78,7 +78,7 @@ def first_subgrid(u, a_x, a_q2,
                   log_q2, log_q2min, log_q2max,
                   values, shape):
     """First subgrid interpolation"""
-    print('retrace first subgrid')
+    #print('retrace first subgrid')
 
     empty_fn = lambda: tf.constant(0.0, dtype=float64)
     # --------------------------------------------------------------------
@@ -153,7 +153,7 @@ def last_subgrid(u, a_x, a_q2,
                  log_q2, log_q2min, log_q2max,
                  values, shape):
     """Last subgrid interpolation"""
-    print('retrace last subgrid')
+    #print('retrace last subgrid')
 
     empty_fn = lambda: tf.constant(0.0, dtype=float64)
     # --------------------------------------------------------------------
