@@ -8,7 +8,6 @@ float64 = tf.float64
                               tf.TensorSpec(shape=[], dtype=float64),
                               tf.TensorSpec(shape=[None,None], dtype=float64),
                               tf.TensorSpec(shape=[None,None], dtype=float64)])
-
 def linear_interpolation(x, xl, xh, yl, yh):
     #print('lin interp')
     x = tf.expand_dims(x,1)
@@ -21,21 +20,14 @@ def linear_interpolation(x, xl, xh, yl, yh):
                               tf.TensorSpec(shape=[], dtype=float64),
                               tf.TensorSpec(shape=[None,None], dtype=float64),
                               tf.TensorSpec(shape=[None,None], dtype=float64)])
-
 def extrapolate_linear(x, xl, xh, yl, yh):
     #print('extrap lin')
     mask = tf.math.logical_and(yl > 1E-3, yh > 1E-3)
-    #print(mask)
-    def true_mask():
-        a = tf.math.log(yl)
-        b = tf.math.log(yh)
-        #print('res',linear_interpolation(x, xl, xh, a, b))
-        return tf.math.exp(linear_interpolation(x, xl, xh, a, b))
-    def false_mask():
-        return linear_interpolation(x, xl, xh, yl, yh)
-
-    return tf.where(mask, true_mask(), false_mask())
-
+    a = tf.where(mask, tf.math.log(yl), yl)
+    b = tf.where(mask, tf.math.log(yh), yh)
+    res = linear_interpolation(x, xl, xh, a, b)
+    return tf.where(mask, tf.math.exp(res), res)
+    
 @tf.function(input_signature=[tf.TensorSpec(shape=[None,1], dtype=float64),
                               tf.TensorSpec(shape=[None,None], dtype=float64),
                               tf.TensorSpec(shape=[None,None], dtype=float64),

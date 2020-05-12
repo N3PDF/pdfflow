@@ -52,9 +52,8 @@ class mkPDF:
         flav = list(map(lambda g: g[2], grids))
         for i in range(len(flav) - 1):
             if not np.all(flav[i] == flav[i + 1]):
-                print(
-                    "Flavor schemes do not match across all the subgrids ---> algorithm will break !"
-                )
+                print("Flavor schemes do not match across\
+                      all the subgrids ---> algorithm will break !")
 
         self.subgrids = list(map(Subgrid, grids))
         self.flavor_scheme = tf.cast(self.subgrids[0].flav, dtype=tf.int64)
