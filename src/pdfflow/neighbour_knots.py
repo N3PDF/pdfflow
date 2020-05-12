@@ -19,7 +19,6 @@ def two_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
         actual_values: tf.tensor
             values of the grid
     """
-    #print('retrace 2 nk')
     #knot indeces of the [0,0] point in the square
     x_id = tf.cast(tfp.stats.find_bins(a_x, log_x), dtype=int64)
     Q2_id = tf.cast(tfp.stats.find_bins(a_q2, log_q2), dtype=int64)
@@ -63,7 +62,6 @@ def four_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
         actual_values: tf.tensor
             values of the grid
     """
-    #print('retrace 4 nk')
     x_id = tf.cast(tfp.stats.find_bins(a_x, log_x, name='find_bins_logx'), dtype=int64)
     Q2_id = tf.cast(tfp.stats.find_bins(a_q2, log_q2, name='find_bins_logQ2'), dtype=int64)
 
@@ -106,8 +104,8 @@ def l_four_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
         actual_values: tf.tensor
             values of the grid
     """
-    #print('retrace l4 nk')
-    x_id = tf.cast(tfp.stats.find_bins(a_x, log_x, name='find_bins_logx'), dtype=int64)
+    #x_id = tf.cast(tfp.stats.find_bins(a_x, log_x, name='find_bins_logx'), dtype=int64)
+    x_id = tf.zeros_like(a_x, dtype=int64)
     Q2_id = tf.cast(tfp.stats.find_bins(a_q2, log_q2, name='find_bins_logQ2'), dtype=int64)
 
     corn_x_id = tf.stack([x_id, x_id+1, x_id+2],0)
@@ -149,8 +147,9 @@ def r_four_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
         actual_values: tf.tensor
             values of the grid
     """
-    #print('retrace r4 nk')
-    x_id = tf.cast(tfp.stats.find_bins(a_x, log_x, name='find_bins_logx'), dtype=int64)
+    #x_id = tf.cast(tfp.stats.find_bins(a_x, log_x, name='find_bins_logx'), dtype=int64)
+    x_id = tf.ones_like(a_x, dtype=int64)*(tf.size(log_x, out_type=int64)
+                                           - tf.constant(2, dtype=int64))
     Q2_id = tf.cast(tfp.stats.find_bins(a_q2, log_q2, name='find_bins_logQ2'), dtype=int64)
 
     corn_x_id = tf.stack([x_id-1, x_id, x_id+1],0)
@@ -192,9 +191,10 @@ def u_four_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
         actual_values: tf.tensor
             values of the grid
     """
-    #print('retrace u4 nk')
     x_id = tf.cast(tfp.stats.find_bins(a_x, log_x, name='find_bins_logx'), dtype=int64)
-    Q2_id = tf.cast(tfp.stats.find_bins(a_q2, log_q2, name='find_bins_logQ2'), dtype=int64)
+    #Q2_id = tf.cast(tfp.stats.find_bins(a_q2, log_q2, name='find_bins_logQ2'), dtype=int64)
+    Q2_id = tf.ones_like(a_q2, dtype=int64)*(tf.size(log_q2, out_type=int64)
+                                           - tf.constant(2, dtype=int64))
 
     corn_x_id = tf.stack([x_id-1, x_id, x_id+1, x_id+2],0)
     corn_Q2_id = tf.stack([Q2_id-1, Q2_id, Q2_id+1],0)
@@ -235,9 +235,9 @@ def d_four_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
         actual_values: tf.tensor
             values of the grid
     """
-    #print('retrace d4 nk')
     x_id = tf.cast(tfp.stats.find_bins(a_x, log_x, name='find_bins_logx'), dtype=int64)
-    Q2_id = tf.cast(tfp.stats.find_bins(a_q2, log_q2, name='find_bins_logQ2'), dtype=int64)
+    #Q2_id = tf.cast(tfp.stats.find_bins(a_q2, log_q2, name='find_bins_logQ2'), dtype=int64)
+    Q2_id = tf.zeros_like(a_q2,dtype=int64)
 
     corn_x_id = tf.stack([x_id-1,x_id, x_id+1, x_id+2],0)
     corn_Q2_id = tf.stack([Q2_id, Q2_id+1, Q2_id+2],0)       
@@ -279,10 +279,11 @@ def c0_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
         actual_values: tf.tensor
             values of the grid
     """
-    #print('retrace c0 nk')
-    x_id = tf.cast(tfp.stats.find_bins(a_x, log_x, name='find_bins_logx'), dtype=int64)
-    Q2_id = tf.cast(tfp.stats.find_bins(a_q2, log_q2, name='find_bins_logQ2'), dtype=int64)
-
+    #x_id = tf.cast(tfp.stats.find_bins(a_x, log_x, name='find_bins_logx'), dtype=int64)
+    #Q2_id = tf.cast(tfp.stats.find_bins(a_q2, log_q2, name='find_bins_logQ2'), dtype=int64)
+    x_id = tf.zeros_like(a_x, dtype=int64)
+    Q2_id = tf.zeros_like(a_q2, dtype=int64)
+    
     #print('x_id', x_id)
     #print('Q2_id', Q2_id)
 
@@ -328,9 +329,11 @@ def c1_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
         actual_values: tf.tensor
             values of the grid
     """
-    #print('retrace c1 nk')
-    x_id = tf.cast(tfp.stats.find_bins(a_x, log_x, name='find_bins_logx'), dtype=int64)
-    Q2_id = tf.cast(tfp.stats.find_bins(a_q2, log_q2, name='find_bins_logQ2'), dtype=int64)
+    #x_id = tf.cast(tfp.stats.find_bins(a_x, log_x, name='find_bins_logx'), dtype=int64)
+    #Q2_id = tf.cast(tfp.stats.find_bins(a_q2, log_q2, name='find_bins_logQ2'), dtype=int64)
+    x_id = tf.ones_like(a_x, dtype=int64)*(tf.size(log_x, out_type=int64)
+                                           - tf.constant(2, dtype=int64))
+    Q2_id = tf.zeros_like(a_q2, dtype=int64)
 
     corn_x_id = tf.stack([x_id-1, x_id, x_id+1],0)
     corn_Q2_id = tf.stack([Q2_id, Q2_id+1, Q2_id+2],0)       
@@ -371,9 +374,13 @@ def c2_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
         actual_values: tf.tensor
             values of the grid
     """
-    #print('retrace c2 nk')
-    x_id = tf.cast(tfp.stats.find_bins(a_x, log_x, name='find_bins_logx'), dtype=int64)
-    Q2_id = tf.cast(tfp.stats.find_bins(a_q2, log_q2, name='find_bins_logQ2'), dtype=int64)
+    #x_id = tf.cast(tfp.stats.find_bins(a_x, log_x, name='find_bins_logx'), dtype=int64)
+    #Q2_id = tf.cast(tfp.stats.find_bins(a_q2, log_q2, name='find_bins_logQ2'), dtype=int64)
+    x_id = tf.ones_like(a_x, dtype=int64)*(tf.size(log_x, out_type=int64)
+                                           - tf.constant(2, dtype=int64))
+    Q2_id = tf.ones_like(a_q2, dtype=int64)*(tf.size(log_q2, out_type=int64)
+                                           - tf.constant(2, dtype=int64))
+    
 
     corn_x_id = tf.stack([x_id-1, x_id, x_id+1],0)
     corn_Q2_id = tf.stack([Q2_id-1, Q2_id, Q2_id+1],0)       
@@ -414,9 +421,12 @@ def c3_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
         actual_values: tf.tensor
             values of the grid
     """
-    #print('retrace c3 nk')
-    x_id = tf.cast(tfp.stats.find_bins(a_x, log_x, name='find_bins_logx'), dtype=int64)
-    Q2_id = tf.cast(tfp.stats.find_bins(a_q2, log_q2, name='find_bins_logQ2'), dtype=int64)
+    #x_id = tf.cast(tfp.stats.find_bins(a_x, log_x, name='find_bins_logx'), dtype=int64)
+    #Q2_id = tf.cast(tfp.stats.find_bins(a_q2, log_q2, name='find_bins_logQ2'), dtype=int64)
+    x_id = tf.zeros_like(a_x, dtype=int64)
+    Q2_id = tf.ones_like(a_q2, dtype=int64)*(tf.size(log_q2, out_type=int64)
+                                           - tf.constant(2, dtype=int64))
+
 
     corn_x_id = tf.stack([x_id, x_id+1, x_id+2],0)
     corn_Q2_id = tf.stack([Q2_id-1, Q2_id, Q2_id+1],0)       
@@ -457,7 +467,6 @@ def lowx_extra_knots(a_x, a_q2, log_x, log_q2, actual_values):
         actual_values: tf.tensor
             values of the grid
     """
-    #print('retrace lowx nk')
     #knot indeces of the [0,0] point in the square
     x_id = tf.constant([0,1], dtype=int64)
     Q2_id = tf.cast(tfp.stats.find_bins(a_q2, log_q2), dtype=int64)
