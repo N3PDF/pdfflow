@@ -67,7 +67,6 @@ class mkPDF:
 
         size = tf.shape(a_x)
         shape = tf.cast(tf.concat([size, tf.shape(u)], 0), int64)
-        empty_fn = lambda: tf.constant(0.0, dtype=float64)
 
         count = 0
         #l_idx = []

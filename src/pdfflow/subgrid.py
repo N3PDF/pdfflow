@@ -12,6 +12,8 @@ def act_on_empty(input_tensor, fn_true, fn_false):
     idx0 = tf.shape(input_tensor)[0]
     return tf.cond(idx0 == 0, fn_true, fn_false)
 
+empty_fn = lambda: tf.constant(0.0, dtype=float64)
+
 class Subgrid:
     """
     Wrapper class around subgrdis.
@@ -264,7 +266,6 @@ def interpolate(u, a_x, a_q2,
     actual_values = tf.gather(values, u, axis=-1)
     size = tf.shape(a_x)
     shape = tf.cast(tf.concat([size, tf.shape(u)], 0), int64)
-    empty_fn = lambda: tf.constant(0.0, dtype=float64)
 
     l_x, l_q2, l_index = select_left_stripe(a_x, a_q2, log_x, log_q2)
     r_x, r_q2, r_index = select_right_stripe(a_x, a_q2, log_x, log_q2)
@@ -437,7 +438,6 @@ def last_interpolation(u, a_x, a_q2,
             query of values of log(q2)
     """
     #print('last inter')
-    empty_fn = lambda: tf.constant(0.0, dtype=float64)
     size = tf.shape(a_x)
     shape = tf.cast(tf.concat([size, tf.shape(u)], 0), int64)
     actual_values = tf.gather(values, u, axis=-1)

@@ -102,8 +102,11 @@ def main(pdfname, pid):
 
     plt.subplot(2, 2, 4)
     for ix in x:
+        s_time = time.time()
         vl = np.array([l_pdf.xfxQ2(pid, ix, iq2) for iq2 in q2])
+        l_time = time.time()
         vp = p.xfxQ2(pid, [ix]*len(q2), q2)
+        p_time = time.time()
         
         plt.plot(q2**0.5, np.abs(vp-vl), label='$x=%.2e$' % ix)
     plt.xscale('log')
@@ -116,6 +119,11 @@ def main(pdfname, pid):
 
     plt.savefig('diff_%s_flav%d.png' % (pdfname.replace('/','-'), pid), bbox_inches='tight')
 
+    print("\nDry run time comparison:")
+    #print("\tlhapdf: %f"%(l_time - s_time))
+    print("{:>10}:{:>15.8f}".format("lhapdf", l_time - s_time))
+    print("{:>10}:{:>15.8f}".format("pdfflow", p_time - l_time))
+
 
 if __name__ == "__main__":
     args = vars(parser.parse_args())
@@ -123,5 +131,5 @@ if __name__ == "__main__":
     	args['pid'] = 21
     start=time.time()
     main(**args)
-    print(time.time()-start)
+    print("Total time: ", time.time()-start)
     

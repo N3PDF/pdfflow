@@ -1,5 +1,6 @@
 import tensorflow as tf
 from pdfflow.subgrid import act_on_empty
+from pdfflow.subgrid import empty_fn
 from pdfflow.subgrid import interpolate
 from pdfflow.subgrid import lowx_extrapolation
 from pdfflow.subgrid import lowq2_extrapolation
@@ -28,7 +29,6 @@ def inner_subgrid(u, a_x, a_q2,
                   values, shape):
     """Inner subgrid interpolation"""
     #print('retrace inner subgrid')
-    empty_fn = lambda: tf.constant(0.0, dtype=float64)
 
     valid = tf.math.logical_and(a_x >= log_xmin, a_x <= log_xmax)
     stripe = tf.math.logical_and(a_q2 >= log_q2min, a_q2 < log_q2max)
@@ -80,7 +80,6 @@ def first_subgrid(u, a_x, a_q2,
     """First subgrid interpolation"""
     #print('retrace first subgrid')
 
-    empty_fn = lambda: tf.constant(0.0, dtype=float64)
     # --------------------------------------------------------------------
     # exploit inner subgrid
     stripe = tf.math.logical_and(a_q2 >= log_q2min, a_q2 < log_q2max)
@@ -155,7 +154,6 @@ def last_subgrid(u, a_x, a_q2,
     """Last subgrid interpolation"""
     #print('retrace last subgrid')
 
-    empty_fn = lambda: tf.constant(0.0, dtype=float64)
     # --------------------------------------------------------------------
     # exploit inner subgrid
     stripe = tf.math.logical_and(a_q2 >= log_q2min, a_q2 < log_q2max)
