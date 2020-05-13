@@ -25,7 +25,6 @@ jobs:
         python -m pip install --upgrade pip
         pip install .
         conda install -y lhapdf -c https://packages.nnpdf.science/conda
-        conda install -y tensorflow-probability 
 # This will wait until the merge happens
 #     - name: Lint with pylint
 #       run: |
