@@ -2,7 +2,7 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 float64 = tf.float64
 int64 = tf.int64
-
+'''
 #@tf.function
 def two_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
     """
@@ -41,7 +41,7 @@ def two_neighbour_knots(a_x, a_q2, log_x, log_q2, actual_values):
     A = tf.gather(actual_values, A_id)
     
     return corn_x, corn_Q2, A
-
+'''
 @tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=float64),
                               tf.TensorSpec(shape=[None], dtype=float64),
                               tf.TensorSpec(shape=[None], dtype=float64),

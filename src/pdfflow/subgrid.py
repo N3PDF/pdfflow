@@ -69,8 +69,7 @@ def ledge_interpolation(a_x, a_q2, log_x, log_q2, actual_values):
     #print('ledge inter')
     a2, a3, a4 = l_four_neighbour_knots(a_x, a_q2, log_x, log_q2,
                                         actual_values)
-    result = left_bicubic_interpolation(a_x, a_q2, a2, a3, a4)
-    return result
+    return left_bicubic_interpolation(a_x, a_q2, a2, a3, a4)
 
 @tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=float64),
                               tf.TensorSpec(shape=[None], dtype=float64),
@@ -91,8 +90,7 @@ def redge_interpolation(a_x, a_q2, log_x, log_q2, actual_values):
     #print('redge inter')
     a2, a3, a4 = r_four_neighbour_knots(a_x, a_q2, log_x, log_q2,
                                         actual_values)
-    result = right_bicubic_interpolation(a_x, a_q2, a2, a3, a4)
-    return result
+    return right_bicubic_interpolation(a_x, a_q2, a2, a3, a4)
 
 @tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=float64),
                               tf.TensorSpec(shape=[None], dtype=float64),
@@ -114,8 +112,7 @@ def uedge_interpolation(a_x, a_q2, log_x, log_q2, actual_values):
     #print('uedge inter')
     a2, a3, a4 = u_four_neighbour_knots(a_x, a_q2, log_x, log_q2,
                                         actual_values)
-    result = upper_bicubic_interpolation(a_x, a_q2, a2, a3, a4)
-    return result
+    return upper_bicubic_interpolation(a_x, a_q2, a2, a3, a4)
 
 @tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=float64),
                               tf.TensorSpec(shape=[None], dtype=float64),
@@ -137,8 +134,7 @@ def dedge_interpolation(a_x, a_q2, log_x, log_q2, actual_values):
     #print('dedge inter')
     a2, a3, a4 = d_four_neighbour_knots(a_x, a_q2, log_x, log_q2,
                                         actual_values)
-    result = lower_bicubic_interpolation(a_x, a_q2, a2, a3, a4)
-    return result
+    return lower_bicubic_interpolation(a_x, a_q2, a2, a3, a4)
 
 @tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=float64),
                               tf.TensorSpec(shape=[None], dtype=float64),
@@ -157,8 +153,7 @@ def c0_interpolation(a_x, a_q2, log_x, log_q2, actual_values):
     #print('c0 inter')
     a2, a3, a4 = c0_neighbour_knots(a_x, a_q2, log_x, log_q2,
                                     actual_values)
-    result = c0_bicubic_interpolation(a_x, a_q2, a2, a3, a4)
-    return result
+    return c0_bicubic_interpolation(a_x, a_q2, a2, a3, a4)
 
 @tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=float64),
                               tf.TensorSpec(shape=[None], dtype=float64),
@@ -177,8 +172,7 @@ def c1_interpolation(a_x, a_q2, log_x, log_q2, actual_values):
     #print('c1 inter')
     a2, a3, a4 = c1_neighbour_knots(a_x, a_q2, log_x, log_q2,
                                     actual_values)
-    result = c1_bicubic_interpolation(a_x, a_q2, a2, a3, a4)
-    return result
+    return c1_bicubic_interpolation(a_x, a_q2, a2, a3, a4)
 
 @tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=float64),
                               tf.TensorSpec(shape=[None], dtype=float64),
@@ -197,8 +191,7 @@ def c2_interpolation(a_x, a_q2, log_x, log_q2, actual_values):
     #print('c2 inter')
     a2, a3, a4 = c2_neighbour_knots(a_x, a_q2, log_x, log_q2,
                                     actual_values)
-    result = c2_bicubic_interpolation(a_x, a_q2, a2, a3, a4)
-    return result
+    return c2_bicubic_interpolation(a_x, a_q2, a2, a3, a4)
 
 @tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=float64),
                               tf.TensorSpec(shape=[None], dtype=float64),
@@ -217,8 +210,7 @@ def c3_interpolation(a_x, a_q2, log_x, log_q2, actual_values):
     #print('c3 inter')
     a2, a3, a4 = c3_neighbour_knots(a_x, a_q2, log_x, log_q2,
                                     actual_values)
-    result = c3_bicubic_interpolation(a_x, a_q2, a2, a3, a4)
-    return result
+    return c3_bicubic_interpolation(a_x, a_q2, a2, a3, a4)
 
 @tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=float64),
                               tf.TensorSpec(shape=[None], dtype=float64),
@@ -237,8 +229,7 @@ def default_interpolation(a_x, a_q2, log_x, log_q2, actual_values):
     #print('default inter')
     a2, a3, a4 = four_neighbour_knots(a_x, a_q2, log_x, log_q2,
                                         actual_values)
-    result = default_bicubic_interpolation(a_x, a_q2, a2, a3, a4)
-    return result
+    return default_bicubic_interpolation(a_x, a_q2, a2, a3, a4)
 
 @tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=int64),
                               tf.TensorSpec(shape=[None], dtype=float64),
@@ -255,6 +246,7 @@ def interpolate(u, a_x, a_q2,
                 log_q2, log_q2min, log_q2max,
                 values):
     """ 
+    Basic Interpolation inside the subgrid
     Parameters
     ----------
         a_x: tf.tensor
@@ -407,13 +399,9 @@ def lowq2_extrapolation(u, a_x, a_q2,
                     tf.constant(1, dtype=float64))
     corn_q2 = tf.expand_dims(corn_q2,1)
     a_q2 = tf.expand_dims(a_q2,1)
-    #print('anom',anom.shape)
-    #print('a_q2',a_q2.shape)
-    #print('corn_q2',corn_q2.shape)
-    res = fq2Min * tf.math.pow(a_q2 / corn_q2,
-                               anom * a_q2 / corn_q2 + 1.0 - a_q2 / corn_q2)
-    #print('res',res.shape)
-    return res
+
+    return fq2Min * tf.math.pow(a_q2 / corn_q2,
+                                anom * a_q2 / corn_q2 + 1.0 - a_q2 / corn_q2)
 
 @tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=int64),
                               tf.TensorSpec(shape=[None], dtype=float64),
@@ -634,7 +622,5 @@ def lowx_lowq2_extrapolation(u, a_x, a_q2,
                                (fq2Min1 - fq2Min) / fq2Min / 0.01),
                     tf.constant(1, dtype=float64))
 
-    res = fq2Min * tf.math.pow(a_q2 / corn_q2,
+    return fq2Min * tf.math.pow(a_q2 / corn_q2,
                                 anom * a_q2 / corn_q2 + 1.0 - a_q2 / corn_q2)
-
-    return res

@@ -79,7 +79,6 @@ def first_subgrid(u, a_x, a_q2,
                   values, shape):
     """First subgrid interpolation"""
     #print('retrace first subgrid')
-
     # --------------------------------------------------------------------
     # exploit inner subgrid
     stripe = tf.math.logical_and(a_q2 >= log_q2min, a_q2 < log_q2max)
@@ -117,7 +116,6 @@ def first_subgrid(u, a_x, a_q2,
         return tf.scatter_nd(f_idx, ff_f, shape)
 
     res += act_on_empty(f_idx, empty_fn, gen_fun)
-
     # --------------------------------------------------------------------
     # low x low q2
     stripe = tf.math.logical_and(a_x < log_xmin, a_q2 < log_q2min)
@@ -132,9 +130,7 @@ def first_subgrid(u, a_x, a_q2,
                                         values)
         return tf.scatter_nd(f_idx, ff_f, shape)
 
-    res += act_on_empty(f_idx, empty_fn, gen_fun)
-
-    return res
+    return res + act_on_empty(f_idx, empty_fn, gen_fun)
 
 @tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=int64),
                  tf.TensorSpec(shape=[None], dtype=float64),

@@ -11,8 +11,8 @@ float64 = tf.float64
 def linear_interpolation(x, xl, xh, yl, yh):
     #print('lin interp')
     x = tf.expand_dims(x,1)
-    xl = tf.expand_dims(xl,0)
-    xh = tf.expand_dims(xh,0)
+    #xl = tf.expand_dims(xl,0)
+    #xh = tf.expand_dims(xh,0)
     return yl + (x - xl) / (xh - xl) * (yh - yl)
 
 @tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=float64),
@@ -51,11 +51,12 @@ def cubic_interpolation(T, VL, VDL, VH, VDH):
                                             dtype=float64)])
 def df_dx_func(corn_x, A):
     #print('df_dx func')
-    #just two kind of derivatives are useful in the x direction if we are interpolating in the [-1,2]x[-1,2] square:
+    #just two kind of derivatives are useful in the x direction
+    #if we are interpolating in the [-1,2]x[-1,2] square:
     #four derivatives in x = 0 for all Qs (:,0,:)
     #four derivatives in x = 1 for all Qs (:,1,:)
     #derivatives are returned in a tensor with shape (#draws,2,4)
-
+    
     lddx = (A[1] - A[0]) / tf.expand_dims(tf.expand_dims(corn_x[1] - corn_x[0],0),-1)
     rddx = (A[2] - A[1]) / tf.expand_dims(tf.expand_dims(corn_x[2] - corn_x[1],0),-1)
     left = (lddx+rddx)/2
@@ -88,7 +89,7 @@ def r_df_dx_func(corn_x, A):
 
     right = (A[2] - A[1]) / tf.expand_dims(tf.expand_dims(corn_x[2] - corn_x[1],0),-1)
     return tf.stack([left, right], 0)
-
+"""
 @tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=float64),
                               tf.TensorSpec(shape=[None], dtype=float64),
                               tf.TensorSpec(shape=[4,None], dtype=float64),
@@ -104,6 +105,7 @@ def bilinear_interpolation(a_x, a_Q2, corn_x, corn_Q2, A):
     f_ql = linear_interpolation(a_x, corn_x[0], corn_x[1], A[0,0], A[1,0])
     f_qh = linear_interpolation(a_x, corn_x[0], corn_x[1], A[0,1], A[1,1])
     return linear_interpolation(a_Q2, corn_Q2[0], corn_Q2[1], f_ql, f_qh)
+"""
 
 @tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=float64),
                               tf.TensorSpec(shape=[None], dtype=float64),
