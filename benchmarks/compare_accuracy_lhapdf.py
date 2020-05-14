@@ -52,7 +52,7 @@ def main(pdfname, pid):
 
     plt.figure(figsize=(16.0, 12.0))
     plt.subplot(2, 2, 1)
-    x = np.logspace(-11,0,10000, dtype=float)
+    x = np.logspace(-11,0,100000, dtype=float)
     q2 = np.array([0.1,1.65,1.7,4.92,1e2,1e3,1e4,1e5,1e6,2e6], dtype=float)**2
     for iq2 in q2:
         vl = np.array([l_pdf.xfxQ2(pid, ix, iq2) for ix in x])
@@ -84,7 +84,7 @@ def main(pdfname, pid):
     plt.legend()
 
     x = np.array([1e-10,1e-9,1.1e-9,5e-7,1e-6,1e-4,1e-2,0.5,0.99], dtype=float)
-    q2 = np.logspace(-3, 7, 10000, dtype=float)**2
+    q2 = np.logspace(-3, 7, 100000, dtype=float)**2
     plt.subplot(2, 2, 2)
     for ix in x:
         vl = np.array([l_pdf.xfxQ2(pid, ix, iq2) for iq2 in q2])
