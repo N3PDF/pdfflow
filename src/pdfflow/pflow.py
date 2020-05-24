@@ -65,7 +65,6 @@ class mkPDF:
         size = tf.shape(a_x)
         shape = tf.cast(tf.concat([size, tf.shape(u)], 0), int64)
 
-        #count = 0
         res = tf.zeros(shape, dtype=float64)
         
         res += first_subgrid(u, a_x, a_q2,
