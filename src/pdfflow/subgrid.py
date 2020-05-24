@@ -97,7 +97,6 @@ def interpolate(u, a_x, a_q2,
     return default_bicubic_interpolation(a_x, a_q2,
                                         a0, a1, a2, a3, a4,
                                         s_x, s_q2)
-
 @tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=int64),
                               tf.TensorSpec(shape=[None], dtype=float64),
                               tf.TensorSpec(shape=[None], dtype=float64),
@@ -128,11 +127,20 @@ def lowx_extrapolation(u, a_x, a_q2,
             query of values of log(q2)
     """
     #print('lowx extra')
-    x_id = tf.constant([0, 1], dtype=int64)
-    corn_x = tf.gather(log_x, x_id)
+    #x_id = tf.constant([0, 1], dtype=int64)
+    #corn_x = tf.gather(log_x, x_id)
+    corn_x = log_x[:2]
+    s = tf.size(a_x, out_type=int64)
 
     x, q2 = tf.meshgrid(corn_x, a_q2, indexing="ij")
 
+    y = interpolate(u, tf.reshape(x, [-1]), tf.reshape(q2, [-1]),
+                     log_x, log_xmin, log_xmax, padded_x, s_x,
+                     log_q2, log_q2min, log_q2max, padded_q2, s_q2,
+                     values, padded_grid)
+
+
+    '''
     yl = interpolate(u, x[0], a_q2,
                      log_x, log_xmin, log_xmax, padded_x, s_x,
                      log_q2, log_q2min, log_q2max, padded_q2, s_q2,
@@ -141,9 +149,9 @@ def lowx_extrapolation(u, a_x, a_q2,
                      log_x, log_xmin, log_xmax, padded_x, s_x,
                      log_q2, log_q2min, log_q2max, padded_q2, s_q2,
                      values, padded_grid)
+    '''
 
-    return extrapolate_linear(a_x, corn_x[0], corn_x[1], yl, yh)
-
+    return extrapolate_linear(a_x, corn_x[0], corn_x[1], y[:s], y[s:])
 
 @tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=int64),
                               tf.TensorSpec(shape=[None], dtype=float64),
@@ -165,11 +173,19 @@ def lowq2_extrapolation(u, a_x, a_q2,
                         log_q2, log_q2min, log_q2max, padded_q2, s_q2,
                         values, padded_grid):
     #print('lowq2 extra')
-    q2_id = tf.constant([0], dtype=int64)
-    corn_q2 = tf.gather(log_q2, q2_id)
+    #q2_id = tf.constant([0], dtype=int64)
+    #corn_q2 = tf.gather(log_q2, q2_id)
+    corn_q2 = tf.stack([log_q2[0], 1.01*log_q2[0]],0)
 
     x, q2 = tf.meshgrid(a_x, corn_q2)
 
+    s = tf.size(a_x, out_type=int64)
+
+    fq2Min = interpolate(u, tf.reshape(x,[-1]), tf.reshape(q2, [-1]),
+                         log_x, log_xmin, log_xmax, padded_x, s_x,
+                         log_q2, log_q2min, log_q2max, padded_q2, s_q2,
+                         values, padded_grid)
+    '''
     fq2Min = interpolate(u, x[0], q2[0],
                          log_x, log_xmin, log_xmax, padded_x, s_x,
                          log_q2, log_q2min, log_q2max, padded_q2, s_q2,
@@ -178,9 +194,12 @@ def lowq2_extrapolation(u, a_x, a_q2,
                           log_x, log_xmin, log_xmax, padded_x, s_x,
                           log_q2, log_q2min, log_q2max, padded_q2, s_q2,
                           values, padded_grid)
+    '''
+    fq2Min1 = fq2Min[s:]
+    fq2Min = fq2Min[:s]
 
     a_q2 = tf.math.exp(a_q2)
-    corn_q2 = tf.math.exp(corn_q2)
+    corn_q2 = tf.math.exp(corn_q2[:1])
 
     mask = tf.math.abs(fq2Min) >= 1e-5
     anom = tf.where(mask,
@@ -192,7 +211,6 @@ def lowq2_extrapolation(u, a_x, a_q2,
 
     return fq2Min * tf.math.pow(a_q2 / corn_q2,
                                 anom * a_q2 / corn_q2 + 1.0 - a_q2 / corn_q2)
-
 @tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=int64),
                               tf.TensorSpec(shape=[None], dtype=float64),
                               tf.TensorSpec(shape=[None], dtype=float64),
@@ -223,24 +241,29 @@ def highq2_extrapolation(u, a_x, a_q2,
             query of values of log(q2)
     """
     #print('highq2 extr')
-    s = tf.size(log_q2, out_type=int64)
-    q2_id = tf.stack([s - 1, s - 2])
+    #s = tf.size(log_q2, out_type=int64)
+    #q2_id = tf.stack([s - 1, s - 2])
 
-    corn_q2 = tf.gather(log_q2, q2_id)
+    #corn_q2 = tf.gather(log_q2, q2_id)
+    corn_q2 = log_q2[:-3:-1]
 
     x, q2 = tf.meshgrid(a_x, corn_q2)
+    s = tf.size(a_x,out_type=int64)
 
-    yl = interpolate(u, a_x, q2[0],
+    #yl = interpolate(u, a_x, q2[0],
+    #                 log_x, log_xmin, log_xmax, padded_x, s_x,
+    #                 log_q2, log_q2min, log_q2max, padded_q2, s_q2,
+    #                 values, padded_grid)
+    #yh = interpolate(u, a_x, q2[1],
+    #                 log_x, log_xmin, log_xmax, padded_x, s_x,
+    #                 log_q2, log_q2min, log_q2max, padded_q2, s_q2,
+    #                values, padded_grid)
+    y = interpolate(u, tf.reshape(x, [-1]), tf.reshape(q2, [-1]),
                      log_x, log_xmin, log_xmax, padded_x, s_x,
                      log_q2, log_q2min, log_q2max, padded_q2, s_q2,
                      values, padded_grid)
-    yh = interpolate(u, a_x, q2[1],
-                     log_x, log_xmin, log_xmax, padded_x, s_x,
-                     log_q2, log_q2min, log_q2max, padded_q2, s_q2,
-                     values, padded_grid)
 
-    return extrapolate_linear(a_q2, corn_q2[0], corn_q2[1], yl, yh)
-
+    return extrapolate_linear(a_q2, corn_q2[0], corn_q2[1], y[:s], y[s:])
 
 @tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=int64),
                               tf.TensorSpec(shape=[None], dtype=float64),
@@ -272,25 +295,36 @@ def lowx_highq2_extrapolation(u, a_x, a_q2,
             query of values of log(q2)
     """
     #print('lowx highq2 extr')
-    x_id = tf.constant([0, 1], dtype=int64)
-    s = tf.size(log_q2, out_type=int64)
-    q2_id = tf.stack([s - 1, s - 2])
+    #x_id = tf.constant([0, 1], dtype=int64)
+    #s = tf.size(log_q2, out_type=int64)
+    #q2_id = tf.stack([s - 1, s - 2])
 
-    corn_x = tf.gather(log_x, x_id)
-    corn_q2 = tf.gather(log_q2, q2_id)
+    #corn_x = tf.gather(log_x, x_id)
+    #corn_q2 = tf.gather(log_q2, q2_id)
 
-    x, q2 = tf.meshgrid(corn_x, corn_q2, indexing="ij")
+    corn_x = log_x[:2]
+    corn_q2 = log_q2[:-3:-1]
 
-    f0 = interpolate(u, x[:,0], q2[:,0],
+    #x, q2 = tf.meshgrid(corn_x, corn_q2, indexing="ij")
+
+    #f0 = interpolate(u, x[:,0], q2[:,0],
+    #                log_x, log_xmin, log_xmax, padded_x, s_x,
+    #                log_q2, log_q2min, log_q2max, padded_q2, s_q2,
+    #                values, padded_grid)
+    #f1 = interpolate(u, x[:,1], q2[:,1],
+    #                log_x, log_xmin, log_xmax, padded_x, s_x,
+    #                log_q2, log_q2min, log_q2max, padded_q2, s_q2,
+    #                values, padded_grid)
+
+    #f = tf.concat([f0,f1],0)
+
+    x, q2 = tf.meshgrid(corn_x, corn_q2)
+
+    f = interpolate(u, tf.reshape(x, [-1]), tf.reshape(q2, [-1]),
                     log_x, log_xmin, log_xmax, padded_x, s_x,
                     log_q2, log_q2min, log_q2max, padded_q2, s_q2,
                     values, padded_grid)
-    f1 = interpolate(u, x[:,1], q2[:,1],
-                    log_x, log_xmin, log_xmax, padded_x, s_x,
-                    log_q2, log_q2min, log_q2max, padded_q2, s_q2,
-                    values, padded_grid)
 
-    f = tf.concat([f0,f1],0)
 
     fxMin = extrapolate_linear(a_q2, corn_q2[0], corn_q2[1], f[:1], f[2:3])
 
@@ -328,11 +362,14 @@ def lowx_lowq2_extrapolation(u, a_x, a_q2,
             query of values of log(q2)
     """
     #print('lowx lowq2 extr')
-    x_id = tf.constant([0, 1], dtype=int64)
-    q2_id = tf.stack([0, 0])
+    #x_id = tf.constant([0, 1], dtype=int64)
+    #q2_id = tf.stack([0, 0])
 
-    corn_x = tf.gather(log_x, x_id)
-    corn_q2 = tf.gather(log_q2, q2_id)
+    #corn_x = tf.gather(log_x, x_id)
+    #corn_q2 = tf.gather(log_q2, q2_id)
+
+    corn_x = log_x[:2]
+    corn_q2 = tf.stack([log_q2[0],log_q2[0]],0)
 
 
 

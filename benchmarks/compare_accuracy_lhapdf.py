@@ -50,6 +50,13 @@ def main(pdfname, pid):
     p = pdf.mkPDF(pdfname, DIRNAME)
     l_pdf = lhapdf.mkPDF(pdfname)
 
+    x = [0.5]
+    q2 = [100.]
+    s = time.time()
+    p.xfxQ2(21, x,q2)
+    print("\nPDFflow\n\tBuilding graph time: %f\n"%(time.time()-s))
+
+
     plt.figure(figsize=(16.0, 12.0))
     plt.subplot(2, 2, 1)
     x = np.logspace(-11,0,100000, dtype=float)
