@@ -53,7 +53,7 @@ class mkPDF:
                       all the subgrids ---> algorithm will break !")
 
         self.subgrids = list(map(Subgrid, grids))
-        self.flavor_scheme = tf.cast(self.subgrids[0].flav, dtype=tf.int64)
+        self.flavor_scheme = tf.cast(self.subgrids[0].flav, dtype=int64)
         self.subgrids[-1].flag = tf.constant(-1, dtype=int64)
         self.subgrids[0].flag = tf.constant(0, dtype=int64)
 
@@ -62,8 +62,8 @@ class mkPDF:
         a_x = tf.cast(tf.math.log(aa_x, name="logx"), float64)
         a_q2 = tf.cast(tf.math.log(aa_q2, name="logq2"), float64)
 
-        size = tf.shape(a_x)
-        shape = tf.cast(tf.concat([size, tf.shape(u)], 0), int64)
+        size = tf.size(a_x, out_type=int64)
+        shape = tf.concat([size, tf.size(u, out_type=int64)], 0)
 
         res = tf.zeros(shape, dtype=float64)
         

@@ -42,7 +42,7 @@ def four_neighbour_knots(a_x, a_q2, padded_x, padded_q2, actual_values):
     corn_q2 = tf.gather(padded_q2, corn_q2_id)
 
 
-    s = tf.size(padded_q2, out_type=tf.int64)
+    s = tf.size(padded_q2, out_type=int64)
     x = x_id * s
 
     a = tf.stack([x+q2_id-s-1, x+q2_id-s, x+q2_id-s+1, x+q2_id-s+2])
