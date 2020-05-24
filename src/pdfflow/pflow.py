@@ -69,40 +69,33 @@ class mkPDF:
         res = tf.zeros(shape, dtype=float64)
         
         res += first_subgrid(u, a_x, a_q2,
-                             self.subgrids[0].log_x,
                              self.subgrids[0].log_xmin,
                              self.subgrids[0].log_xmax,
                              self.subgrids[0].padded_x,
                              self.subgrids[0].s_x,
-                             self.subgrids[0].log_q2,
                              self.subgrids[0].log_q2min,
                              self.subgrids[0].log_q2max,
                              self.subgrids[0].padded_q2,
                              self.subgrids[0].s_q2,
-                             self.subgrids[0].grid_values,
                              self.subgrids[0].padded_grid,
                              shape)
         
         for s in self.subgrids[1:-1]:
             res += inner_subgrid(u, a_x, a_q2,
-                                 s.log_x, s.log_xmin, s.log_xmax, s.padded_x,
-                                 s.log_q2, s.log_q2min, s.log_q2max, s.padded_q2,
-                                 s.grid_values,
+                                 s.log_xmin, s.log_xmax, s.padded_x,
+                                 s.log_q2min, s.log_q2max, s.padded_q2,
                                  s.padded_grid,
                                  shape)
 
         res += last_subgrid(u, a_x, a_q2,
-                            self.subgrids[-1].log_x,
                             self.subgrids[-1].log_xmin,
                             self.subgrids[-1].log_xmax,
                             self.subgrids[-1].padded_x,
                             self.subgrids[-1].s_x,
-                            self.subgrids[-1].log_q2,
                             self.subgrids[-1].log_q2min,
                             self.subgrids[-1].log_q2max,
                             self.subgrids[-1].padded_q2,
                             self.subgrids[-1].s_q2,
-                            self.subgrids[-1].grid_values,
                             self.subgrids[-1].padded_grid,
                             shape)
         

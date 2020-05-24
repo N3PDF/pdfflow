@@ -10,10 +10,8 @@ from pdfflow.interpolations import int64
                               tf.TensorSpec(shape=[None], dtype=float64),
                               tf.TensorSpec(shape=[None], dtype=float64),
                               tf.TensorSpec(shape=[None], dtype=float64),
-                              tf.TensorSpec(shape=[None], dtype=float64),
-                              tf.TensorSpec(shape=[None], dtype=float64),
                               tf.TensorSpec(shape=[None,None], dtype=float64)])
-def four_neighbour_knots(a_x, a_q2, log_x, log_q2, padded_x, padded_q2, actual_values):
+def four_neighbour_knots(a_x, a_q2, padded_x, padded_q2, actual_values):
     """
     Parameters
     ----------
@@ -29,11 +27,11 @@ def four_neighbour_knots(a_x, a_q2, log_x, log_q2, padded_x, padded_q2, actual_v
             values of the grid
     """
     #print('nk')
-    x_id = tf.cast(tfp.stats.find_bins(a_x, log_x,
+    x_id = tf.cast(tfp.stats.find_bins(a_x, padded_x[1:-1],
                                        name='find_bins_logx'),
                    dtype=int64) + 1
 
-    q2_id = tf.cast(tfp.stats.find_bins(a_q2, log_q2,
+    q2_id = tf.cast(tfp.stats.find_bins(a_q2, padded_q2[1:-1],
                                         name='find_bins_logq2'),
                     dtype=int64) + 1
 

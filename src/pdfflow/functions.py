@@ -22,23 +22,20 @@ empty_fn = lambda: tf.constant(0.0, dtype=float64)
 @tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=int64),
                  tf.TensorSpec(shape=[None], dtype=float64),
                  tf.TensorSpec(shape=[None], dtype=float64),
-                 tf.TensorSpec(shape=[None], dtype=float64),
                  tf.TensorSpec(shape=[], dtype=float64),
                  tf.TensorSpec(shape=[], dtype=float64),
                  tf.TensorSpec(shape=[None], dtype=float64),
                  tf.TensorSpec(shape=[], dtype=int64),
-                 tf.TensorSpec(shape=[None], dtype=float64),
                  tf.TensorSpec(shape=[], dtype=float64),
                  tf.TensorSpec(shape=[], dtype=float64),
                  tf.TensorSpec(shape=[None], dtype=float64),
                  tf.TensorSpec(shape=[], dtype=int64),
-                 tf.TensorSpec(shape=[None, None], dtype=float64),
                  tf.TensorSpec(shape=[None, None], dtype=float64),
                  tf.TensorSpec(shape=[2], dtype=int64)])
 def inner_subgrid(u, a_x, a_q2,
-                  log_x, log_xmin, log_xmax, padded_x, s_x,
-                  log_q2, log_q2min, log_q2max, padded_q2, s_q2,
-                  values, padded_grid, shape):
+                  log_xmin, log_xmax, padded_x, s_x,
+                  log_q2min, log_q2max, padded_q2, s_q2,
+                  padded_grid, shape):
     """Inner subgrid interpolation"""
     #print('retrace inner subgrid')
 
@@ -54,18 +51,18 @@ def inner_subgrid(u, a_x, a_q2,
         in_x = tf.boolean_mask(a_x, in_stripe)
         in_q2 = tf.boolean_mask(a_q2, in_stripe)
         ff_f = interpolate(u, in_x, in_q2,
-                           log_x, log_xmin, log_xmax, padded_x, s_x,
-                           log_q2, log_q2min, log_q2max, padded_q2, s_q2,
-                           values, padded_grid)
+                           log_xmin, log_xmax, padded_x, s_x,
+                           log_q2min, log_q2max, padded_q2, s_q2,
+                           padded_grid)
         return tf.scatter_nd(in_f_idx, ff_f, shape)
 
     def lowx_fun():
         in_x = tf.boolean_mask(a_x, lowx_stripe)
         in_q2 = tf.boolean_mask(a_q2, lowx_stripe)
         ff_f = lowx_extrapolation(u, in_x, in_q2,
-                                  log_x, log_xmin, log_xmax, padded_x, s_x,
-                                  log_q2, log_q2min, log_q2max,  padded_q2, s_q2,
-                                  values, padded_grid)
+                                  log_xmin, log_xmax, padded_x, s_x,
+                                  log_q2min, log_q2max,  padded_q2, s_q2,
+                                  padded_grid)
         return tf.scatter_nd(lowx_f_idx, ff_f, shape)
 
     inside = act_on_empty(in_f_idx, empty_fn, in_fun)
@@ -77,23 +74,20 @@ def inner_subgrid(u, a_x, a_q2,
 @tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=int64),
                  tf.TensorSpec(shape=[None], dtype=float64),
                  tf.TensorSpec(shape=[None], dtype=float64),
-                 tf.TensorSpec(shape=[None], dtype=float64),
                  tf.TensorSpec(shape=[], dtype=float64),
                  tf.TensorSpec(shape=[], dtype=float64),
                  tf.TensorSpec(shape=[None], dtype=float64),
                  tf.TensorSpec(shape=[], dtype=int64),
-                 tf.TensorSpec(shape=[None], dtype=float64),
                  tf.TensorSpec(shape=[], dtype=float64),
                  tf.TensorSpec(shape=[], dtype=float64),
                  tf.TensorSpec(shape=[None], dtype=float64),
                  tf.TensorSpec(shape=[], dtype=int64),
-                 tf.TensorSpec(shape=[None, None], dtype=float64),
                  tf.TensorSpec(shape=[None, None], dtype=float64),
                  tf.TensorSpec(shape=[2], dtype=int64)])
 def first_subgrid(u, a_x, a_q2,
-                  log_x, log_xmin, log_xmax, padded_x, s_x,
-                  log_q2, log_q2min, log_q2max, padded_q2, s_q2,
-                  values, padded_grid, shape):
+                  log_xmin, log_xmax, padded_x, s_x,
+                  log_q2min, log_q2max, padded_q2, s_q2,
+                  padded_grid, shape):
     """First subgrid interpolation"""
     #print('retrace first subgrid')
     # --------------------------------------------------------------------
@@ -109,9 +103,9 @@ def first_subgrid(u, a_x, a_q2,
         shape_ = tf.cast(tf.concat([size, tf.shape(u)], 0), int64)
 
         ff_f = inner_subgrid(u, in_x, in_q2,
-                             log_x, log_xmin, log_xmax, padded_x, s_x,
-                             log_q2, log_q2min, log_q2max, padded_q2, s_q2,
-                             values, padded_grid, shape_)
+                             log_xmin, log_xmax, padded_x, s_x,
+                             log_q2min, log_q2max, padded_q2, s_q2,
+                             padded_grid, shape_)
         return tf.scatter_nd(f_idx, ff_f, shape)
 
     res = act_on_empty(f_idx, empty_fn, gen_fun)
@@ -127,9 +121,9 @@ def first_subgrid(u, a_x, a_q2,
         in_x = tf.boolean_mask(a_x, stripe)
         in_q2 = tf.boolean_mask(a_q2, stripe)
         ff_f = lowq2_extrapolation(u, in_x, in_q2,
-                                   log_x, log_xmin, log_xmax, padded_x, s_x,
-                                   log_q2, log_q2min, log_q2max, padded_q2, s_q2,
-                                   values, padded_grid)
+                                   log_xmin, log_xmax, padded_x, s_x,
+                                   log_q2min, log_q2max, padded_q2, s_q2,
+                                   padded_grid)
         return tf.scatter_nd(f_idx, ff_f, shape)
 
     res += act_on_empty(f_idx, empty_fn, gen_fun)
@@ -142,9 +136,9 @@ def first_subgrid(u, a_x, a_q2,
         in_x = tf.boolean_mask(a_x, stripe)
         in_q2 = tf.boolean_mask(a_q2, stripe)
         ff_f = lowx_lowq2_extrapolation(u, in_x, in_q2,
-                                        log_x, log_xmin, log_xmax, padded_x, s_x,
-                                        log_q2, log_q2min, log_q2max, padded_q2, s_q2,
-                                        values, padded_grid)
+                                        log_xmin, log_xmax, padded_x, s_x,
+                                        log_q2min, log_q2max, padded_q2, s_q2,
+                                        padded_grid)
         return tf.scatter_nd(f_idx, ff_f, shape)
 
     return res + act_on_empty(f_idx, empty_fn, gen_fun)
@@ -152,23 +146,20 @@ def first_subgrid(u, a_x, a_q2,
 @tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=int64),
                  tf.TensorSpec(shape=[None], dtype=float64),
                  tf.TensorSpec(shape=[None], dtype=float64),
-                 tf.TensorSpec(shape=[None], dtype=float64),
                  tf.TensorSpec(shape=[], dtype=float64),
                  tf.TensorSpec(shape=[], dtype=float64),
                  tf.TensorSpec(shape=[None], dtype=float64),
                  tf.TensorSpec(shape=[], dtype=int64),
-                 tf.TensorSpec(shape=[None], dtype=float64),
                  tf.TensorSpec(shape=[], dtype=float64),
                  tf.TensorSpec(shape=[], dtype=float64),
                  tf.TensorSpec(shape=[None], dtype=float64),
                  tf.TensorSpec(shape=[], dtype=int64),
-                 tf.TensorSpec(shape=[None, None], dtype=float64),
                  tf.TensorSpec(shape=[None, None], dtype=float64),
                  tf.TensorSpec(shape=[2], dtype=int64)])
 def last_subgrid(u, a_x, a_q2,
-                 log_x, log_xmin, log_xmax, padded_x, s_x,
-                 log_q2, log_q2min, log_q2max, padded_q2, s_q2,
-                 values, padded_grid, shape):
+                 log_xmin, log_xmax, padded_x, s_x,
+                 log_q2min, log_q2max, padded_q2, s_q2,
+                 padded_grid, shape):
     """Last subgrid interpolation"""
     #print('retrace last subgrid')
 
@@ -184,18 +175,18 @@ def last_subgrid(u, a_x, a_q2,
         in_x = tf.boolean_mask(a_x, in_stripe)
         in_q2 = tf.boolean_mask(a_q2, in_stripe)
         ff_f = interpolate(u, in_x, in_q2,
-                           log_x, log_xmin, log_xmax, padded_x, s_x,
-                           log_q2, log_q2min, log_q2max, padded_q2, s_q2,
-                           values, padded_grid)
+                           log_xmin, log_xmax, padded_x, s_x,
+                           log_q2min, log_q2max, padded_q2, s_q2,
+                           padded_grid)
         return tf.scatter_nd(in_f_idx, ff_f, shape)
 
     def lowx_fun():
         in_x = tf.boolean_mask(a_x, lowx_stripe)
         in_q2 = tf.boolean_mask(a_q2, lowx_stripe)
         ff_f = lowx_extrapolation(u, in_x, in_q2,
-                                  log_x, log_xmin, log_xmax, padded_x, s_x,
-                                  log_q2, log_q2min, log_q2max,  padded_q2, s_q2,
-                                  values, padded_grid)
+                                  log_xmin, log_xmax, padded_x, s_x,
+                                  log_q2min, log_q2max,  padded_q2, s_q2,
+                                  padded_grid)
         return tf.scatter_nd(lowx_f_idx, ff_f, shape)
 
     res = act_on_empty(in_f_idx, empty_fn, in_fun)
@@ -214,9 +205,9 @@ def last_subgrid(u, a_x, a_q2,
         in_x = tf.boolean_mask(a_x, stripe)
         in_q2 = tf.boolean_mask(a_q2, stripe)
         ff_f = highq2_extrapolation(u, in_x, in_q2,
-                                    log_x, log_xmin, log_xmax, padded_x, s_x,
-                                    log_q2, log_q2min, log_q2max, padded_q2, s_q2,
-                                    values, padded_grid)
+                                    log_xmin, log_xmax, padded_x, s_x,
+                                    log_q2min, log_q2max, padded_q2, s_q2,
+                                    padded_grid)
         return tf.scatter_nd(f_idx, ff_f, shape)
 
     res += act_on_empty(f_idx, empty_fn, gen_fun)
@@ -230,9 +221,9 @@ def last_subgrid(u, a_x, a_q2,
         in_x = tf.boolean_mask(a_x, stripe)
         in_q2 = tf.boolean_mask(a_q2, stripe)
         ff_f = lowx_highq2_extrapolation(u, in_x, in_q2,
-                                         log_x, log_xmin, log_xmax, padded_x, s_x,
-                                         log_q2, log_q2min, log_q2max, padded_q2, s_q2,
-                                         values, padded_grid)
+                                         log_xmin, log_xmax, padded_x, s_x,
+                                         log_q2min, log_q2max, padded_q2, s_q2,
+                                         padded_grid)
         return tf.scatter_nd(f_idx, ff_f, shape)
 
     res += act_on_empty(f_idx, empty_fn, gen_fun)
