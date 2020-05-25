@@ -27,7 +27,26 @@ def inner_subgrid(u, a_x, a_q2,
                   log_xmin, log_xmax, padded_x, s_x,
                   log_q2min, log_q2max, padded_q2, s_q2,
                   padded_grid, shape):
-    """Inner subgrid interpolation"""
+    """ 
+    Inner (non-first and non-last) subgrid interpolation
+    Selects query points by a boolean mask
+    Calls interpolate (basic interpolation)
+    Calls lowx_extrapolation 
+
+    Parameters
+    ----------
+        u: tf.tensor of shape [None]
+            query of pids
+        shape: tf.tensor of shape [None,None]
+            final output shape to scatter points into
+        For other parameters refer to subgrid.py:interpolate
+    
+    Returns
+    ----------
+        tf.tensor of shape [None,None]
+        pdf interpolated values for each query point and quey pids
+    """
+
 
     actual_padded = tf.gather(padded_grid, u, axis=-1)
 
@@ -85,7 +104,27 @@ def first_subgrid(u, a_x, a_q2,
                   log_xmin, log_xmax, padded_x, s_x,
                   log_q2min, log_q2max, padded_q2, s_q2,
                   padded_grid, shape):
-    """First subgrid interpolation"""
+    """ 
+    First subgrid interpolation
+    Selects query points by a boolean mask
+    Calls interpolate (basic interpolation)
+    Calls lowx_extrapolation
+    Calls lowq2_extrapolation
+    Calls lowx_lowq2_extrapolation
+
+    Parameters
+    ----------
+        u: tf.tensor of shape [None]
+            query of pids
+        shape: tf.tensor of shape [None,None]
+            final output shape to scatter points into
+        For other parameters refer to subgrid.py:interpolate
+
+    Returns
+    ----------
+        tf.tensor of shape [None,None]
+        pdf interpolated values for each query point and quey pids
+    """
 
     actual_padded = tf.gather(padded_grid, u, axis=-1)
 
@@ -180,7 +219,27 @@ def last_subgrid(u, a_x, a_q2,
                  log_xmin, log_xmax, padded_x, s_x,
                  log_q2min, log_q2max, padded_q2, s_q2,
                  padded_grid, shape):
-    """Last subgrid interpolation"""
+    """ 
+    Last subgrid interpolation
+    Selects query points by a boolean mask
+    Calls interpolate (basic interpolation)
+    Calls lowx_extrapolation
+    Calls highq2_extrapolation
+    Calls low_x_highq2_extrapolation
+
+    Parameters
+    ----------
+        u: tf.tensor of shape [None]
+            query of pids
+        shape: tf.tensor of shape [None,None]
+            final output shape to scatter points into
+        For other parameters refer to subgrid.py:interpolate
+
+    Returns
+    ----------
+        tf.tensor of shape [None,None]
+        pdf interpolated values for each query point and quey pids
+    """
     actual_padded = tf.gather(padded_grid, u, axis=-1)
 
     stripe_0 = tf.math.logical_and(a_x >= log_xmin, a_x <= log_xmax)

@@ -9,6 +9,7 @@ float64 = tf.float64
                               tf.TensorSpec(shape=[None,None], dtype=float64),
                               tf.TensorSpec(shape=[None,None], dtype=float64)])
 def linear_interpolation(x, xl, xh, yl, yh):
+    """Linear extrapolation itself"""
     #print('lin interp')
     x = tf.expand_dims(x,1)
     return yl + (x - xl) / (xh - xl) * (yh - yl)
@@ -19,7 +20,16 @@ def linear_interpolation(x, xl, xh, yl, yh):
                               tf.TensorSpec(shape=[None,None], dtype=float64),
                               tf.TensorSpec(shape=[None,None], dtype=float64)])
 def extrapolate_linear(x, xl, xh, yl, yh):
-    #print('extrap lin')
+    """
+    Selects by a mask which point has yl and yh greater or lower than a threshold:
+    for lower points a linear extrapolation is performed
+    for greater points a log-linear extrapolation is performed
+    Returns
+    ----------
+        tf.tensor of shape [None,None]
+        (Log)Linear Extrapolated points, with all pids queried
+
+    """
     mask = tf.math.logical_and(yl > 1E-3, yh > 1E-3)
     a = tf.where(mask, tf.math.log(yl), yl)
     b = tf.where(mask, tf.math.log(yh), yh)
@@ -32,6 +42,7 @@ def extrapolate_linear(x, xl, xh, yl, yh):
                               tf.TensorSpec(shape=[None,None], dtype=float64),
                               tf.TensorSpec(shape=[None,None], dtype=float64)])
 def cubic_interpolation(T, VL, VDL, VH, VDH):
+    """Cubic extrapolation itself"""
     #print('cubic int')
     t2 = T*T
     t3 = t2*T
@@ -50,6 +61,13 @@ def cubic_interpolation(T, VL, VDL, VH, VDH):
                               tf.TensorSpec(shape=[4,None,None,None],
                                             dtype=float64)])
 def df_dx_func(x_id, s_x, corn_x, A):
+    """
+    Computes derivatives to make the bicubic interpolation
+    When a query point is in the left or rightmost bin of the x axis, it
+    automatically ignores the knots that would have gone outside array
+    boundaries in the computation (this is done by a mask and tf.where,
+    exploiting the x_id variable)
+    """
     #print('df_dx func')
     #just two kind of derivatives are useful in the x direction
     #if we are interpolating in the [-1,2]x[-1,2] square:
@@ -93,6 +111,16 @@ def df_dx_func(x_id, s_x, corn_x, A):
                               tf.TensorSpec(shape=[], dtype=int64)])
 def default_bicubic_interpolation(a_x, a_q2, x_id, q2_id,
 								  corn_x, corn_q2, A, s_x, s_q2):
+    """
+    Makes the bicubic interpolation: when a query point is in the lower
+    or uppermost bin of the q2 axis, it automatically ignores the knots
+    that would have gone outside array boundaries in the computation
+    (this is done by a mask and tf.where, exploiting the q2_id variable)
+    Returns
+    ----------
+        tf.tensor of shape [None,None]
+        LogBicubic Interpolated points, with all pids queried
+    """
     #print('def bic int')
     df_dx = df_dx_func(x_id, s_x, corn_x, A)
 

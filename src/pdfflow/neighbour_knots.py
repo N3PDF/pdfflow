@@ -19,12 +19,25 @@ def four_neighbour_knots(a_x, a_q2, padded_x, padded_q2, actual_values):
             tensor of values of x
         a_q2: tf.tensor
             tensor of values of q2
-        log_x: tf.tensor
+        padded_x: tf.tensor
             values of log(x) of the grid
-        log_q2: tf.tensor
+        padded_q2: tf.tensor
             values of log(q2) of the grid
         actual_values: tf.tensor
             values of the grid
+    Returns
+    ----------
+        x_id: tf.tensor of shape [None]
+            x bin for each query point
+        q2_id: tf.tensor of shape [None]
+            q2 bin for each query point
+        corn_x: tf.tensor of shape [4,None]
+            x values of the 4 knots around the query point
+        corn_q2: tf.tensor of shape [4,None]
+            q2 values of the 4 knots around the query point
+        A: tf.tensor of shape [4,4,None,None]
+            pdf values of the 4*4 grid knots around the query point
+            (first None is for query points, second None is for query pids)
     """
     #print('nk')
     x_id = tf.cast(tfp.stats.find_bins(a_x, padded_x[1:-1],

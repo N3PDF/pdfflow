@@ -72,18 +72,44 @@ def interpolate(a_x, a_q2,
                 log_q2min, log_q2max, padded_q2, s_q2,
                 actual_padded):
     """ 
-    Basic Interpolation inside the subgrid
+    Basic Bicubic Interpolation inside the subgrid
+    Four Neighbour Knots selects grid knots around each query point to
+    make the interpolation: 4 knots on the x axis and 4 knots on the q2
+    axis are needed for each point, plus the pdf fvalues there.
+    Default bicubic interpolation performs the interpolation itself
+    
     Parameters
     ----------
-        a_x: tf.tensor
+        a_x: tf.tensor of shape [None]
             query of values of log(x)
-        a_q2: tf.tensor
+        a_q2: tf.tensor of shape [None]
             query of values of log(q2)
+        log_xmin: tf.tensor of shape []
+            value for the lowest knot on the x axis
+        log_xmax: tf.tensor of shape []
+            value for the greatest knot on the x axis
+        padded_x: tf.tensor of shape [None]
+            value for all the knots on the x axis
+            padded with one zero at the beginning and one at the end to
+            avoid out of range errors when queryingpoints near boundaries
+        s_x: tf.tensor of shape []
+            size of x knots tensor without padding
+        log_q2min: tf.tensor of shape []
+            value for the lowest knot on the q2 axis
+            (current subgrid)
+        log_q2max: tf.tensor of shape []
+            value for the greatest knot on the q2 axis
+            (current subgrid)
+        padded_q2: tf.tensor of shape [None]
+            value for all the knots on the q2 axis
+            padded with one zero at the beginning and one at the end to
+            avoid out of range errors when querying points near boundaries
+        s_q2: tf.tensor of shape []
+            size of q2 knots tensor without padding
+        actual_padded: tf.tensor of shape [None,None]
+            pdf values: first axis is the flattened padded (q2,x) grid,
+            second axis is needed pid column (dimension depends on the query)
     """
-    #actual_padded = tf.gather(padded_grid, u, axis=-1)
-    #size = tf.shape(a_x)
-    #shape = tf.cast(tf.concat([size, tf.shape(u)], 0), int64)
-
     a0, a1, a2, a3, a4 = four_neighbour_knots(a_x, a_q2,
                                               padded_x, padded_q2,
                                               actual_padded)
@@ -112,10 +138,35 @@ def lowx_extrapolation(a_x, a_q2,
 
     Parameters
     ----------
-        a_x: tf.tensor
+        a_x: tf.tensor of shape [None]
             query of values of log(x)
-        a_q2: tf.tensor
+        a_q2: tf.tensor of shape [None]
             query of values of log(q2)
+        log_xmin: tf.tensor of shape []
+            value for the lowest knot on the x axis
+        log_xmax: tf.tensor of shape []
+            value for the greatest knot on the x axis
+        padded_x: tf.tensor of shape [None]
+            value for all the knots on the x axis
+            padded with one zero at the beginning and one at the end to
+            avoid out of range errors when queryingpoints near boundaries
+        s_x: tf.tensor of shape []
+            size of x knots tensor without padding
+        log_q2min: tf.tensor of shape []
+            value for the lowest knot on the q2 axis
+            (current subgrid)
+        log_q2max: tf.tensor of shape []
+            value for the greatest knot on the q2 axis
+            (current subgrid)
+        padded_q2: tf.tensor of shape [None]
+            value for all the knots on the q2 axis
+            padded with one zero at the beginning and one at the end to
+            avoid out of range errors when querying points near boundaries
+        s_q2: tf.tensor of shape []
+            size of q2 knots tensor without padding
+        actual_padded: tf.tensor of shape [None,None]
+            pdf values: first axis is the flattened padded(q2,x) grid,
+            second axis is needed pid column (dimension depends on the query)
     """
     corn_x = padded_x[1:3]
     s = tf.size(a_x, out_type=int64)
@@ -144,6 +195,42 @@ def lowq2_extrapolation(a_x, a_q2,
                         log_xmin, log_xmax, padded_x, s_x,
                         log_q2min, log_q2max, padded_q2, s_q2,
                         actual_padded):
+    """ 
+    Extrapolation in low q2 regime 
+
+    Parameters
+    ----------
+        a_x: tf.tensor of shape [None]
+            query of values of log(x)
+        a_q2: tf.tensor of shape [None]
+            query of values of log(q2)
+        log_xmin: tf.tensor of shape []
+            value for the lowest knot on the x axis
+        log_xmax: tf.tensor of shape []
+            value for the greatest knot on the x axis
+        padded_x: tf.tensor of shape [None]
+            value for all the knots on the x axis
+            padded with one zero at the beginning and one at the end to
+            avoid out of range errors when queryingpoints near boundaries
+        s_x: tf.tensor of shape []
+            size of x knots tensor without padding
+        log_q2min: tf.tensor of shape []
+            value for the lowest knot on the q2 axis
+            (current subgrid)
+        log_q2max: tf.tensor of shape []
+            value for the greatest knot on the q2 axis
+            (current subgrid)
+        padded_q2: tf.tensor of shape [None]
+            value for all the knots on the q2 axis
+            padded with one zero at the beginning and one at the end to
+            avoid out of range errors when querying points near boundaries
+        s_q2: tf.tensor of shape []
+            size of q2 knots tensor without padding
+        actual_padded: tf.tensor of shape [None,None]
+            pdf values: first axis is the flattened padded (q2,x) grid,
+            second axis is needed pid column (dimension depends on the query)
+    """
+
     corn_q2 = tf.stack([padded_q2[1], 1.01*padded_q2[1]],0)
 
     x, q2 = tf.meshgrid(a_x, corn_q2)
@@ -188,14 +275,39 @@ def highq2_extrapolation(a_x, a_q2,
                          log_q2min, log_q2max, padded_q2, s_q2,
                          actual_padded):
     """ 
-    Extrapolation in hihg q2 regime 
+    Extrapolation in high q2 regime 
 
     Parameters
     ----------
-        a_x: tf.tensor
+        a_x: tf.tensor of shape [None]
             query of values of log(x)
-        a_q2: tf.tensor
+        a_q2: tf.tensor of shape [None]
             query of values of log(q2)
+        log_xmin: tf.tensor of shape []
+            value for the lowest knot on the x axis
+        log_xmax: tf.tensor of shape []
+            value for the greatest knot on the x axis
+        padded_x: tf.tensor of shape [None]
+            value for all the knots on the x axis
+            padded with one zero at the beginning and one at the end to
+            avoid out of range errors when queryingpoints near boundaries
+        s_x: tf.tensor of shape []
+            size of x knots tensor without padding
+        log_q2min: tf.tensor of shape []
+            value for the lowest knot on the q2 axis
+            (current subgrid)
+        log_q2max: tf.tensor of shape []
+            value for the greatest knot on the q2 axis
+            (current subgrid)
+        padded_q2: tf.tensor of shape [None]
+            value for all the knots on the q2 axis
+            padded with one zero at the beginning and one at the end to
+            avoid out of range errors when querying points near boundaries
+        s_q2: tf.tensor of shape []
+            size of q2 knots tensor without padding
+        actual_padded: tf.tensor of shape [None,None]
+            pdf values: first axis is the flattened padded (q2,x) grid,
+            second axis is needed pid column (dimension depends on the query)
     """
     corn_q2 = padded_q2[-2:-4:-1]
 
@@ -229,10 +341,35 @@ def lowx_highq2_extrapolation(a_x, a_q2,
 
     Parameters
     ----------
-        a_x: tf.tensor
+        a_x: tf.tensor of shape [None]
             query of values of log(x)
-        a_q2: tf.tensor
+        a_q2: tf.tensor of shape [None]
             query of values of log(q2)
+        log_xmin: tf.tensor of shape []
+            value for the lowest knot on the x axis
+        log_xmax: tf.tensor of shape []
+            value for the greatest knot on the x axis
+        padded_x: tf.tensor of shape [None]
+            value for all the knots on the x axis
+            padded with one zero at the beginning and one at the end to
+            avoid out of range errors when queryingpoints near boundaries
+        s_x: tf.tensor of shape []
+            size of x knots tensor without padding
+        log_q2min: tf.tensor of shape []
+            value for the lowest knot on the q2 axis
+            (current subgrid)
+        log_q2max: tf.tensor of shape []
+            value for the greatest knot on the q2 axis
+            (current subgrid)
+        padded_q2: tf.tensor of shape [None]
+            value for all the knots on the q2 axis
+            padded with one zero at the beginning and one at the end to
+            avoid out of range errors when querying points near boundaries
+        s_q2: tf.tensor of shape []
+            size of q2 knots tensor without padding
+        actual_padded: tf.tensor of shape [None,None]
+            pdf values: first axis is the flattened padded (q2,x) grid,
+            second axis is needed pid column (dimension depends on the query)
     """
 
     corn_x = padded_x[1:3]
@@ -268,14 +405,39 @@ def lowx_lowq2_extrapolation(a_x, a_q2,
                              log_q2min, log_q2max, padded_q2, s_q2,
                              actual_padded):
     """ 
-    Extrapolation in high q2, low x regime 
+    Extrapolation in low q2, low x regime 
 
     Parameters
     ----------
-        a_x: tf.tensor
+        a_x: tf.tensor of shape [None]
             query of values of log(x)
-        a_q2: tf.tensor
+        a_q2: tf.tensor of shape [None]
             query of values of log(q2)
+        log_xmin: tf.tensor of shape []
+            value for the lowest knot on the x axis
+        log_xmax: tf.tensor of shape []
+            value for the greatest knot on the x axis
+        padded_x: tf.tensor of shape [None]
+            value for all the knots on the x axis
+            padded with one zero at the beginning and one at the end to
+            avoid out of range errors when queryingpoints near boundaries
+        s_x: tf.tensor of shape []
+            size of x knots tensor without padding
+        log_q2min: tf.tensor of shape []
+            value for the lowest knot on the q2 axis
+            (current subgrid)
+        log_q2max: tf.tensor of shape []
+            value for the greatest knot on the q2 axis
+            (current subgrid)
+        padded_q2: tf.tensor of shape [None]
+            value for all the knots on the q2 axis
+            padded with one zero at the beginning and one at the end to
+            avoid out of range errors when querying points near boundaries
+        s_q2: tf.tensor of shape []
+            size of q2 knots tensor without padding
+        actual_padded: tf.tensor of shape [None,None]
+            pdf values: first axis is the flattened padded (q2,x) grid,
+            second axis is needed pid column (dimension depends on the query)
     """
     corn_x = padded_x[1:3]
     corn_q2 = tf.stack([padded_q2[1],padded_q2[1]],0)
