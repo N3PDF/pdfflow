@@ -56,8 +56,8 @@ def cubic_interpolation(T, VL, VDL, VH, VDH):
     return p0 + m0 + p1 + m1
 
 @tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=int64),
-							  tf.TensorSpec(shape=[], dtype=int64),
-							  tf.TensorSpec(shape=[4,None], dtype=float64),
+                              tf.TensorSpec(shape=[], dtype=int64),
+                              tf.TensorSpec(shape=[4,None], dtype=float64),
                               tf.TensorSpec(shape=[4,None,None,None],
                                             dtype=float64)])
 def df_dx_func(x_id, s_x, corn_x, A):
@@ -110,7 +110,7 @@ def df_dx_func(x_id, s_x, corn_x, A):
                               tf.TensorSpec(shape=[], dtype=int64),
                               tf.TensorSpec(shape=[], dtype=int64)])
 def default_bicubic_interpolation(a_x, a_q2, x_id, q2_id,
-								  corn_x, corn_q2, A, s_x, s_q2):
+                                  corn_x, corn_q2, A, s_x, s_q2):
     """
     Makes the bicubic interpolation: when a query point is in the lower
     or uppermost bin of the q2 axis, it automatically ignores the knots

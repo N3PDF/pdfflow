@@ -246,7 +246,7 @@ def last_subgrid(u, a_x, a_q2,
     stripe_1 = tf.math.logical_and(a_q2 >= log_q2min, a_q2 <= log_q2max)
     stripe_2 = a_x < log_xmin
 
-	# --------------------------------------------------------------------
+    # --------------------------------------------------------------------
     # normal interpolation
     stripe = tf.math.logical_and(stripe_0, stripe_1)
     f_idx = tf.where(stripe)

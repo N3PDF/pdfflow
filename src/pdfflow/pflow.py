@@ -58,12 +58,12 @@ class mkPDF:
         self.subgrids[0].flag = tf.constant(0, dtype=int64)
 
     def _xfxQ2(self, u, aa_x, aa_q2):
-    	"""
-    	Function to interpolate
-    	Called by xfxQ2
-    	It divides the computation on the q2 axis in subgrids and sums up
-    	all the results
-    	"""
+        """
+        Function to interpolate
+        Called by xfxQ2
+        It divides the computation on the q2 axis in subgrids and sums up
+        all the results
+        """
 
         a_x = tf.cast(tf.math.log(aa_x, name="logx"), float64)
         a_q2 = tf.cast(tf.math.log(aa_q2, name="logq2"), float64)
@@ -107,10 +107,10 @@ class mkPDF:
         return res
 
     def xfxQ2(self, PID, a_x, a_q2):
-    	"""
-    	User interface for pdfflow
-    	It asks pid, x, q2 points
-    	"""
+        """
+        User interface for pdfflow
+        It asks pid, x, q2 points
+        """
 
         # must feed a mask for flavors to _xfxQ2
         # if PID is None, the mask is set to true everywhere
@@ -129,10 +129,10 @@ class mkPDF:
         return tf.squeeze(f_f)
 
     def xfxQ2_allpid(self, a_x, a_q2):
-    	"""
-    	User iterface for pdfflow
-    	Ask x, q2 points
-    	Return all flavors
-    	"""
+        """
+        User iterface for pdfflow
+        Ask x, q2 points
+        Return all flavors
+        """
         PID = self.flavor_scheme
         return self.xfxQ2(PID, a_x, a_q2)
