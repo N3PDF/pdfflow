@@ -50,13 +50,21 @@ def main(pdfname, pid):
     p = pdf.mkPDF(pdfname, DIRNAME)
     l_pdf = lhapdf.mkPDF(pdfname)
 
+    x = [0.5]
+    q2 = [100.]
+    s = time.time()
+    p.xfxQ2(21, x,q2)
+    print("\nPDFflow\n\tBuilding graph time: %f\n"%(time.time()-s))
+
+
     plt.figure(figsize=(16.0, 12.0))
     plt.subplot(2, 2, 1)
-    x = np.logspace(-11,0,100, dtype=float)
-    q2 = np.array([0.1,1.65,1.7,4.92,1e2,1e5,2e6], dtype=float)**2
+    x = np.logspace(-11,0,100000, dtype=float)
+    q2 = np.array([0.1,1.65,1.7,4.92,1e2,1e3,1e4,1e5,1e6,2e6], dtype=float)**2
     for iq2 in q2:
         vl = np.array([l_pdf.xfxQ2(pid, ix, iq2) for ix in x])
         vp = p.xfxQ2(pid, x, [iq2]*len(x))
+        #print('%e'%np.sqrt(iq2), vl,vp,'\n')
 
         plt.plot(x, np.abs(vp-vl)/(np.abs(vl)+EPS), label='$Q=%.2e$' % iq2**0.5)
     plt.hlines(1e-3, plt.xlim()[0], plt.xlim()[1], linestyles='dotted')
@@ -82,8 +90,8 @@ def main(pdfname, pid):
     plt.xlabel('x')
     plt.legend()
 
-    x = np.array([1e-10,1e-9,5e-7,1.1e-9,0.5,0.99], dtype=float)
-    q2 = np.logspace(-2, 7, 100, dtype=float)**2
+    x = np.array([1e-10,1e-9,1.1e-9,5e-7,1e-6,1e-4,1e-2,0.5,0.99], dtype=float)
+    q2 = np.logspace(-3, 7, 100000, dtype=float)**2
     plt.subplot(2, 2, 2)
     for ix in x:
         vl = np.array([l_pdf.xfxQ2(pid, ix, iq2) for iq2 in q2])
@@ -101,8 +109,11 @@ def main(pdfname, pid):
 
     plt.subplot(2, 2, 4)
     for ix in x:
+        s_time = time.time()
         vl = np.array([l_pdf.xfxQ2(pid, ix, iq2) for iq2 in q2])
+        l_time = time.time()
         vp = p.xfxQ2(pid, [ix]*len(q2), q2)
+        p_time = time.time()
         
         plt.plot(q2**0.5, np.abs(vp-vl), label='$x=%.2e$' % ix)
     plt.xscale('log')
@@ -115,9 +126,17 @@ def main(pdfname, pid):
 
     plt.savefig('diff_%s_flav%d.png' % (pdfname.replace('/','-'), pid), bbox_inches='tight')
 
+    print("\nDry run time comparison:")
+    #print("\tlhapdf: %f"%(l_time - s_time))
+    print("{:>10}:{:>15.8f}".format("lhapdf", l_time - s_time))
+    print("{:>10}:{:>15.8f}".format("pdfflow", p_time - l_time))
+
 
 if __name__ == "__main__":
     args = vars(parser.parse_args())
+    if args['pid'] == 0:
+    	args['pid'] = 21
     start=time.time()
     main(**args)
-    print(time.time()-start)    
+    print("Total time: ", time.time()-start)
+    
