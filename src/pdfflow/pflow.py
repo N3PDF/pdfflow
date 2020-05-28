@@ -1,13 +1,13 @@
 import tensorflow as tf
 import re
 import numpy as np
+from pdfflow.configflow import DTYPE, DTYPEINT, int_me, ione, izero
 from pdfflow.subgrid import Subgrid
 from pdfflow.functions import inner_subgrid
 from pdfflow.functions import first_subgrid
 from pdfflow.functions import last_subgrid
-from pdfflow.interpolations import float64, int64
 
-PID_G = tf.constant(21, dtype=int64)
+PID_G = int_me(21)
 
 def load_Data(fname):
     # Reads pdf from file and retrieves a list of grids
@@ -54,9 +54,9 @@ class mkPDF:
                       all the subgrids ---> algorithm will break !")
 
         self.subgrids = list(map(Subgrid, grids))
-        self.flavor_scheme = tf.cast(self.subgrids[0].flav, dtype=int64)
-        self.subgrids[-1].flag = tf.constant(-1, dtype=int64)
-        self.subgrids[0].flag = tf.constant(0, dtype=int64)
+        self.flavor_scheme = tf.cast(self.subgrids[0].flav, dtype=DTYPEINT)
+        self.subgrids[-1].flag = -ione
+        self.subgrids[0].flag = izero
 
     def _xfxQ2(self, u, aa_x, aa_q2):
         """
@@ -66,15 +66,15 @@ class mkPDF:
         all the results
         """
 
-        a_x = tf.cast(tf.math.log(aa_x, name="logx"), float64)
-        a_q2 = tf.cast(tf.math.log(aa_q2, name="logq2"), float64)
+        a_x = tf.cast(tf.math.log(aa_x, name="logx"), DTYPE)
+        a_q2 = tf.cast(tf.math.log(aa_q2, name="logq2"), DTYPE)
 
-        size_a = tf.size(a_x, out_type=int64)
-        size_u = tf.size(u, out_type=int64)
+        size_a = tf.size(a_x, out_type=DTYPEINT)
+        size_u = tf.size(u, out_type=DTYPEINT)
         shape = tf.stack([size_a, size_u])
 
-        res = tf.zeros(shape, dtype=float64)
-        
+        res = tf.zeros(shape, dtype=DTYPE)
+
         res += first_subgrid(u, a_x, a_q2,
                              self.subgrids[0].log_xmin,
                              self.subgrids[0].log_xmax,
@@ -121,13 +121,25 @@ class mkPDF:
         if type(pid) == int:
             pid = [pid]
 
-        pid = tf.expand_dims(tf.constant(pid, dtype=int64), -1)
-        pid = tf.where(pid==0, PID_G, pid)
-        idx = tf.where(tf.equal(self.flavor_scheme, pid))[:, 1]
-        u, i = tf.unique(idx, out_idx=int64)
+        # Since the user might be asking for a list, let's ensure it is a tensor of ints
+        tensor_pid = int_me(pid)
 
-        f_f = self._xfxQ2(u, a_x, a_q2)
-        f_f = tf.gather(f_f, i, axis=1)
+        # And ensure it is unique
+        # TODO maybe error if the user ask for the same pid twice or for a non-registered pid?
+        upid, user_idx = tf.unique(tensor_pid, out_idx=DTYPEINT)
+
+        # Change 0 to the LHAPDF gluon pid: 21
+        upid = tf.where(upid==izero, PID_G, upid)
+        # And return the positions in the flavor_scheme array
+        # TODO maybe it is better to digest the flavor_scheme on initialization and avoid this
+        upid = tf.expand_dims(upid,-1)
+        pid_idx = tf.cast(tf.where(tf.equal(self.flavor_scheme, upid))[:, 1], dtype=DTYPEINT)
+
+        # Perform the actual computation
+        f_f = self._xfxQ2(pid_idx, a_x, a_q2)
+
+        # Return the values in the order the user asked
+        f_f = tf.gather(f_f, user_idx, axis=1)
 
         return tf.squeeze(f_f)
 

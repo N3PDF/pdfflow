@@ -1,10 +1,14 @@
 """
     Ensures vegasflow produces results which are compatible with lhpdf
 """
+import os
+# Run tests in CPU
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
 import lhapdf
 import pdfflow.pflow as pdf
 import numpy as np
 import subprocess as sp
+
 
 TESTPDF = "NNPDF31_nlo_as_0118"
 FLAVS = [1,2,21]

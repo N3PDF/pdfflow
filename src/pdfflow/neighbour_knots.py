@@ -1,16 +1,13 @@
 import tensorflow as tf
 import tensorflow_probability as tfp
-from pdfflow.interpolations import float64
-from pdfflow.interpolations import int64
-#float64 = tf.float64
-#int64 = tf.int64
+from pdfflow.configflow import DTYPE, DTYPEINT
 
 
-@tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=float64),
-                              tf.TensorSpec(shape=[None], dtype=float64),
-                              tf.TensorSpec(shape=[None], dtype=float64),
-                              tf.TensorSpec(shape=[None], dtype=float64),
-                              tf.TensorSpec(shape=[None,None], dtype=float64)])
+@tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=DTYPE),
+                              tf.TensorSpec(shape=[None], dtype=DTYPE),
+                              tf.TensorSpec(shape=[None], dtype=DTYPE),
+                              tf.TensorSpec(shape=[None], dtype=DTYPE),
+                              tf.TensorSpec(shape=[None,None], dtype=DTYPE)])
 def four_neighbour_knots(a_x, a_q2, padded_x, padded_q2, actual_values):
     """
     Parameters
@@ -42,11 +39,11 @@ def four_neighbour_knots(a_x, a_q2, padded_x, padded_q2, actual_values):
     #print('nk')
     x_id = tf.cast(tfp.stats.find_bins(a_x, padded_x[1:-1],
                                        name='find_bins_logx'),
-                   dtype=int64) + 1
+                   dtype=DTYPEINT) + 1
 
     q2_id = tf.cast(tfp.stats.find_bins(a_q2, padded_q2[1:-1],
                                         name='find_bins_logq2'),
-                    dtype=int64) + 1
+                    dtype=DTYPEINT) + 1
 
     corn_x_id = tf.stack([x_id-1, x_id, x_id+1, x_id+2],0)
     corn_q2_id = tf.stack([q2_id-1, q2_id, q2_id+1, q2_id+2],0)
@@ -55,7 +52,7 @@ def four_neighbour_knots(a_x, a_q2, padded_x, padded_q2, actual_values):
     corn_q2 = tf.gather(padded_q2, corn_q2_id)
 
 
-    s = tf.size(padded_q2, out_type=int64)
+    s = tf.size(padded_q2, out_type=DTYPEINT)
     x = x_id * s
 
     a = tf.stack([x+q2_id-s-1, x+q2_id-s, x+q2_id-s+1, x+q2_id-s+2])

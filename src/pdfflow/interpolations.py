@@ -1,24 +1,23 @@
 import tensorflow as tf
+from pdfflow.configflow import DTYPE, DTYPEINT
 
-int64 = tf.int64
-float64 = tf.float64
 
-@tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=float64),
-                              tf.TensorSpec(shape=[], dtype=float64),
-                              tf.TensorSpec(shape=[], dtype=float64),
-                              tf.TensorSpec(shape=[None,None], dtype=float64),
-                              tf.TensorSpec(shape=[None,None], dtype=float64)])
+@tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=DTYPE),
+                              tf.TensorSpec(shape=[], dtype=DTYPE),
+                              tf.TensorSpec(shape=[], dtype=DTYPE),
+                              tf.TensorSpec(shape=[None,None], dtype=DTYPE),
+                              tf.TensorSpec(shape=[None,None], dtype=DTYPE)])
 def linear_interpolation(x, xl, xh, yl, yh):
     """Linear extrapolation itself"""
     #print('lin interp')
     x = tf.expand_dims(x,1)
     return yl + (x - xl) / (xh - xl) * (yh - yl)
 
-@tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=float64),
-                              tf.TensorSpec(shape=[], dtype=float64),
-                              tf.TensorSpec(shape=[], dtype=float64),
-                              tf.TensorSpec(shape=[None,None], dtype=float64),
-                              tf.TensorSpec(shape=[None,None], dtype=float64)])
+@tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=DTYPE),
+                              tf.TensorSpec(shape=[], dtype=DTYPE),
+                              tf.TensorSpec(shape=[], dtype=DTYPE),
+                              tf.TensorSpec(shape=[None,None], dtype=DTYPE),
+                              tf.TensorSpec(shape=[None,None], dtype=DTYPE)])
 def extrapolate_linear(x, xl, xh, yl, yh):
     """
     Selects by a mask which point has yl and yh greater or lower than a threshold:
@@ -36,11 +35,11 @@ def extrapolate_linear(x, xl, xh, yl, yh):
     res = linear_interpolation(x, xl, xh, a, b)
     return tf.where(mask, tf.math.exp(res), res)
     
-@tf.function(input_signature=[tf.TensorSpec(shape=[None,1], dtype=float64),
-                              tf.TensorSpec(shape=[None,None], dtype=float64),
-                              tf.TensorSpec(shape=[None,None], dtype=float64),
-                              tf.TensorSpec(shape=[None,None], dtype=float64),
-                              tf.TensorSpec(shape=[None,None], dtype=float64)])
+@tf.function(input_signature=[tf.TensorSpec(shape=[None,1], dtype=DTYPE),
+                              tf.TensorSpec(shape=[None,None], dtype=DTYPE),
+                              tf.TensorSpec(shape=[None,None], dtype=DTYPE),
+                              tf.TensorSpec(shape=[None,None], dtype=DTYPE),
+                              tf.TensorSpec(shape=[None,None], dtype=DTYPE)])
 def cubic_interpolation(T, VL, VDL, VH, VDH):
     """Cubic extrapolation itself"""
     #print('cubic int')
@@ -55,11 +54,11 @@ def cubic_interpolation(T, VL, VDL, VH, VDH):
 
     return p0 + m0 + p1 + m1
 
-@tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=int64),
-                              tf.TensorSpec(shape=[], dtype=int64),
-                              tf.TensorSpec(shape=[4,None], dtype=float64),
+@tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=DTYPEINT),
+                              tf.TensorSpec(shape=[], dtype=DTYPEINT),
+                              tf.TensorSpec(shape=[4,None], dtype=DTYPE),
                               tf.TensorSpec(shape=[4,None,None,None],
-                                            dtype=float64)])
+                                            dtype=DTYPE)])
 def df_dx_func(x_id, s_x, corn_x, A):
     """
     Computes derivatives to make the bicubic interpolation
@@ -99,16 +98,16 @@ def df_dx_func(x_id, s_x, corn_x, A):
 
     return tf.stack([left, right], 0)
 
-@tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=float64),
-                              tf.TensorSpec(shape=[None], dtype=float64),
-                              tf.TensorSpec(shape=[None], dtype=int64),
-                              tf.TensorSpec(shape=[None], dtype=int64),
-                              tf.TensorSpec(shape=[4,None], dtype=float64),
-                              tf.TensorSpec(shape=[4,None], dtype=float64),
+@tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=DTYPE),
+                              tf.TensorSpec(shape=[None], dtype=DTYPE),
+                              tf.TensorSpec(shape=[None], dtype=DTYPEINT),
+                              tf.TensorSpec(shape=[None], dtype=DTYPEINT),
+                              tf.TensorSpec(shape=[4,None], dtype=DTYPE),
+                              tf.TensorSpec(shape=[4,None], dtype=DTYPE),
                               tf.TensorSpec(shape=[4,4,None,None],
-                                            dtype=float64),
-                              tf.TensorSpec(shape=[], dtype=int64),
-                              tf.TensorSpec(shape=[], dtype=int64)])
+                                            dtype=DTYPE),
+                              tf.TensorSpec(shape=[], dtype=DTYPEINT),
+                              tf.TensorSpec(shape=[], dtype=DTYPEINT)])
 def default_bicubic_interpolation(a_x, a_q2, x_id, q2_id,
                                   corn_x, corn_q2, A, s_x, s_q2):
     """
