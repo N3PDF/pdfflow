@@ -16,6 +16,7 @@ def int_me(i):
 def float_me(i):
     return tf.cast(i, dtype=DTYPE)
 
+
 ione = int_me(1)
 izero = int_me(0)
 fone = float_me(1)

@@ -17,6 +17,7 @@ PID_G = int_me(21)
 GRID_F = tf.TensorSpec(shape=[None], dtype=DTYPE)
 GRID_I = tf.TensorSpec(shape=[None], dtype=DTYPEINT)
 
+
 def load_Data(fname):
     # Reads pdf from file and retrieves a list of grids
     # Each grid is a tuple containing numpy arrays (x,Q2, flavours, pdf)
@@ -42,6 +43,7 @@ def load_Data(fname):
 
     return grids
 
+
 class mkPDF:
     def __init__(self, fname, dirname="./local/share/LHAPDF/"):
         """
@@ -58,8 +60,10 @@ class mkPDF:
         flav = list(map(lambda g: g[2], grids))
         for i in range(len(flav) - 1):
             if not np.all(flav[i] == flav[i + 1]):
-                print("Flavor schemes do not match across\
-                      all the subgrids ---> algorithm will break !")
+                print(
+                    "Flavor schemes do not match across\
+                      all the subgrids ---> algorithm will break !"
+                )
 
         self.subgrids = list(map(Subgrid, grids))
         self.flavor_scheme = tf.cast(self.subgrids[0].flav, dtype=DTYPEINT)
@@ -91,39 +95,55 @@ class mkPDF:
         size_u = tf.size(u, out_type=DTYPEINT)
         shape = tf.stack([size_a, size_u])
 
-#         res = tf.zeros(shape, dtype=DTYPE)
+        #         res = tf.zeros(shape, dtype=DTYPE)
 
-        res = first_subgrid(u, a_x, a_q2,
-                             self.subgrids[0].log_xmin,
-                             self.subgrids[0].log_xmax,
-                             self.subgrids[0].padded_x,
-                             self.subgrids[0].s_x,
-                             self.subgrids[0].log_q2min,
-                             self.subgrids[0].log_q2max,
-                             self.subgrids[0].padded_q2,
-                             self.subgrids[0].s_q2,
-                             self.subgrids[0].padded_grid,
-                             shape)
-        
+        res = first_subgrid(
+            u,
+            a_x,
+            a_q2,
+            self.subgrids[0].log_xmin,
+            self.subgrids[0].log_xmax,
+            self.subgrids[0].padded_x,
+            self.subgrids[0].s_x,
+            self.subgrids[0].log_q2min,
+            self.subgrids[0].log_q2max,
+            self.subgrids[0].padded_q2,
+            self.subgrids[0].s_q2,
+            self.subgrids[0].padded_grid,
+            shape,
+        )
+
         for s in self.subgrids[1:-1]:
-            res += inner_subgrid(u, a_x, a_q2,
-                                 s.log_xmin, s.log_xmax, s.padded_x,
-                                 s.log_q2min, s.log_q2max, s.padded_q2,
-                                 s.padded_grid,
-                                 shape)
+            res += inner_subgrid(
+                u,
+                a_x,
+                a_q2,
+                s.log_xmin,
+                s.log_xmax,
+                s.padded_x,
+                s.log_q2min,
+                s.log_q2max,
+                s.padded_q2,
+                s.padded_grid,
+                shape,
+            )
 
-        res += last_subgrid(u, a_x, a_q2,
-                            self.subgrids[-1].log_xmin,
-                            self.subgrids[-1].log_xmax,
-                            self.subgrids[-1].padded_x,
-                            self.subgrids[-1].s_x,
-                            self.subgrids[-1].log_q2min,
-                            self.subgrids[-1].log_q2max,
-                            self.subgrids[-1].padded_q2,
-                            self.subgrids[-1].s_q2,
-                            self.subgrids[-1].padded_grid,
-                            shape)
-        
+        res += last_subgrid(
+            u,
+            a_x,
+            a_q2,
+            self.subgrids[-1].log_xmin,
+            self.subgrids[-1].log_xmax,
+            self.subgrids[-1].padded_x,
+            self.subgrids[-1].s_x,
+            self.subgrids[-1].log_q2min,
+            self.subgrids[-1].log_q2max,
+            self.subgrids[-1].padded_q2,
+            self.subgrids[-1].s_q2,
+            self.subgrids[-1].padded_grid,
+            shape,
+        )
+
         return res
 
     @tf.function
@@ -164,10 +184,10 @@ class mkPDF:
         upid, user_idx = tf.unique(tensor_pid, out_idx=DTYPEINT)
 
         # Change 0 to the LHAPDF gluon pid: 21
-        upid = tf.where(upid==izero, PID_G, upid)
+        upid = tf.where(upid == izero, PID_G, upid)
         # And return the positions in the flavor_scheme array
         # TODO maybe it is better to digest the flavor_scheme on initialization and avoid this
-        upid = tf.expand_dims(upid,-1)
+        upid = tf.expand_dims(upid, -1)
         pid_idx = tf.cast(tf.where(tf.equal(self.flavor_scheme, upid))[:, 1], dtype=DTYPEINT)
 
         # Perform the actual computation
