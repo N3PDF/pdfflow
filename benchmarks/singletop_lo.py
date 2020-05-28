@@ -15,7 +15,7 @@ if pint != DTYPEINT or pfloat != DTYPE:
 
 # MC integration setup
 dim = 3
-ncalls = np.int32(1e5)
+ncalls = np.int32(5e6)
 n_iter = 5
 pdfset = "NNPDF31_nlo_as_0118/0"
 epsilon = float_me(1e-7)
