@@ -31,6 +31,15 @@ gf = tf.constant(1.16639e-5, dtype=DTYPE)
 DIRNAME = sp.run(['lhapdf-config','--datadir'], stdout=sp.PIPE, universal_newlines=True).stdout.strip('\n') + '/'
 pdf = mkPDF(pdfset, DIRNAME)
 
+
+# nx = 100
+# examplex = np.random.rand(nx)
+# exampleq = np.linspace(5,nx, nx)
+# r = pdf.xfxQ2([5], examplex, exampleq)
+# import ipdb
+# ipdb.set_trace()
+
+
 # auxiliary variables
 colf_bt = tf.constant(9, dtype=DTYPE)
 mt2 = tf.square(mt)

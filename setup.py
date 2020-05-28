@@ -50,7 +50,7 @@ setup(name='pdfflow',
             'sphinxcontrib-bibtex',
             ],
           },
-      python_requires='>=3.6,<3.8',
+      python_requires='>=3.6',
       long_description=long_description,
       long_description_content_type="text/markdown",
 )

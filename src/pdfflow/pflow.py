@@ -5,8 +5,9 @@ from pdfflow.subgrid import Subgrid
 from pdfflow.functions import inner_subgrid
 from pdfflow.functions import first_subgrid
 from pdfflow.functions import last_subgrid
-from pdfflow.interpolations import float64
-from pdfflow.interpolations import int64
+from pdfflow.interpolations import float64, int64
+
+PID_G = tf.constant(21, dtype=int64)
 
 def load_Data(fname):
     # Reads pdf from file and retrieves a list of grids
@@ -68,8 +69,9 @@ class mkPDF:
         a_x = tf.cast(tf.math.log(aa_x, name="logx"), float64)
         a_q2 = tf.cast(tf.math.log(aa_q2, name="logq2"), float64)
 
-        size = tf.size(a_x, out_type=int64)
-        shape = tf.concat([size, tf.size(u, out_type=int64)], 0)
+        size_a = tf.size(a_x, out_type=int64)
+        size_u = tf.size(u, out_type=int64)
+        shape = tf.stack([size_a, size_u])
 
         res = tf.zeros(shape, dtype=float64)
         
@@ -106,22 +108,23 @@ class mkPDF:
         
         return res
 
-    def xfxQ2(self, PID, a_x, a_q2):
+    @tf.function
+    def xfxQ2(self, pid, a_x, a_q2):
         """
         User interface for pdfflow
         It asks pid, x, q2 points
         """
 
         # must feed a mask for flavors to _xfxQ2
-        # if PID is None, the mask is set to true everywhere
-        # PID must be a list of PIDs
-        if type(PID) == int:
-            PID = [PID]
+        # if pid is None, the mask is set to true everywhere
+        # pid must be a list of pids
+        if type(pid) == int:
+            pid = [pid]
 
-        PID = tf.expand_dims(tf.constant(PID, dtype=int64), -1)
-        PID = tf.where(PID==0, 21, PID)
-        idx = tf.where(tf.equal(self.flavor_scheme, PID))[:, 1]
-        u, i = tf.unique(idx)
+        pid = tf.expand_dims(tf.constant(pid, dtype=int64), -1)
+        pid = tf.where(pid==0, PID_G, pid)
+        idx = tf.where(tf.equal(self.flavor_scheme, pid))[:, 1]
+        u, i = tf.unique(idx, out_idx=int64)
 
         f_f = self._xfxQ2(u, a_x, a_q2)
         f_f = tf.gather(f_f, i, axis=1)
@@ -134,5 +137,5 @@ class mkPDF:
         Ask x, q2 points
         Return all flavors
         """
-        PID = self.flavor_scheme
-        return self.xfxQ2(PID, a_x, a_q2)
+        pid = self.flavor_scheme
+        return self.xfxQ2(pid, a_x, a_q2)
