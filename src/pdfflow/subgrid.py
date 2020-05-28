@@ -4,6 +4,18 @@ from pdfflow.neighbour_knots import four_neighbour_knots
 from pdfflow.interpolations import default_bicubic_interpolation
 from pdfflow.interpolations import extrapolate_linear
 
+INTERPOLATE_SIGNATURE = [tf.TensorSpec(shape=[None], dtype=DTYPE),
+                        tf.TensorSpec(shape=[None], dtype=DTYPE),
+                        tf.TensorSpec(shape=[], dtype=DTYPE),
+                        tf.TensorSpec(shape=[], dtype=DTYPE),
+                        tf.TensorSpec(shape=[None], dtype=DTYPE),
+                        tf.TensorSpec(shape=[], dtype=DTYPEINT),
+                        tf.TensorSpec(shape=[], dtype=DTYPE),
+                        tf.TensorSpec(shape=[], dtype=DTYPE),
+                        tf.TensorSpec(shape=[None], dtype=DTYPE),
+                        tf.TensorSpec(shape=[], dtype=DTYPEINT),
+                        tf.TensorSpec(shape=[None,None],dtype=DTYPE)]
+
 class Subgrid:
     """
     Wrapper class around subgrdis.
@@ -52,17 +64,8 @@ class Subgrid:
         a = tf.pad(a, int_me([ [1,1],[1,1],[0,0] ]))
         self.padded_grid = tf.reshape(a, [(self.s_x+2)*(self.s_q2+2),-1])
 
-@tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=DTYPE),
-                              tf.TensorSpec(shape=[None], dtype=DTYPE),
-                              tf.TensorSpec(shape=[], dtype=DTYPE),
-                              tf.TensorSpec(shape=[], dtype=DTYPE),
-                              tf.TensorSpec(shape=[None], dtype=DTYPE),
-                              tf.TensorSpec(shape=[], dtype=DTYPEINT),
-                              tf.TensorSpec(shape=[], dtype=DTYPE),
-                              tf.TensorSpec(shape=[], dtype=DTYPE),
-                              tf.TensorSpec(shape=[None], dtype=DTYPE),
-                              tf.TensorSpec(shape=[], dtype=DTYPEINT),
-                              tf.TensorSpec(shape=[None,None],dtype=DTYPE)])
+
+@tf.function(input_signature=INTERPOLATE_SIGNATURE)
 def interpolate(a_x, a_q2,
                 log_xmin, log_xmax, padded_x, s_x,
                 log_q2min, log_q2max, padded_q2, s_q2,
@@ -114,17 +117,7 @@ def interpolate(a_x, a_q2,
                                         a0, a1, a2, a3, a4,
                                         s_x, s_q2)
 
-@tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=DTYPE),
-                              tf.TensorSpec(shape=[None], dtype=DTYPE),
-                              tf.TensorSpec(shape=[], dtype=DTYPE),
-                              tf.TensorSpec(shape=[], dtype=DTYPE),
-                              tf.TensorSpec(shape=[None], dtype=DTYPE),
-                              tf.TensorSpec(shape=[], dtype=DTYPEINT),
-                              tf.TensorSpec(shape=[], dtype=DTYPE),
-                              tf.TensorSpec(shape=[], dtype=DTYPE),
-                              tf.TensorSpec(shape=[None], dtype=DTYPE),
-                              tf.TensorSpec(shape=[], dtype=DTYPEINT),
-                              tf.TensorSpec(shape=[None,None], dtype=DTYPE)])
+@tf.function(input_signature=INTERPOLATE_SIGNATURE)
 def lowx_extrapolation(a_x, a_q2,
                        log_xmin, log_xmax, padded_x, s_x,
                        log_q2min, log_q2max, padded_q2, s_q2,
@@ -176,17 +169,8 @@ def lowx_extrapolation(a_x, a_q2,
 
     return extrapolate_linear(a_x, corn_x[0], corn_x[1], y[:s], y[s:])
 
-@tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=DTYPE),
-                              tf.TensorSpec(shape=[None], dtype=DTYPE),
-                              tf.TensorSpec(shape=[], dtype=DTYPE),
-                              tf.TensorSpec(shape=[], dtype=DTYPE),
-                              tf.TensorSpec(shape=[None], dtype=DTYPE),
-                              tf.TensorSpec(shape=[], dtype=DTYPEINT),
-                              tf.TensorSpec(shape=[], dtype=DTYPE),
-                              tf.TensorSpec(shape=[], dtype=DTYPE),
-                              tf.TensorSpec(shape=[None], dtype=DTYPE),
-                              tf.TensorSpec(shape=[], dtype=DTYPEINT),
-                              tf.TensorSpec(shape=[None,None],dtype=DTYPE)])
+
+@tf.function(input_signature=INTERPOLATE_SIGNATURE)
 def lowq2_extrapolation(a_x, a_q2,
                         log_xmin, log_xmax, padded_x, s_x,
                         log_q2min, log_q2max, padded_q2, s_q2,
@@ -255,17 +239,8 @@ def lowq2_extrapolation(a_x, a_q2,
     return fq2Min * tf.math.pow(a_q2 / corn_q2,
                                 anom * a_q2 / corn_q2 + 1.0 - a_q2 / corn_q2)
 
-@tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=DTYPE),
-                              tf.TensorSpec(shape=[None], dtype=DTYPE),
-                              tf.TensorSpec(shape=[], dtype=DTYPE),
-                              tf.TensorSpec(shape=[], dtype=DTYPE),
-                              tf.TensorSpec(shape=[None], dtype=DTYPE),
-                              tf.TensorSpec(shape=[], dtype=DTYPEINT),
-                              tf.TensorSpec(shape=[], dtype=DTYPE),
-                              tf.TensorSpec(shape=[], dtype=DTYPE),
-                              tf.TensorSpec(shape=[None], dtype=DTYPE),
-                              tf.TensorSpec(shape=[], dtype=DTYPEINT),
-                              tf.TensorSpec(shape=[None,None],dtype=DTYPE)])
+
+@tf.function(input_signature=INTERPOLATE_SIGNATURE)
 def highq2_extrapolation(a_x, a_q2,
                          log_xmin, log_xmax, padded_x, s_x,
                          log_q2min, log_q2max, padded_q2, s_q2,
@@ -317,17 +292,8 @@ def highq2_extrapolation(a_x, a_q2,
 
     return extrapolate_linear(a_q2, corn_q2[0], corn_q2[1], y[:s], y[s:])
 
-@tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=DTYPE),
-                              tf.TensorSpec(shape=[None], dtype=DTYPE),
-                              tf.TensorSpec(shape=[], dtype=DTYPE),
-                              tf.TensorSpec(shape=[], dtype=DTYPE),
-                              tf.TensorSpec(shape=[None], dtype=DTYPE),
-                              tf.TensorSpec(shape=[], dtype=DTYPEINT),
-                              tf.TensorSpec(shape=[], dtype=DTYPE),
-                              tf.TensorSpec(shape=[], dtype=DTYPE),
-                              tf.TensorSpec(shape=[None], dtype=DTYPE),
-                              tf.TensorSpec(shape=[], dtype=DTYPEINT),
-                              tf.TensorSpec(shape=[None,None],dtype=DTYPE)])
+
+@tf.function(input_signature=INTERPOLATE_SIGNATURE)
 def lowx_highq2_extrapolation(a_x, a_q2,
                               log_xmin, log_xmax, padded_x, s_x,
                               log_q2min, log_q2max, padded_q2, s_q2,
@@ -385,17 +351,8 @@ def lowx_highq2_extrapolation(a_x, a_q2,
 
     return extrapolate_linear(a_x, corn_x[0], corn_x[1], fxMin, fxMin1)
 
-@tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=DTYPE),
-                              tf.TensorSpec(shape=[None], dtype=DTYPE),
-                              tf.TensorSpec(shape=[], dtype=DTYPE),
-                              tf.TensorSpec(shape=[], dtype=DTYPE),
-                              tf.TensorSpec(shape=[None], dtype=DTYPE),
-                              tf.TensorSpec(shape=[], dtype=DTYPEINT),
-                              tf.TensorSpec(shape=[], dtype=DTYPE),
-                              tf.TensorSpec(shape=[], dtype=DTYPE),
-                              tf.TensorSpec(shape=[None], dtype=DTYPE),
-                              tf.TensorSpec(shape=[], dtype=DTYPEINT),
-                              tf.TensorSpec(shape=[None,None],dtype=DTYPE)])
+
+@tf.function(input_signature=INTERPOLATE_SIGNATURE)
 def lowx_lowq2_extrapolation(a_x, a_q2,
                              log_xmin, log_xmax, padded_x, s_x,
                              log_q2min, log_q2max, padded_q2, s_q2,
@@ -457,5 +414,6 @@ def lowx_lowq2_extrapolation(a_x, a_q2,
                                (fq2Min1 - fq2Min) / fq2Min / 0.01),
                     fone)
 
-    return fq2Min * tf.math.pow(a_q2 / corn_q2,
-                                anom * a_q2 / corn_q2 + 1.0 - a_q2 / corn_q2)
+    factor = tf.math.pow(a_q2 / corn_q2, anom * a_q2 / corn_q2 + 1.0 - a_q2 / corn_q2)
+
+    return fq2Min * factor

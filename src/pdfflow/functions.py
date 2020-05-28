@@ -46,6 +46,7 @@ GRID_FUNCTION_SIGNATURE = [tf.TensorSpec(shape=[None], dtype=DTYPEINT),
                  tf.TensorSpec(shape=[None, None], dtype=DTYPE),
                  tf.TensorSpec(shape=[2], dtype=DTYPEINT)]
 
+
 @tf.function(input_signature=GRID_FUNCTION_SIGNATURE)
 def inner_subgrid(u, a_x, a_q2,
                   log_xmin, log_xmax, padded_x, s_x,
@@ -126,15 +127,17 @@ def first_subgrid(u, a_x, a_q2,
 
     Parameters
     ----------
-        u: tf.tensor of shape [None]
-            query of pids
-        shape: tf.tensor of shape [None,None]
+        u: tf.tensor(int)
+            list of pids to query
+        ...
+        shape: tf.tensor(int, int)
             final output shape to scatter points into
+
         For other parameters refer to subgrid.py:interpolate
 
     Returns
     ----------
-        tf.tensor of shape [None,None]
+        tf.tensor of shape `shape`
         pdf interpolated values for each query point and quey pids
     """
 

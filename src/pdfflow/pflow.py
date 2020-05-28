@@ -1,13 +1,21 @@
+"""
+    Main pdfflow module
+"""
+
 import tensorflow as tf
 import re
 import numpy as np
-from pdfflow.configflow import DTYPE, DTYPEINT, int_me, ione, izero
+from pdfflow.configflow import DTYPE, DTYPEINT, int_me, ione, izero, float_me
 from pdfflow.subgrid import Subgrid
 from pdfflow.functions import inner_subgrid
 from pdfflow.functions import first_subgrid
 from pdfflow.functions import last_subgrid
 
+# lhapdf gluon code
 PID_G = int_me(21)
+# expected input shapes to be found in this module
+GRID_F = tf.TensorSpec(shape=[None], dtype=DTYPE)
+GRID_I = tf.TensorSpec(shape=[None], dtype=DTYPEINT)
 
 def load_Data(fname):
     # Reads pdf from file and retrieves a list of grids
@@ -55,27 +63,37 @@ class mkPDF:
 
         self.subgrids = list(map(Subgrid, grids))
         self.flavor_scheme = tf.cast(self.subgrids[0].flav, dtype=DTYPEINT)
-        self.subgrids[-1].flag = -ione
+        self.subgrids[-1].flag = int_me(-1)
         self.subgrids[0].flag = izero
 
+    @tf.function(input_signature=[GRID_I, GRID_F, GRID_F])
     def _xfxQ2(self, u, aa_x, aa_q2):
         """
         Function to interpolate
         Called by xfxQ2
         It divides the computation on the q2 axis in subgrids and sums up
         all the results
+
+        Parameters
+        ----------
+            u: tf.tensor(int)
+                list of PID to compute
+            aa_x: tf.tensor(float)
+                x-grid for the evaluation of the pdf
+            aa_q2: tf.tensor(float)
+                q2-grid for the evaluiation of the pdf
         """
 
-        a_x = tf.cast(tf.math.log(aa_x, name="logx"), DTYPE)
-        a_q2 = tf.cast(tf.math.log(aa_q2, name="logq2"), DTYPE)
+        a_x = tf.math.log(aa_x, name="logx")
+        a_q2 = tf.math.log(aa_q2, name="logq2")
 
         size_a = tf.size(a_x, out_type=DTYPEINT)
         size_u = tf.size(u, out_type=DTYPEINT)
         shape = tf.stack([size_a, size_u])
 
-        res = tf.zeros(shape, dtype=DTYPE)
+#         res = tf.zeros(shape, dtype=DTYPE)
 
-        res += first_subgrid(u, a_x, a_q2,
+        res = first_subgrid(u, a_x, a_q2,
                              self.subgrids[0].log_xmin,
                              self.subgrids[0].log_xmax,
                              self.subgrids[0].padded_x,
@@ -109,10 +127,23 @@ class mkPDF:
         return res
 
     @tf.function
-    def xfxQ2(self, pid, a_x, a_q2):
+    def xfxQ2(self, pid, arr_x, arr_q2):
         """
         User interface for pdfflow
         It asks pid, x, q2 points
+
+        Parameters
+        ----------
+            pid: list(int)
+                list of PID to be computed
+            arr_x: array
+                grid on x where to compute the PDF
+            arr_q2: array
+                grid on q^2 where to compute the PDF
+        Returns
+        -------
+            pdf: tensor
+                PDF evaluated in each f(x,q2) for each flavour
         """
 
         # must feed a mask for flavors to _xfxQ2
@@ -123,6 +154,10 @@ class mkPDF:
 
         # Since the user might be asking for a list, let's ensure it is a tensor of ints
         tensor_pid = int_me(pid)
+
+        # same for the a_x and a_q2 arrays
+        a_x = float_me(arr_x)
+        a_q2 = float_me(arr_q2)
 
         # And ensure it is unique
         # TODO maybe error if the user ask for the same pid twice or for a non-registered pid?
@@ -141,7 +176,8 @@ class mkPDF:
         # Return the values in the order the user asked
         f_f = tf.gather(f_f, user_idx, axis=1)
 
-        return tf.squeeze(f_f)
+        result = tf.squeeze(f_f)
+        return result
 
     def xfxQ2_allpid(self, a_x, a_q2):
         """
