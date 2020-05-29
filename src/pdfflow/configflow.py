@@ -2,7 +2,30 @@
 Define some constants, header style
 """
 # Most of this can be moved to a yaml file without loss of generality
+import os
+
+# Set TF to only log errors
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "0"
 import tensorflow as tf
+
+# Configure pdfflow logging
+import logging
+
+module_name = __name__.split(".")[0]
+logger = logging.getLogger(module_name)
+# Set level debug for development
+logger.setLevel(logging.DEBUG)
+# Create a handler and format it
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.DEBUG)
+console_format = logging.Formatter("[%(levelname)s] (%(name)s) %(message)s")
+console_handler.setFormatter(console_format)
+logger.addHandler(console_handler)
+
+# logging.basicConfig(level=logging.INFO)
+# logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+# logging.basicConfig(format='%(asctime)s %(message)s')
 
 # Define the tensorflow number types
 DTYPE = tf.float64

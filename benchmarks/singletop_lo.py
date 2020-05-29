@@ -3,19 +3,19 @@ import sys
 import time
 import numpy as np
 import subprocess as sp
+from pdfflow.configflow import DTYPEINT as pint
 import tensorflow as tf
 from vegasflow.vflow import vegas_wrapper
 from pdfflow.pflow import mkPDF
 from vegasflow.configflow import DTYPE, DTYPEINT, float_me
 from pdfflow.configflow import DTYPE as pfloat
-from pdfflow.configflow import DTYPEINT as pint
 
 if pint != DTYPEINT or pfloat != DTYPE:
     raise ValueError(f"Before running this example ensure pdfflow is using the same types as vegasflow, this are {DTYPE} and {DTYPEINT}")
 
 # MC integration setup
 dim = 3
-ncalls = np.int32(5e6)
+ncalls = np.int32(1e6)
 n_iter = 5
 pdfset = "NNPDF31_nlo_as_0118/0"
 epsilon = float_me(1e-7)

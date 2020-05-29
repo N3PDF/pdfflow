@@ -1,11 +1,19 @@
 """
     Main pdfflow module
 """
+import logging
+import collections
+
+import subprocess as sp
+import numpy as np
+
+try:
+    import lhapdf
+except ModuleNotFoundError:
+    lhapdf = None
 
 import tensorflow as tf
-import re
-import numpy as np
-from pdfflow.configflow import DTYPE, DTYPEINT, int_me, ione, izero, float_me
+from pdfflow.configflow import DTYPE, DTYPEINT, int_me, izero, float_me
 from pdfflow.subgrid import Subgrid
 from pdfflow.functions import inner_subgrid
 from pdfflow.functions import first_subgrid
@@ -16,59 +24,126 @@ PID_G = int_me(21)
 # expected input shapes to be found in this module
 GRID_F = tf.TensorSpec(shape=[None], dtype=DTYPE)
 GRID_I = tf.TensorSpec(shape=[None], dtype=DTYPEINT)
+# instantiate logger
+logger = logging.getLogger(__name__)
+# create the Grid namedtuple
+GridTuple = collections.namedtuple('Grid', ['x', 'q2', 'flav', 'grid'])
 
 
-def load_Data(fname):
-    # Reads pdf from file and retrieves a list of grids
-    # Each grid is a tuple containing numpy arrays (x,Q2, flavours, pdf)
-    f = open(fname)
+def _load_data(pdf_file):
+    """
+    Reads pdf from file and retrieves a list of grids
+    Each grid is a tuple containing numpy arrays (x,Q2, flavours, pdf)
 
-    n = []
-    count = 0
-    for line in f:
-        if re.match("---", line):
-            n += [count]
+    Parameters
+    ----------
+        pdf_file: str
+            PDF .dat file
 
-        count += 1
-    f.close()
+    Returns
+    -------
+        grids: list(tuple(np.array))
+            list of tuples of arrays (x, Q2, flavours, pdf values)
+    """
+    with open(pdf_file, "r") as pfile:
+        n = []
+        count = 0
+        for line in pfile:
+            if "---" in line:
+                n += [count]
+            count += 1
 
     grids = []
     for i in range(len(n) - 1):
-        x = np.loadtxt(fname, skiprows=(n[i] + 1), max_rows=1)
-        q2 = np.loadtxt(fname, skiprows=(n[i] + 2), max_rows=1)
-        flav = np.loadtxt(fname, skiprows=(n[i] + 3), max_rows=1)
-        grid = np.loadtxt(fname, skiprows=(n[i] + 4), max_rows=(n[i + 1] - n[i] - 4))
-
-        grids += [(x, q2, flav, grid)]
+        x = np.loadtxt(pdf_file, skiprows=(n[i] + 1), max_rows=1)
+        q2 = np.loadtxt(pdf_file, skiprows=(n[i] + 2), max_rows=1)
+        flav = np.loadtxt(pdf_file, skiprows=(n[i] + 3), max_rows=1)
+        grid = np.loadtxt(pdf_file, skiprows=(n[i] + 4), max_rows=(n[i + 1] - n[i] - 4))
+        grids += [GridTuple(x, q2, flav, grid)]
 
     return grids
 
 
-class mkPDF:
-    def __init__(self, fname, dirname="./local/share/LHAPDF/"):
-        """
-        fname: string, must be in the format: '<set_name>/<set member number>'
-        """
+def mkPDF(fname, dirname=None):
+    """ Wrapper to generate a PDF given a PDF name and a directory
+    where to find the grid files.
+
+    Parameters
+    ----------
+        fname: str
+            PDF name and member in the format '<set_name>/<set member number>'
+        dirname: str
+            LHAPDF datadir, if None will try to guess from LHAPDF
+
+    Returns
+    -------
+        PDF: pdfflow.PDF
+            instantiated member of the PDF class
+    """
+    if dirname is None:
+        if lhapdf is None:
+            raise ValueError("mkPDF needs a PDF name if lhapdf-python is not installed")
+        dirname_raw = sp.run(
+            ["lhapdf-config", "--datadir"], capture_output=True, text=True, check=True
+        )
+        dirname = dirname_raw.stdout.strip()
+    return PDF(fname, dirname)
+
+
+class PDF:
+    """
+    PDF class exposing the high level pdfflow interfaces:
+
+    Contains
+    --------
+         xfxQ2: tf.tensor
+            Returns a grid for the value of the pdf for each value of (pid, x, q2)
+         xfxQ2_allpid: tf.tensor
+            Wrapper to return a grid for the value of the pdf for all pids (pid, x, q2)
+
+    Parameters
+    ----------
+        fname: str
+            PDF name and member, must be in the format: '<set_name>/<set member number>'
+        dirname: str
+            LHAPDF datadir
+    """
+
+    def __init__(self, fname, dirname):
         self.dirname = dirname
         f = fname.split("/")
 
         self.fname = self.dirname + "%s/%s_%s.dat" % (f[0], f[0], f[1].zfill(4))
 
-        print("pdfflow loading " + self.fname)
-        grids = load_Data(self.fname)
+        logger.info("loading %s", self.fname)
+        grids = _load_data(self.fname)
         # [(x,Q2,flav,knots), ...]
         flav = list(map(lambda g: g[2], grids))
         for i in range(len(flav) - 1):
             if not np.all(flav[i] == flav[i + 1]):
-                print(
-                    "Flavor schemes do not match across\
-                      all the subgrids ---> algorithm will break !"
+                # TODO: should this be an error?
+                logger.warning(
+                    "Flavor schemes do not match across all the subgrids --> algorithm will break!"
                 )
 
         self.subgrids = list(map(Subgrid, grids))
-        self.flavor_scheme = tf.cast(self.subgrids[0].flav, dtype=DTYPEINT)
         self.subgrids[-1].flag = int_me(-1)
         self.subgrids[0].flag = izero
+
+        # Look at the flavor_scheme and ensure that it is sorted
+        # save the whole thing in case it is not sorted
+        flavor_scheme = grids[0].flav
+        self.flavor_scheme = int_me(flavor_scheme)
+
+        flavor_scheme[flavor_scheme == PID_G.numpy()] = 0
+        if all(np.diff(flavor_scheme) == 1):
+            self.flavors_sorted = True
+            self.flavor_shift = -flavor_scheme[0]
+        else:
+            # TODO can't we rely on the PDF flavours to be sorted?
+            self.flavors_sorted = False
+            self.flavor_shift = 0
+
 
     @tf.function(input_signature=[GRID_I, GRID_F, GRID_F])
     def _xfxQ2(self, u, aa_x, aa_q2):
@@ -121,9 +196,11 @@ class mkPDF:
                 s.log_xmin,
                 s.log_xmax,
                 s.padded_x,
+                s.s_x,
                 s.log_q2min,
                 s.log_q2max,
                 s.padded_q2,
+                s.s_q2,
                 s.padded_grid,
                 shape,
             )
@@ -146,7 +223,7 @@ class mkPDF:
 
         return res
 
-    @tf.function
+    @tf.function(experimental_relax_shapes=True)
     def xfxQ2(self, pid, arr_x, arr_q2):
         """
         User interface for pdfflow
@@ -183,12 +260,21 @@ class mkPDF:
         # TODO maybe error if the user ask for the same pid twice or for a non-registered pid?
         upid, user_idx = tf.unique(tensor_pid, out_idx=DTYPEINT)
 
-        # Change 0 to the LHAPDF gluon pid: 21
-        upid = tf.where(upid == izero, PID_G, upid)
+
         # And return the positions in the flavor_scheme array
-        # TODO maybe it is better to digest the flavor_scheme on initialization and avoid this
-        upid = tf.expand_dims(upid, -1)
-        pid_idx = tf.cast(tf.where(tf.equal(self.flavor_scheme, upid))[:, 1], dtype=DTYPEINT)
+        # if the flavours are sorted, do it the easy way
+        if self.flavors_sorted:
+            # Change the LHAPDF gluon number to 0
+            upid = tf.where(upid == PID_G, izero, upid)
+            pid_idx = self.flavor_shift + upid
+        else:
+            # Change 0 to the LHAPDF gluon pid: 21
+            upid = tf.where(upid == izero, PID_G, upid)
+            # TODO maybe it is better to digest the flavor_scheme on initialization and avoid this
+            upid = tf.expand_dims(upid, -1)
+            pid_idx = tf.cast(
+                tf.where(tf.equal(self.flavor_scheme, upid))[:, 1], dtype=DTYPEINT
+            )
 
         # Perform the actual computation
         f_f = self._xfxQ2(pid_idx, a_x, a_q2)
@@ -199,6 +285,7 @@ class mkPDF:
         result = tf.squeeze(f_f)
         return result
 
+    @tf.function
     def xfxQ2_allpid(self, a_x, a_q2):
         """
         User iterface for pdfflow
