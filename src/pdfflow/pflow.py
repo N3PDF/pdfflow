@@ -13,12 +13,9 @@ except ModuleNotFoundError:
     lhapdf = None
 
 # import configflow before tf to set some tf options
-from pdfflow.configflow import DTYPE, DTYPEINT, int_me, izero, float_me
+from pdfflow.configflow import DTYPE, DTYPEINT, int_me, izero, fzero, float_me
 import tensorflow as tf
 from pdfflow.subgrid import Subgrid
-from pdfflow.functions import inner_subgrid
-from pdfflow.functions import first_subgrid
-from pdfflow.functions import last_subgrid
 
 # lhapdf gluon code
 PID_G = int_me(21)
@@ -65,6 +62,7 @@ def _load_data(pdf_file):
         flav = np.loadtxt(pdf_file, skiprows=(n[i] + 3), max_rows=1)
         grid = np.loadtxt(pdf_file, skiprows=(n[i] + 4), max_rows=(n[i + 1] - n[i] - 4))
         grids += [GridTuple(x, q2, flav, grid)]
+
 
     return grids
 
@@ -131,7 +129,9 @@ class PDF:
                     "Flavor schemes do not match across all the subgrids --> algorithm will break!"
                 )
 
-        self.subgrids = list(map(Subgrid, grids))
+        self.subgrids = [Subgrid(grid, i, len(grids)) for i, grid in enumerate(grids)]
+
+        # By default all subgrids are called with the inner subgrid
 
         # Look at the flavor_scheme and ensure that it is sorted
         # save the whole thing in case it is not sorted
@@ -147,6 +147,15 @@ class PDF:
             self.flavors_sorted = False
             self.flavor_shift = 0
 
+    @property
+    def q2max(self):
+        q2max = self.subgrids[-1].log_q2max
+        return np.exp(q2max)
+
+    @property
+    def q2min(self):
+        q2min = self.subgrids[0].log_q2min
+        return np.exp(q2min)
 
     @tf.function(input_signature=[GRID_I, GRID_F, GRID_F])
     def _xfxQ2(self, u, aa_x, aa_q2):
@@ -173,54 +182,14 @@ class PDF:
         size_u = tf.size(u, out_type=DTYPEINT)
         shape = tf.stack([size_a, size_u])
 
-        res = first_subgrid(
-            u,
-            shape,
-            a_x,
-            a_q2,
-            self.subgrids[0].log_xmin,
-            self.subgrids[0].log_xmax,
-            self.subgrids[0].padded_x,
-            self.subgrids[0].s_x,
-            self.subgrids[0].log_q2min,
-            self.subgrids[0].log_q2max,
-            self.subgrids[0].padded_q2,
-            self.subgrids[0].s_q2,
-            self.subgrids[0].padded_grid,
-        )
-
-        for s in self.subgrids[1:-1]:
-            res += inner_subgrid(
+        res = fzero
+        for subgrid in self.subgrids:
+            res += subgrid(
                 u,
                 shape,
                 a_x,
                 a_q2,
-                s.log_xmin,
-                s.log_xmax,
-                s.padded_x,
-                s.s_x,
-                s.log_q2min,
-                s.log_q2max,
-                s.padded_q2,
-                s.s_q2,
-                s.padded_grid,
             )
-
-        res += last_subgrid(
-            u,
-            shape,
-            a_x,
-            a_q2,
-            self.subgrids[-1].log_xmin,
-            self.subgrids[-1].log_xmax,
-            self.subgrids[-1].padded_x,
-            self.subgrids[-1].s_x,
-            self.subgrids[-1].log_q2min,
-            self.subgrids[-1].log_q2max,
-            self.subgrids[-1].padded_q2,
-            self.subgrids[-1].s_q2,
-            self.subgrids[-1].padded_grid,
-        )
 
         return res
 

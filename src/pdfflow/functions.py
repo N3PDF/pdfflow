@@ -23,12 +23,12 @@
 """
 import tensorflow as tf
 from pdfflow.configflow import DTYPE, DTYPEINT, fzero, int_me
-from pdfflow.subgrid import interpolate
-from pdfflow.subgrid import lowx_extrapolation
-from pdfflow.subgrid import lowq2_extrapolation
-from pdfflow.subgrid import lowx_lowq2_extrapolation
-from pdfflow.subgrid import highq2_extrapolation
-from pdfflow.subgrid import lowx_highq2_extrapolation
+from pdfflow.region_interpolator import interpolate
+from pdfflow.region_interpolator import lowx_extrapolation
+from pdfflow.region_interpolator import lowq2_extrapolation
+from pdfflow.region_interpolator import lowx_lowq2_extrapolation
+from pdfflow.region_interpolator import highq2_extrapolation
+from pdfflow.region_interpolator import lowx_highq2_extrapolation
 
 AUTOGRAPH_OPT = tf.autograph.experimental.Feature.ALL
 
@@ -328,7 +328,7 @@ def last_subgrid(
         shape: tf.tensor, rank-1 shape: (2,)
             final output shape to scatter points into
 
-        For other parameters see :py:func:`pdfflow.subgrid.interpolate`
+        For other parameters see :py:func:`pdfflow.region_interpolator.interpolate`
 
     Returns
     ----------
