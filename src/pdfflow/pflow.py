@@ -174,6 +174,7 @@ class PDF:
 
         res = first_subgrid(
             u,
+            shape,
             a_x,
             a_q2,
             self.subgrids[0].log_xmin,
@@ -185,12 +186,12 @@ class PDF:
             self.subgrids[0].padded_q2,
             self.subgrids[0].s_q2,
             self.subgrids[0].padded_grid,
-            shape,
         )
 
         for s in self.subgrids[1:-1]:
             res += inner_subgrid(
                 u,
+                shape,
                 a_x,
                 a_q2,
                 s.log_xmin,
@@ -202,11 +203,11 @@ class PDF:
                 s.padded_q2,
                 s.s_q2,
                 s.padded_grid,
-                shape,
             )
 
         res += last_subgrid(
             u,
+            shape,
             a_x,
             a_q2,
             self.subgrids[-1].log_xmin,
@@ -218,7 +219,6 @@ class PDF:
             self.subgrids[-1].padded_q2,
             self.subgrids[-1].s_q2,
             self.subgrids[-1].padded_grid,
-            shape,
         )
 
         return res
