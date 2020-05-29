@@ -12,8 +12,9 @@ try:
 except ModuleNotFoundError:
     lhapdf = None
 
-import tensorflow as tf
+# import configflow before tf to set some tf options
 from pdfflow.configflow import DTYPE, DTYPEINT, int_me, izero, float_me
+import tensorflow as tf
 from pdfflow.subgrid import Subgrid
 from pdfflow.functions import inner_subgrid
 from pdfflow.functions import first_subgrid
