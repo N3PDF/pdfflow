@@ -16,7 +16,11 @@ import subprocess as sp
 SIZE = 10
 
 # Set up the PDF
-LIST_PDF = ["NNPDF31_nlo_as_0118", "PDF4LHC15_nnlo_100"]
+LIST_PDF = ["NNPDF31_nlo_as_0118",
+            "PDF4LHC15_nnlo_100",
+            "MSTW2008lo68cl_nf3",
+            "NNPDF30_nnlo_as_0121_nf_6",
+            "cteq6"]
 MEMBERS = 2
 FLAVS = list(range(-3,4))
 FLAVS[FLAVS.index(0)] = 21
@@ -30,7 +34,7 @@ for pdfset in LIST_PDF:
 XARR = np.random.rand(SIZE)
 
 # Set up the Q2 arr
-QS = [ (100, 10000), (3, 10), (10, 100)]
+QS = [ (1,10), (100, 10000), (10, 100)]
 
 # utilities
 def gen_q2(qmin, qmax):
@@ -57,7 +61,9 @@ def test_accuracy(atol=1e-6):
     """ Check the accuracy for all PDF sets for all members
     in the lists LIST_PDF and MEMBERS
     for all defined ranges of Q for all flavours
-    is better than atol
+    is better than atol.
+
+    This test doesnt care about Q extrapolation
     """
     for setname in LIST_PDF:
         for member in range(MEMBERS):
@@ -65,19 +71,15 @@ def test_accuracy(atol=1e-6):
             logger.info(" > Checking %s", pdfset)
             pdfflow = pdf.mkPDF(pdfset, f"{DIRNAME}/")
             for qi, qf in QS:
+                # Dont test extrapolation
+                qi = max(qi, pdfflow.q2min)
+                qf = min(qf, pdfflow.q2max)
                 q2arr = gen_q2(qi, qf)
                 logger.info(" Q2 from %f to %f", qi, qf)
                 flow_values = pdfflow.xfxQ2(FLAVS, XARR, q2arr)
                 lhapdf_values = get_pdfvals(XARR, q2arr, pdfset)
             for i, f in enumerate(FLAVS):
-                try:
-                    np.testing.assert_allclose(flow_values[:,i], lhapdf_values[f], atol=atol)
-                    logger.info(" checked flavour %d, passed", f)
-                except:
-                    print(q2arr)
-                    print(flow_values[:,i] - lhapdf_values[f])
-                    import ipdb
-                    ipdb.set_trace()
+                np.testing.assert_allclose(flow_values[:,i], lhapdf_values[f], atol=atol)
 
 if __name__ == "__main__":
     test_accuracy()
