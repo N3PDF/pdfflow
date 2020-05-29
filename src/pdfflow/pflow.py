@@ -35,6 +35,10 @@ def _load_data(pdf_file):
     Reads pdf from file and retrieves a list of grids
     Each grid is a tuple containing numpy arrays (x,Q2, flavours, pdf)
 
+    Note:
+        the input q array in LHAPDF is just q, this functions
+        squares the result and q^2 is used everwhere in the code
+
     Parameters
     ----------
         pdf_file: str
@@ -56,7 +60,7 @@ def _load_data(pdf_file):
     grids = []
     for i in range(len(n) - 1):
         x = np.loadtxt(pdf_file, skiprows=(n[i] + 1), max_rows=1)
-        q2 = np.loadtxt(pdf_file, skiprows=(n[i] + 2), max_rows=1)
+        q2 = pow(np.loadtxt(pdf_file, skiprows=(n[i] + 2), max_rows=1), 2)
         flav = np.loadtxt(pdf_file, skiprows=(n[i] + 3), max_rows=1)
         grid = np.loadtxt(pdf_file, skiprows=(n[i] + 4), max_rows=(n[i + 1] - n[i] - 4))
         grids += [GridTuple(x, q2, flav, grid)]
@@ -127,8 +131,6 @@ class PDF:
                 )
 
         self.subgrids = list(map(Subgrid, grids))
-        self.subgrids[-1].flag = int_me(-1)
-        self.subgrids[0].flag = izero
 
         # Look at the flavor_scheme and ensure that it is sorted
         # save the whole thing in case it is not sorted
@@ -169,8 +171,6 @@ class PDF:
         size_a = tf.size(a_x, out_type=DTYPEINT)
         size_u = tf.size(u, out_type=DTYPEINT)
         shape = tf.stack([size_a, size_u])
-
-        #         res = tf.zeros(shape, dtype=DTYPE)
 
         res = first_subgrid(
             u,

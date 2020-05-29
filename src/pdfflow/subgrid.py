@@ -1,3 +1,8 @@
+"""
+    This module contains the Subgrid main class and interpolation functions
+"""
+
+import numpy as np
 import tensorflow as tf
 from pdfflow.configflow import DTYPE, DTYPEINT, float_me, int_me, fone
 from pdfflow.neighbour_knots import four_neighbour_knots
@@ -19,61 +24,72 @@ INTERPOLATE_SIGNATURE = [
 ]
 
 
-class Subgrid:
+class Subgrid(tf.Module):
     """
     Wrapper class around subgrdis.
-    This class reads the LHAPDF grid and stores useful information:
+    This class reads the LHAPDF grid, parses it and stores all necessary
+    information as tensorflow tensors.
 
-    - log(x)
-    - log(Q2)
-    - Q2
-    - values
+    Saving this information as tf.tensors allows to reuse tf.function compiled function
+    with no retracing.
+
+    Note:
+        the x and q2 arrays are padded with an extra value next to the boundaries
+        to avoid out of bound errors driven by numerical precision
+        The size we save for the arrays correspond to the size of the arrays before padding
+
+    Parameters
+    ----------
+        grid: collections.namedtuple
+            tuple containing (x, q2, flav, grid)
+            which correspond to the x and q2 arrays
+            the flavour scheme and the pdf grid values respectively
+
+
+    Attributes
+    ----------
+        log(x)
+        log(Q2)
+        Q2
+        values of the pdf grid
     """
 
-    def __init__(self, grid=None):
-        """
-        Init
-        """
+    def __init__(self, grid):
+        super().__init__()
+        # Save the boundaries of the grid
+        xmin = min(grid.x)
+        xmax = max(grid.x)
+        self.log_xmin = float_me(np.log(xmin))
+        self.log_xmax = float_me(np.log(xmax))
 
-        if grid is None:
-            raise ValueError("Subgrids need a grid to be generated from")
+        q2min = min(grid.q2)
+        q2max = max(grid.q2)
+        self.log_q2min = float_me(np.log(q2min))
+        self.log_q2max = float_me(np.log(q2max))
 
-        self.flav = tf.cast(grid[2], dtype=DTYPEINT)
+        # Save grid shape information
+        self.s_x = int_me(grid.x.size)
+        self.s_q2 = int_me(grid.q2.size)
 
-        xarr = grid[0]
-        self.log_x = tf.cast(tf.math.log(xarr), dtype=DTYPE)
-        self.log_xmin = tf.reduce_min(self.log_x)
-        self.log_xmax = tf.reduce_max(self.log_x)
-        self.padded_x = tf.concat(
-            [
-                tf.expand_dims(self.log_xmin * 0.99, 0),
-                self.log_x,
-                tf.expand_dims(self.log_xmax * 1.01, 0),
-            ],
-            axis=0,
-        )
-        self.s_x = tf.size(self.log_x, out_type=DTYPEINT)
+        # Insert a padding at the beginning and the end
+        log_xpad = np.pad(np.log(grid.x), 1, mode='edge')
+        log_xpad[0] *= 0.99
+        log_xpad[-1] *= 1.01
 
-        qarr = grid[1]
-        q2arr = float_me(pow(qarr, 2))
-        self.log_q2 = tf.math.log(q2arr)
-        self.log_q2max = tf.reduce_max(self.log_q2)
-        self.log_q2min = tf.reduce_min(self.log_q2)
-        self.padded_q2 = tf.concat(
-            [
-                tf.expand_dims(self.log_q2min * 0.99, 0),
-                self.log_q2,
-                tf.expand_dims(self.log_q2max * 1.01, 0),
-            ],
-            axis=0,
-        )
-        self.s_q2 = tf.size(self.log_q2, out_type=DTYPEINT)
+        log_q2pad = np.pad(np.log(grid.q2), 1, mode='edge')
+        log_q2pad[0] *= 0.99
+        log_q2pad[-1] *= 1.01
 
-        self.grid_values = float_me(grid[3])
+        self.padded_x = float_me(log_xpad)
+        self.padded_q2 = float_me(log_q2pad)
 
-        a = tf.reshape(self.grid_values, [self.s_x, self.s_q2, -1])
-        a = tf.pad(a, int_me([[1, 1], [1, 1], [0, 0]]))
-        self.padded_grid = tf.reshape(a, [(self.s_x + 2) * (self.s_q2 + 2), -1])
+        # Finally parse the grid
+        # the grid is sized (x.size * q.size, flavours)
+        reshaped_grid = grid.grid.reshape(grid.x.size, grid.q2.size, -1)
+        # and pad it with 0s in x and q
+        padded_grid = np.pad(reshaped_grid, ((1,1),(1,1),(0,0)))
+        # flatten the x and q dimensions again and store it
+        self.padded_grid = float_me(padded_grid.reshape(-1, grid.flav.size))
 
 
 @tf.function(input_signature=INTERPOLATE_SIGNATURE)

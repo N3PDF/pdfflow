@@ -5,7 +5,7 @@ Define some constants, header style
 import os
 
 # Set TF to only log errors
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "0"
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "1"
 import tensorflow as tf
 
 # Configure pdfflow logging
