@@ -48,10 +48,10 @@ def extrapolate_linear(x, xl, xh, yl, yh):
 @tf.function(
     input_signature=[
         tf.TensorSpec(shape=[None, 1], dtype=DTYPE),
-        tf.TensorSpec(shape=[None, None], dtype=DTYPE),
-        tf.TensorSpec(shape=[None, None], dtype=DTYPE),
-        tf.TensorSpec(shape=[None, None], dtype=DTYPE),
-        tf.TensorSpec(shape=[None, None], dtype=DTYPE),
+        tf.TensorSpec(shape=[None, 1], dtype=DTYPE),
+        tf.TensorSpec(shape=[None, 1], dtype=DTYPE),
+        tf.TensorSpec(shape=[None, 1], dtype=DTYPE),
+        tf.TensorSpec(shape=[None, 1], dtype=DTYPE),
     ]
 )
 def cubic_interpolation(T, VL, VDL, VH, VDH):
@@ -74,7 +74,7 @@ def cubic_interpolation(T, VL, VDL, VH, VDH):
         tf.TensorSpec(shape=[None], dtype=DTYPEINT),
         tf.TensorSpec(shape=[], dtype=DTYPEINT),
         tf.TensorSpec(shape=[4, None], dtype=DTYPE),
-        tf.TensorSpec(shape=[4, None, None, None], dtype=DTYPE),
+        tf.TensorSpec(shape=[4, 4, None, 1], dtype=DTYPE),
     ]
 )
 def df_dx_func(x_id, s_x, corn_x, A):
@@ -91,30 +91,19 @@ def df_dx_func(x_id, s_x, corn_x, A):
     # four derivatives in x = 0 for all Qs (:,0,:)
     # four derivatives in x = 1 for all Qs (:,1,:)
     # derivatives are returned in a tensor with shape (#draws,2,4)
+    edge = (A[2] - A[1]) / tf.reshape(corn_x[2] - corn_x[1], (1, -1, 1))
 
-    rddx = (A[2] - A[1]) / tf.expand_dims(tf.expand_dims(corn_x[2] - corn_x[1], 0), -1)
+    lddx = (A[1] - A[0]) / tf.reshape(corn_x[1] - corn_x[0], (1, -1, 1))
+    default_l = (lddx + edge) / 2
 
-    def edge():
-        return rddx
+    rddx = (A[3] - A[2]) / tf.reshape(corn_x[3] - corn_x[2], (1, -1, 1))
+    default_r = (edge + rddx) / 2
 
-    def default():
-        lddx = (A[1] - A[0]) / tf.expand_dims(tf.expand_dims(corn_x[1] - corn_x[0], 0), -1)
-        return (lddx + rddx) / 2
+    mask_l = tf.reshape(x_id == 1, (1, -1, 1))
+    left = tf.where(mask_l, edge, default_l)
 
-    mask = tf.reshape(x_id == 1, [1, -1, 1])
-    left = tf.where(mask, edge(), default())
-
-    lddx = (A[2] - A[1]) / tf.expand_dims(tf.expand_dims(corn_x[2] - corn_x[1], 0), -1)
-
-    def edge():
-        return lddx
-
-    def default():
-        rddx = (A[3] - A[2]) / tf.expand_dims(tf.expand_dims(corn_x[3] - corn_x[2], 0), -1)
-        return (lddx + rddx) / 2
-
-    mask = tf.reshape(x_id == s_x - 1, [1, -1, 1])
-    right = tf.where(mask, edge(), default())
+    mask_r = tf.reshape(x_id == s_x - 1, (1, -1, 1))
+    right = tf.where(mask_r, edge, default_r)
 
     return tf.stack([left, right], 0)
 
@@ -127,12 +116,14 @@ def df_dx_func(x_id, s_x, corn_x, A):
         tf.TensorSpec(shape=[None], dtype=DTYPEINT),
         tf.TensorSpec(shape=[4, None], dtype=DTYPE),
         tf.TensorSpec(shape=[4, None], dtype=DTYPE),
-        tf.TensorSpec(shape=[4, 4, None, None], dtype=DTYPE),
+        tf.TensorSpec(shape=[4, 4, None, 1], dtype=DTYPE),
         tf.TensorSpec(shape=[], dtype=DTYPEINT),
         tf.TensorSpec(shape=[], dtype=DTYPEINT),
     ]
 )
-def default_bicubic_interpolation(a_x, a_q2, x_id, q2_id, corn_x, corn_q2, A, s_x, s_q2):
+def default_bicubic_interpolation(
+    a_x, a_q2, x_id, q2_id, corn_x, corn_q2, A, s_x, s_q2
+):
     """
     Makes the bicubic interpolation: when a query point is in the lower
     or uppermost bin of the q2 axis, it automatically ignores the knots
@@ -144,44 +135,34 @@ def default_bicubic_interpolation(a_x, a_q2, x_id, q2_id, corn_x, corn_q2, A, s_
         LogBicubic Interpolated points, with all pids queried
     """
     # print('def bic int')
-    df_dx = df_dx_func(x_id, s_x, corn_x, A)
-
     dlogx_1 = corn_x[2] - corn_x[1]
-    tlogx = tf.expand_dims((a_x - corn_x[1]) / dlogx_1, 1)
-    dlogq_0 = tf.expand_dims(corn_q2[1] - corn_q2[0], 1)
     dlogq_1 = corn_q2[2] - corn_q2[1]
-    dlogq_2 = tf.expand_dims(corn_q2[3] - corn_q2[2], 1)
-    tlogq = tf.expand_dims((a_q2 - corn_q2[1]) / dlogq_1, 1)
 
+    tlogq = tf.expand_dims((a_q2 - corn_q2[1]) / dlogq_1, 1)
+    tlogx = tf.expand_dims((a_x - corn_x[1]) / dlogx_1, 1)
+
+    dlogq_0 = tf.expand_dims(corn_q2[1] - corn_q2[0], 1)
     dlogx_1 = tf.expand_dims(dlogx_1, 1)
     dlogq_1 = tf.expand_dims(dlogq_1, 1)
+    dlogq_2 = tf.expand_dims(corn_q2[3] - corn_q2[2], 1)
 
-    vl = cubic_interpolation(tlogx, A[1, 1], df_dx[0, 1] * dlogx_1, A[2, 1], df_dx[1, 1] * dlogx_1)
-    vh = cubic_interpolation(tlogx, A[1, 2], df_dx[0, 2] * dlogx_1, A[2, 2], df_dx[1, 2] * dlogx_1)
+    df_dx = df_dx_func(x_id, s_x, corn_x, A) * dlogx_1
 
-    def default():
-        vll = cubic_interpolation(
-            tlogx, A[1, 0], df_dx[0, 0] * dlogx_1, A[2, 0], df_dx[1, 0] * dlogx_1
-        )
-        return ((vh - vl) / dlogq_1 + (vl - vll) / dlogq_0) / 2
+    vl = cubic_interpolation(tlogx, A[1, 1], df_dx[0, 1], A[2, 1], df_dx[1, 1])
+    vh = cubic_interpolation(tlogx, A[1, 2], df_dx[0, 2], A[2, 2], df_dx[1, 2])
+    edge_vals = (vh - vl) / dlogq_1
 
-    def edge():
-        return (vh - vl) / dlogq_1
+    vll = cubic_interpolation(tlogx, A[1, 0], df_dx[0, 0], A[2, 0], df_dx[1, 0])
+    default_l = (edge_vals + (vl - vll) / dlogq_0) / 2
 
-    mask = tf.reshape(q2_id == 1, [-1, 1])
-    vdl = tf.where(mask, edge(), default())
+    vhh = cubic_interpolation(tlogx, A[1, 3], df_dx[0, 3], A[2, 3], df_dx[1, 3])
+    default_r = (edge_vals + (vhh - vh) / dlogq_2) / 2
 
-    def default():
-        vhh = cubic_interpolation(
-            tlogx, A[1, 3], df_dx[0, 3] * dlogx_1, A[2, 3], df_dx[1, 3] * dlogx_1
-        )
-        return ((vh - vl) / dlogq_1 + (vhh - vh) / dlogq_2) / 2
+    mask_l = tf.reshape(q2_id == 1, [-1, 1])
+    vdl = tf.where(mask_l, edge_vals, default_l)
 
-    def edge():
-        return (vh - vl) / dlogq_1
-
-    mask = tf.reshape(q2_id == s_q2 - 1, [-1, 1])
-    vdh = tf.where(mask, edge(), default())
+    mask_r = tf.reshape(q2_id == s_q2 - 1, [-1, 1])
+    vdh = tf.where(mask_r, edge_vals, default_r)
 
     vdl *= dlogq_1
     vdh *= dlogq_1

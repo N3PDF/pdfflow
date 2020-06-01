@@ -41,14 +41,8 @@ def four_neighbour_knots(a_x, a_q2, padded_x, padded_q2, actual_values):
             (first None is for query points, second None is for query pids)
     """
     # print('nk')
-    x_id = (
-        tf.cast(tfp.stats.find_bins(a_x, padded_x[1:-1], name="find_bins_logx"), dtype=DTYPEINT) + 1
-    )
-
-    q2_id = (
-        tf.cast(tfp.stats.find_bins(a_q2, padded_q2[1:-1], name="find_bins_logq2"), dtype=DTYPEINT)
-        + 1
-    )
+    x_id = tfp.stats.find_bins(a_x, padded_x[1:-1], dtype=DTYPEINT) + 1
+    q2_id = tfp.stats.find_bins(a_q2, padded_q2[1:-1], dtype=DTYPEINT) + 1
 
     corn_x_id = tf.stack([x_id - 1, x_id, x_id + 1, x_id + 2], 0)
     corn_q2_id = tf.stack([q2_id - 1, q2_id, q2_id + 1, q2_id + 2], 0)
