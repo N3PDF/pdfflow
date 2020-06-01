@@ -1,6 +1,7 @@
 """
 Benchmark script for LHAPDF comparison.
 """
+from pdfflow.configflow import float_me
 import lhapdf
 import argparse
 import subprocess as sp
@@ -8,36 +9,35 @@ import numpy as np
 import matplotlib.pyplot as plt
 import tensorflow as tf
 import time
-from pdfflow.configflow import float_me
-'''
-def sort_arrays_Qx(a,b,f):
-    a = np.array(a)
-    b = np.array(b)
-    f = np.array(f)
-    
-    ind = np.argsort(a)
 
-    aa = np.take_along_axis(a,ind,0)
-    bb = np.take_along_axis(b,ind,0)
-    ff = np.take_along_axis(f,ind,0)
+# def sort_arrays_Qx(a,b,f):
+#     a = np.array(a)
+#     b = np.array(b)
+#     f = np.array(f)
+#     
+#     ind = np.argsort(a)
+# 
+#     aa = np.take_along_axis(a,ind,0)
+#     bb = np.take_along_axis(b,ind,0)
+#     ff = np.take_along_axis(f,ind,0)
+# 
+#     ind = np.argsort(bb)
+#     return np.take_along_axis(aa,ind,0), np.take_along_axis(bb,ind,0), np.take_along_axis(ff,ind,0)
+# 
+# 
+# def sort_arrays_xQ(a,b,f):
+#     a = np.array(a)
+#     b = np.array(b)
+#     f = np.array(f)
+#     ind = np.argsort(b)
+# 
+#     aa = np.take_along_axis(a,ind,0)
+#     bb = np.take_along_axis(b,ind,0)
+#     ff = np.take_along_axis(f,ind,0)
+# 
+#     ind = np.argsort(aa)
+#     return np.take_along_axis(aa,ind,0), np.take_along_axis(bb,ind,0), np.take_along_axis(ff,ind,0)
 
-    ind = np.argsort(bb)
-    return np.take_along_axis(aa,ind,0), np.take_along_axis(bb,ind,0), np.take_along_axis(ff,ind,0)
-
-
-def sort_arrays_xQ(a,b,f):
-    a = np.array(a)
-    b = np.array(b)
-    f = np.array(f)
-    ind = np.argsort(b)
-
-    aa = np.take_along_axis(a,ind,0)
-    bb = np.take_along_axis(b,ind,0)
-    ff = np.take_along_axis(f,ind,0)
-
-    ind = np.argsort(aa)
-    return np.take_along_axis(aa,ind,0), np.take_along_axis(bb,ind,0), np.take_along_axis(ff,ind,0)
-'''
 parser = argparse.ArgumentParser()
 parser.add_argument("--pdfname", "-p", default="NNPDF31_nlo_as_0118/0", type=str, help='The PDF set name/replica number.')
 parser.add_argument("--pid", default=21, type=int, help='The flavour PID.')
@@ -56,7 +56,6 @@ def main(pdfname, pid):
     s = time.time()
     p.xfxQ2(21, x,q2)
     print("\nPDFflow\n\tBuilding graph time: %f\n"%(time.time()-s))
-
 
     plt.figure(figsize=(16.0, 12.0))
     plt.subplot(2, 2, 1)
