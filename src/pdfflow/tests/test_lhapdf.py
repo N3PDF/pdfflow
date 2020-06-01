@@ -1,5 +1,5 @@
 """
-    Ensures vegasflow produces results which are compatible with lhpdf
+    Ensures pdfflow produces results which are compatible with lhpdf
 """
 import pdfflow.pflow as pdf
 import logging
@@ -13,25 +13,37 @@ import lhapdf
 import numpy as np
 import subprocess as sp
 
-SIZE = 10
+# Utility to install lhapdf sets
+def install_lhapdf(pdfset):
+    try:
+        lhapdf.mkPDF(pdfset)
+    except RuntimeError:
+        sp.run(['lhapdf', 'install', pdfset])
+
+
+SIZE = 200
 
 # Set up the PDF
-LIST_PDF = ["NNPDF31_nlo_as_0118",
+LIST_PDF = [
             "PDF4LHC15_nnlo_100",
+            "NNPDF31_nlo_as_0118", # some problem for the first bin
             "MSTW2008lo68cl_nf3",
             "NNPDF30_nnlo_as_0121_nf_6",
-            "cteq6"]
+            "cteq6"
+            ]
 MEMBERS = 2
 FLAVS = list(range(-3,4))
 FLAVS[FLAVS.index(0)] = 21
 DIRNAME = sp.run(['lhapdf-config', '--datadir'], stdout=sp.PIPE).stdout.strip().decode()
 
-# Install the pdfs
+# Install the pdfs if they don't exist
 for pdfset in LIST_PDF:
-    sp.run(['lhapdf', 'install', pdfset])
+    install_lhapdf(pdfset)
 
 # Set up the xarr
 XARR = np.random.rand(SIZE)
+# ensure there is at least a point with a very low x
+XARR[0] = 1e-10
 
 # Set up the Q2 arr
 QS = [ (1,10), (100, 10000), (10, 100)]

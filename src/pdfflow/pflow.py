@@ -114,9 +114,10 @@ class PDF:
 
     def __init__(self, fname, dirname):
         self.dirname = dirname
-        f = fname.split("/")
+        fname, member = fname.split("/")
+        member = member.zfill(4)
 
-        self.fname = self.dirname + "%s/%s_%s.dat" % (f[0], f[0], f[1].zfill(4))
+        self.fname = f"{self.dirname}/{fname}/{fname}_{member}.dat"
 
         logger.info("loading %s", self.fname)
         grids = _load_data(self.fname)
