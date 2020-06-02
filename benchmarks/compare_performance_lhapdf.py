@@ -20,6 +20,7 @@ parser.add_argument("--pid", default=21, type=int, help="The flavour PID.")
 parser.add_argument(
     "--no_lhapdf", action="store_true", help="Don't run lhapdf, only pdfflow"
 )
+parser.add_argument("-t", "--tensorboard", action="store_true", help="Enable tensorboard profile logging")
 DIRNAME = (
     sp.run(
         ["lhapdf-config", "--datadir"], stdout=sp.PIPE, universal_newlines=True
@@ -28,7 +29,7 @@ DIRNAME = (
 )
 
 
-def main(pdfname=None, n_draws=10, pid=21, no_lhapdf=False):
+def main(pdfname=None, n_draws=10, pid=21, no_lhapdf=False, tensorboard=False):
     """Testing PDFflow vs LHAPDF performance."""
     import pdfflow.pflow as pdf
     from plot_utils import plots, test_time
@@ -58,10 +59,14 @@ def main(pdfname=None, n_draws=10, pid=21, no_lhapdf=False):
 
     print("Printing plots")
 
-    with tf.profiler.experimental.Profile('/media/storageSSD/Academic_Workspace/N3PDF/pdfflow/benchmarks/logdir'):
-        plots(pid, a_x, a_Q2, p, l_pdf, xmin, xmax, Q2min, Q2max)
-        print("Printing times")
-        test_time(p, l_pdf, xmin, xmax, Q2min, Q2max)
+    if tensorboard:
+        tf.profiler.experimental.start('logdir')
+    plots(pid, a_x, a_Q2, p, l_pdf, xmin, xmax, Q2min, Q2max)
+    print("Printing times")
+    test_time(p, l_pdf, xmin, xmax, Q2min, Q2max)
+    if tensorboard:
+        tf.profiler.experimental.stop('logdir')
+
 
 
 if __name__ == "__main__":

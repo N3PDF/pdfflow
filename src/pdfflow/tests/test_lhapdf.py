@@ -1,5 +1,7 @@
 """
     Ensures pdfflow produces results which are compatible with lhpdf
+    this code is made to run eagerly as @tf.function is tested by test_pflow
+    running eagerly means less overhead on the CI which is running on CPU
 """
 import pdfflow.pflow as pdf
 import logging
@@ -78,22 +80,23 @@ def test_accuracy(atol=1e-6):
     This test doesnt care about Q extrapolation
     """
     import tensorflow as tf
-    with tf.profiler.experimental.Profile('/media/storageSSD/Academic_Workspace/N3PDF/pdfflow/benchmarks/logdir'):
-        for setname in LIST_PDF:
-            for member in range(MEMBERS):
-                pdfset = f"{setname}/{member}"
-                logger.info(" > Checking %s", pdfset)
-                pdfflow = pdf.mkPDF(pdfset, f"{DIRNAME}/")
-                for qi, qf in QS:
-                    # Dont test extrapolation
-                    qi = max(qi, pdfflow.q2min)
-                    qf = min(qf, pdfflow.q2max)
-                    q2arr = gen_q2(qi, qf)
-                    logger.info(" Q2 from %f to %f", qi, qf)
-                    flow_values = pdfflow.xfxQ2(FLAVS, XARR, q2arr)
-                    lhapdf_values = get_pdfvals(XARR, q2arr, pdfset)
-                for i, f in enumerate(FLAVS):
-                    np.testing.assert_allclose(flow_values[:,i], lhapdf_values[f], atol=atol)
+    tf.config.experimental_run_functions_eagerly(True)
+    for setname in LIST_PDF:
+        for member in range(MEMBERS):
+            pdfset = f"{setname}/{member}"
+            logger.info(" > Checking %s", pdfset)
+            pdfflow = pdf.mkPDF(pdfset, f"{DIRNAME}/")
+            for qi, qf in QS:
+                # Dont test extrapolation
+                qi = max(qi, pdfflow.q2min)
+                qf = min(qf, pdfflow.q2max)
+                q2arr = gen_q2(qi, qf)
+                logger.info(" Q2 from %f to %f", qi, qf)
+                flow_values = pdfflow.py_xfxQ2(FLAVS, XARR, q2arr)
+                lhapdf_values = get_pdfvals(XARR, q2arr, pdfset)
+            for i, f in enumerate(FLAVS):
+                np.testing.assert_allclose(flow_values[:,i], lhapdf_values[f], atol=atol)
+    tf.config.experimental_run_functions_eagerly(False)
 
 if __name__ == "__main__":
     test_accuracy()

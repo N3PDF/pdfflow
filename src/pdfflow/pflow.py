@@ -194,31 +194,32 @@ class PDF:
 
         return res
 
-    @tf.function(experimental_relax_shapes=True)
+    @tf.function(input_signature=[GRID_I, GRID_F, GRID_F])
     def xfxQ2(self, pid, arr_x, arr_q2):
         """
-        User interface for pdfflow
+        User interface for pdfflow when called with
+        tensorflow tensors
         It asks pid, x, q2 points
 
         Parameters
         ----------
-            pid: list(int)
+            pid: tf.tensor, dtype=int
                 list of PID to be computed
-            arr_x: array
+            arr_x: tf.tensor, dtype=float
                 grid on x where to compute the PDF
-            arr_q2: array
+            arr_q2: tf.tensor, dtype=float
                 grid on q^2 where to compute the PDF
         Returns
         -------
             pdf: tensor
                 PDF evaluated in each f(x,q2) for each flavour
         """
-
+        # this function assumes the user is asking for a tensor of pids
+        # TODO if the user is to do non-tf stuff print a warning and direct
+        # them to use the python version of the functions
         # must feed a mask for flavors to _xfxQ2
-        # if pid is None, the mask is set to true everywhere
-        # pid must be a list of pids
-        # Since the user might be asking for a list, let's ensure it is a tensor of ints
-        tensor_pid = tf.reshape(int_me(pid), (-1,))
+        # cast down if necessary the type of the pid
+        pid = int_me(pid)
 
         # same for the a_x and a_q2 arrays
         a_x = float_me(arr_x)
@@ -226,7 +227,7 @@ class PDF:
 
         # And ensure it is unique
         # TODO maybe error if the user ask for the same pid twice or for a non-registered pid?
-        upid, user_idx = tf.unique(tensor_pid, out_idx=DTYPEINT)
+        upid, user_idx = tf.unique(pid, out_idx=DTYPEINT)
 
 
         # And return the positions in the flavor_scheme array
@@ -256,21 +257,72 @@ class PDF:
     @tf.function(input_signature=[GRID_F, GRID_F])
     def xfxQ2_allpid(self, a_x, a_q2):
         """
-        User iterface for pdfflow
-        Ask x, q2 points
-        Return all flavors
+        User interface for pdfflow when called with
+        tensorflow tensors
+        It asks x, q2 points
+        returns all flavours
+
+        Parameters
+        ----------
+            arr_x: tf.tensor, dtype=float
+                grid on x where to compute the PDF
+            arr_q2: tf.tensor, dtype=float
+                grid on q^2 where to compute the PDF
+        Returns
+        -------
+            pdf: tensor
+                PDF evaluated in each f(x,q2) for each flavour
         """
         pid = self.flavor_scheme
         return self.xfxQ2(pid, a_x, a_q2)
 
     # Python version of the above functions with the correct casting to tf
     def py_xfxQ2_allpid(self, a_x, a_q2):
+        """
+        Python interface for pdfflow
+        The input gets converted to the right
+        tf type before calling the corresponding functions
+        Returns all flavours
+
+        Parameters
+        ----------
+            arr_x: np.array
+                grid on x where to compute the PDF
+            arr_q2: np.array
+                grid on q^2 where to compute the PDF
+        Returns
+        -------
+            pdf: tensor
+                PDF evaluated in each f(x,q2) for each flavour
+        """
         a_x = float_me(a_x)
         a_q2 = float_me(a_q2)
         return self.xfxQ2_allpid(a_x, a_q2)
 
     def py_xfxQ2(self, pid, a_x, a_q2):
-        pid = tf.reshape(int_me(pid), (-1,))
-        a_x = float_me(a_x)
-        a_q2 = float_me(a_q2)
-        return self.xfxQ2(pid, a_x, a_q2)
+        """
+        Python interface for pdfflow
+        The input gets converted to the right
+        tf type before calling the corresponding functions
+
+        Parameters
+        ----------
+            pid: list(int)
+                list of PID to be computed
+            arr_x: np.array
+                grid on x where to compute the PDF
+            arr_q2: np.array
+                grid on q^2 where to compute the PDF
+        Returns
+        -------
+            pdf: tensor
+                PDF evaluated in each f(x,q2) for each flavour
+        """
+        # if pid is None, the mask is set to true everywhere
+        if pid is None:
+            return self.py_xfxQ2_allpid(a_x, a_q2)
+        else:
+            tensor_pid = tf.reshape(int_me(pid), (-1,))
+            a_x = float_me(a_x)
+            a_q2 = float_me(a_q2)
+            return self.xfxQ2(tensor_pid, a_x, a_q2)
