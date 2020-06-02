@@ -171,7 +171,7 @@ def lowq2_extrapolation(
     actual_padded,
 ):
     """ 
-    Extrapolation in low q2 regime 
+    Extrapolation in low q2 regime
 
     Parameters
     ----------
@@ -329,8 +329,8 @@ def lowx_highq2_extrapolation(
     s_q2,
     actual_padded,
 ):
-    """ 
-    Extrapolation in high q2, low x regime 
+    """
+    Extrapolation in high q2, low x regime
 
     Parameters
     ----------

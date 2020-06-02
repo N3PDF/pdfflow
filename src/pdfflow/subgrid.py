@@ -115,11 +115,13 @@ class Subgrid(tf.Module):
         else:
             self.fn_interpolation = inner_subgrid
 
+        self.name_sg=f"grid_{i}"
+
         if compile_functions:
             self.fn_interpolation = tf.function(self.fn_interpolation, **OPT)
 
     def __call__(self, pids, shape, arr_x, arr_q2):
-        padded_grid = tf.gather(self.padded_grid, pids, axis=-1)
+        padded_grid = tf.gather(self.padded_grid, pids, axis=-1, name=self.name_sg)
         result = self.fn_interpolation(
             shape,
             arr_x,
