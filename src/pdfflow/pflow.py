@@ -111,7 +111,12 @@ class PDF:
             LHAPDF datadir
     """
 
-    def __init__(self, fname, dirname):
+    def __init__(self, fname, dirname, compilable=True):
+        if not compilable:
+            logger.warning("Running pdfflow in eager mode")
+            logger.warning("Setting eager mode will affect all of TF")
+            tf.config.experimental_run_functions_eagerly(True)
+
         self.dirname = dirname
         fname, member = fname.split("/")
         member = member.zfill(4)
