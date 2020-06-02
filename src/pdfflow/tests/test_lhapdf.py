@@ -93,8 +93,6 @@ def test_accuracy(atol=1e-6):
                 q2arr = gen_q2(qi, qf)
                 logger.info(" Q2 from %f to %f", qi, qf)
                 flow_values = pdfflow.py_xfxQ2(FLAVS, XARR, q2arr)
-                import ipdb
-                ipdb.set_trace()
                 lhapdf_values = get_pdfvals(XARR, q2arr, pdfset)
             for i, f in enumerate(FLAVS):
                 np.testing.assert_allclose(flow_values[:,i], lhapdf_values[f], atol=atol)
