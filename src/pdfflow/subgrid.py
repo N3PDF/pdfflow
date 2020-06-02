@@ -15,7 +15,6 @@ from pdfflow.functions import last_subgrid
 
 # Compilation signature and options of the subgrid functions
 GRID_FUNCTION_SIGNATURE = [
-    tf.TensorSpec(shape=[None], dtype=DTYPEINT),  # u
     tf.TensorSpec(shape=[2], dtype=DTYPEINT),  # shape
     tf.TensorSpec(shape=[None], dtype=DTYPE),  # a_x
     tf.TensorSpec(shape=[None], dtype=DTYPE),  # a_q2
@@ -120,8 +119,8 @@ class Subgrid(tf.Module):
             self.fn_interpolation = tf.function(self.fn_interpolation, **OPT)
 
     def __call__(self, pids, shape, arr_x, arr_q2):
+        padded_grid = tf.gather(self.padded_grid, pids, axis=-1)
         result = self.fn_interpolation(
-            pids,
             shape,
             arr_x,
             arr_q2,
@@ -133,6 +132,6 @@ class Subgrid(tf.Module):
             self.log_q2max,
             self.padded_q2,
             self.s_q2,
-            self.padded_grid,
+            padded_grid,
         )
         return result

@@ -50,7 +50,6 @@ def _condition_to_idx(cond1, cond2):
 
 
 def inner_subgrid(
-    u,
     shape,
     a_x,
     a_q2,
@@ -62,7 +61,7 @@ def inner_subgrid(
     log_q2max,
     padded_q2,
     s_q2,
-    padded_grid,
+    actual_padded,
 ):
     """
     Inner (non-first and non-last) subgrid interpolation
@@ -83,14 +82,11 @@ def inner_subgrid(
         tf.tensor of shape [None,None]
         pdf interpolated values for each query point and quey pids
     """
-
-    actual_padded = tf.gather(padded_grid, u, axis=-1)
-
     stripe_0 = tf.math.logical_and(a_x >= log_xmin, a_x <= log_xmax)
     stripe_1 = tf.math.logical_and(a_q2 >= log_q2min, a_q2 < log_q2max)
     stripe_2 = a_x < log_xmin
 
-    res = fzero
+    res = tf.zeros(shape, dtype=DTYPE)
 
     # --------------------------------------------------------------------
     # normal interpolation
@@ -111,7 +107,7 @@ def inner_subgrid(
             s_q2,
             actual_padded,
         )
-        res += tf.scatter_nd(f_idx, ff_f, shape)
+        res = tf.tensor_scatter_nd_update(res, f_idx, ff_f)
 
     # --------------------------------------------------------------------
     # lowx
@@ -132,13 +128,12 @@ def inner_subgrid(
             s_q2,
             actual_padded,
         )
-        res += tf.scatter_nd(f_idx, ff_f, shape)
+        res = tf.tensor_scatter_nd_update(res, f_idx, ff_f)
 
     return res
 
 
 def first_subgrid(
-    u,
     shape,
     a_x,
     a_q2,
@@ -150,7 +145,7 @@ def first_subgrid(
     log_q2max,
     padded_q2,
     s_q2,
-    padded_grid,
+    actual_padded,
 ):
     """
     First subgrid interpolation
@@ -175,15 +170,12 @@ def first_subgrid(
         tf.tensor of shape `shape`
         pdf interpolated values for each query point and quey pids
     """
-
-    actual_padded = tf.gather(padded_grid, u, axis=-1)
-
     stripe_0 = tf.math.logical_and(a_x >= log_xmin, a_x <= log_xmax)
     stripe_1 = tf.math.logical_and(a_q2 >= log_q2min, a_q2 < log_q2max)
     stripe_2 = a_x < log_xmin
     stripe_4 = a_q2 < log_q2min
 
-    res = fzero
+    res = tf.zeros(shape, dtype=DTYPE)
 
     # --------------------------------------------------------------------
     # normal interpolation
@@ -204,7 +196,7 @@ def first_subgrid(
             s_q2,
             actual_padded,
         )
-        res += tf.scatter_nd(f_idx, ff_f, shape)
+        res = tf.tensor_scatter_nd_update(res, f_idx, ff_f)
 
     # --------------------------------------------------------------------
     # lowx
@@ -225,7 +217,7 @@ def first_subgrid(
             s_q2,
             actual_padded,
         )
-        res += tf.scatter_nd(f_idx, ff_f, shape)
+        res = tf.tensor_scatter_nd_update(res, f_idx, ff_f)
 
     # --------------------------------------
     # low q2
@@ -246,7 +238,7 @@ def first_subgrid(
             s_q2,
             actual_padded,
         )
-        res += tf.scatter_nd(f_idx, ff_f, shape)
+        res = tf.tensor_scatter_nd_update(res, f_idx, ff_f)
 
     # --------------------------------------------------------------------
     # low x low q2
@@ -267,13 +259,12 @@ def first_subgrid(
             s_q2,
             actual_padded,
         )
-        res += tf.scatter_nd(f_idx, ff_f, shape)
+        res = tf.tensor_scatter_nd_update(res, f_idx, ff_f)
 
     return res
 
 
 def last_subgrid(
-    u,
     shape,
     a_x,
     a_q2,
@@ -285,7 +276,7 @@ def last_subgrid(
     log_q2max,
     padded_q2,
     s_q2,
-    padded_grid,
+    actual_padded,
 ):
     """
     Last subgrid interpolation.
@@ -308,15 +299,13 @@ def last_subgrid(
         tf.tensor, rank-2, shape: shape
             pdf interpolated values for each query point and quey pids
     """
-    actual_padded = tf.gather(padded_grid, u, axis=-1)
-
     # Generate all conditions for all stripes
     stripe_0 = tf.math.logical_and(a_x >= log_xmin, a_x <= log_xmax)
     stripe_1 = tf.math.logical_and(a_q2 >= log_q2min, a_q2 <= log_q2max)
     stripe_2 = a_x < log_xmin
     stripe_3 = a_q2 > log_q2max
 
-    res = fzero
+    res = tf.zeros(shape, dtype=DTYPE)
 
     # --------------------------------------------------------------------
     # normal interpolation
@@ -339,7 +328,7 @@ def last_subgrid(
             s_q2,
             actual_padded,
         )
-        res += tf.scatter_nd(f_idx, ff_f, shape)
+        res = tf.tensor_scatter_nd_update(res, f_idx, ff_f)
 
     # --------------------------------------------------------------------
     # lowx
@@ -360,7 +349,8 @@ def last_subgrid(
             s_q2,
             actual_padded,
         )
-        res += tf.scatter_nd(f_idx, ff_f, shape)
+        res = tf.tensor_scatter_nd_update(res, f_idx, ff_f)
+
     # --------------------------------------------------------------------
     # high q2
     stripe, f_idx = _condition_to_idx(stripe_0, stripe_3)
@@ -380,7 +370,8 @@ def last_subgrid(
             s_q2,
             actual_padded,
         )
-        res += tf.scatter_nd(f_idx, ff_f, shape)
+        res = tf.tensor_scatter_nd_update(res, f_idx, ff_f)
+
     # --------------------------------------------------------------------
     # low x high q2
     stripe, f_idx = _condition_to_idx(stripe_2, stripe_3)
@@ -400,6 +391,6 @@ def last_subgrid(
             s_q2,
             actual_padded,
         )
-        res += tf.scatter_nd(f_idx, ff_f, shape)
+        res = tf.tensor_scatter_nd_update(res, f_idx, ff_f)
 
     return res

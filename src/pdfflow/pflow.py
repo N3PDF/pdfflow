@@ -217,11 +217,8 @@ class PDF:
         # must feed a mask for flavors to _xfxQ2
         # if pid is None, the mask is set to true everywhere
         # pid must be a list of pids
-        if type(pid) == int:
-            pid = [pid]
-
         # Since the user might be asking for a list, let's ensure it is a tensor of ints
-        tensor_pid = int_me(pid)
+        tensor_pid = tf.reshape(int_me(pid), (-1,))
 
         # same for the a_x and a_q2 arrays
         a_x = float_me(arr_x)
@@ -256,7 +253,7 @@ class PDF:
         result = tf.squeeze(f_f)
         return result
 
-    @tf.function
+    @tf.function(input_signature=[GRID_F, GRID_F])
     def xfxQ2_allpid(self, a_x, a_q2):
         """
         User iterface for pdfflow
@@ -264,4 +261,16 @@ class PDF:
         Return all flavors
         """
         pid = self.flavor_scheme
+        return self.xfxQ2(pid, a_x, a_q2)
+
+    # Python version of the above functions with the correct casting to tf
+    def py_xfxQ2_allpid(self, a_x, a_q2):
+        a_x = float_me(a_x)
+        a_q2 = float_me(a_q2)
+        return self.xfxQ2_allpid(a_x, a_q2)
+
+    def py_xfxQ2(self, pid, a_x, a_q2):
+        pid = tf.reshape(int_me(pid), (-1,))
+        a_x = float_me(a_x)
+        a_q2 = float_me(a_q2)
         return self.xfxQ2(pid, a_x, a_q2)

@@ -22,6 +22,7 @@ INTERPOLATE_SIGNATURE = [
     tf.TensorSpec(shape=[None, None], dtype=DTYPE),
 ]
 
+
 @tf.function(input_signature=INTERPOLATE_SIGNATURE)
 def interpolate(
     a_x,
@@ -36,13 +37,13 @@ def interpolate(
     s_q2,
     actual_padded,
 ):
-    """ 
+    """
     Basic Bicubic Interpolation inside the subgrid
     Four Neighbour Knots selects grid knots around each query point to
     make the interpolation: 4 knots on the x axis and 4 knots on the q2
     axis are needed for each point, plus the pdf fvalues there.
     Default bicubic interpolation performs the interpolation itself
-    
+   
     Parameters
     ----------
         a_x: tf.tensor of shape [None]
@@ -75,9 +76,13 @@ def interpolate(
             pdf values: first axis is the flattened padded (q2,x) grid,
             second axis is needed pid column (dimension depends on the query)
     """
-    a0, a1, a2, a3, a4 = four_neighbour_knots(a_x, a_q2, padded_x, padded_q2, actual_padded)
+    x_bins, q2_bins, corn_x, corn_q2, pdf_vals = four_neighbour_knots(
+        a_x, a_q2, padded_x, padded_q2, actual_padded
+    )
 
-    return default_bicubic_interpolation(a_x, a_q2, a0, a1, a2, a3, a4, s_x, s_q2)
+    return default_bicubic_interpolation(
+        a_x, a_q2, x_bins, q2_bins, corn_x, corn_q2, pdf_vals, s_x, s_q2
+    )
 
 
 @tf.function(input_signature=INTERPOLATE_SIGNATURE)
@@ -228,11 +233,15 @@ def lowq2_extrapolation(
     corn_q2 = tf.math.exp(corn_q2[:1])
 
     mask = tf.math.abs(fq2Min) >= 1e-5
-    anom = tf.where(mask, tf.maximum(float_me(-2.5), (fq2Min1 - fq2Min) / fq2Min / 0.01), fone)
+    anom = tf.where(
+        mask, tf.maximum(float_me(-2.5), (fq2Min1 - fq2Min) / fq2Min / 0.01), fone
+    )
     corn_q2 = tf.expand_dims(corn_q2, 1)
     a_q2 = tf.expand_dims(a_q2, 1)
 
-    return fq2Min * tf.math.pow(a_q2 / corn_q2, anom * a_q2 / corn_q2 + 1.0 - a_q2 / corn_q2)
+    return fq2Min * tf.math.pow(
+        a_q2 / corn_q2, anom * a_q2 / corn_q2 + 1.0 - a_q2 / corn_q2
+    )
 
 
 @tf.function(input_signature=INTERPOLATE_SIGNATURE)
@@ -382,8 +391,6 @@ def lowx_highq2_extrapolation(
     return extrapolate_linear(a_x, corn_x[0], corn_x[1], fxMin, fxMin1)
 
 
-
-
 @tf.function(input_signature=INTERPOLATE_SIGNATURE)
 def lowx_lowq2_extrapolation(
     a_x,
@@ -458,7 +465,9 @@ def lowx_lowq2_extrapolation(
     corn_q2 = tf.math.exp(corn_q2[0])
 
     mask = tf.math.abs(fq2Min) >= 1e-5
-    anom = tf.where(mask, tf.maximum(float_me(-2.5), (fq2Min1 - fq2Min) / fq2Min / 0.01), fone)
+    anom = tf.where(
+        mask, tf.maximum(float_me(-2.5), (fq2Min1 - fq2Min) / fq2Min / 0.01), fone
+    )
 
     factor = tf.math.pow(a_q2 / corn_q2, anom * a_q2 / corn_q2 + 1.0 - a_q2 / corn_q2)
 
