@@ -7,6 +7,7 @@ import os
 # Set TF to only log errors
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "1"
 import tensorflow as tf
+
 # uncomment this line for debugging to avoid compiling any tf.function
 # tf.config.experimental_run_functions_eagerly(True)
 
@@ -24,15 +25,9 @@ console_format = logging.Formatter("[%(levelname)s] (%(name)s) %(message)s")
 console_handler.setFormatter(console_format)
 logger.addHandler(console_handler)
 
-# logging.basicConfig(level=logging.INFO)
-# logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-
-# logging.basicConfig(format='%(asctime)s %(message)s')
-
 # Define the tensorflow number types
 DTYPE = tf.float64
 DTYPEINT = tf.int32
-
 
 # The wrappers below transform tensors and array to the correct type
 def int_me(i):

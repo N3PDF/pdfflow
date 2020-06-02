@@ -115,7 +115,7 @@ class Subgrid(tf.Module):
         else:
             self.fn_interpolation = inner_subgrid
 
-        self.name_sg=f"grid_{i}"
+        self.name_sg = f"grid_{i}"
 
         if compile_functions:
             self.fn_interpolation = tf.function(self.fn_interpolation, **OPT)

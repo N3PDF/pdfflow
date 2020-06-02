@@ -25,7 +25,7 @@ GRID_I = tf.TensorSpec(shape=[None], dtype=DTYPEINT)
 # instantiate logger
 logger = logging.getLogger(__name__)
 # create the Grid namedtuple
-GridTuple = collections.namedtuple('Grid', ['x', 'q2', 'flav', 'grid'])
+GridTuple = collections.namedtuple("Grid", ["x", "q2", "flav", "grid"])
 
 
 def _load_data(pdf_file):
@@ -62,7 +62,6 @@ def _load_data(pdf_file):
         flav = np.loadtxt(pdf_file, skiprows=(n[i] + 3), max_rows=1)
         grid = np.loadtxt(pdf_file, skiprows=(n[i] + 4), max_rows=(n[i + 1] - n[i] - 4))
         grids += [GridTuple(x, q2, flav, grid)]
-
 
     return grids
 
@@ -183,18 +182,13 @@ class PDF:
         size_u = tf.size(u, out_type=DTYPEINT)
         shape = tf.stack([size_a, size_u])
 
-        res = fzero
+        res = tf.zeros(shape, dtype=DTYPE)
         for subgrid in self.subgrids:
-            res += subgrid(
-                u,
-                shape,
-                a_x,
-                a_q2,
-            )
+            res += subgrid(u, shape, a_x, a_q2,)
 
         return res
 
-    @tf.function(input_signature=[GRID_I, GRID_F, GRID_F])
+    @tf.function(experimental_relax_shapes=True)
     def xfxQ2(self, pid, arr_x, arr_q2):
         """
         User interface for pdfflow when called with
@@ -214,6 +208,9 @@ class PDF:
             pdf: tensor
                 PDF evaluated in each f(x,q2) for each flavour
         """
+        # Parse the input
+        arr_x = float_me(arr_x)
+        arr_q2 = float_me(arr_q2)
         # this function assumes the user is asking for a tensor of pids
         # TODO if the user is to do non-tf stuff print a warning and direct
         # them to use the python version of the functions
@@ -228,7 +225,6 @@ class PDF:
         # And ensure it is unique
         # TODO maybe error if the user ask for the same pid twice or for a non-registered pid?
         upid, user_idx = tf.unique(pid, out_idx=DTYPEINT)
-
 
         # And return the positions in the flavor_scheme array
         # if the flavours are sorted, do it the easy way
@@ -254,7 +250,7 @@ class PDF:
         result = tf.squeeze(f_f)
         return result
 
-    @tf.function(input_signature=[GRID_F, GRID_F])
+    @tf.function(experimental_relax_shapes=True)
     def xfxQ2_allpid(self, a_x, a_q2):
         """
         User interface for pdfflow when called with

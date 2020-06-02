@@ -10,9 +10,6 @@ from pdfflow.pflow import mkPDF
 from vegasflow.configflow import DTYPE, DTYPEINT, float_me
 from pdfflow.configflow import DTYPE as pfloat
 
-if pint != DTYPEINT or pfloat != DTYPE:
-    raise ValueError(f"Before running this example ensure pdfflow is using the same types as vegasflow, this are {DTYPE} and {DTYPEINT}")
-
 # MC integration setup
 dim = 3
 ncalls = np.int32(5e6)
@@ -266,8 +263,8 @@ def evaluate_matrix_element_square(p0, p1, p2, p3):
 def build_luminosity(x1, x2):
     """Single-top t-channel luminosity"""
     q2s = tf.fill(x1.shape, mt2)
-    p5x1 = pdf.xfxQ2([5], x1, q2s)
-    pNx2 = pdf.xfxQ2([2, 4, -1, -3], x2, q2s)
+    p5x1 = tf.cast(pdf.xfxQ2([5], x1, q2s), dtype=DTYPE)
+    pNx2 = tf.cast(pdf.xfxQ2([2, 4, -1, -3], x2, q2s), dtype=DTYPE)
     prod = tf.transpose(tf.reshape(p5x1, (-1, 1))*pNx2)
     lumis = tf.math.segment_sum(prod, tf.constant([0,0,1,1]))
     return lumis / x1 / x2
