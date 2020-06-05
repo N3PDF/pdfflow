@@ -31,10 +31,12 @@ DTYPEINT = tf.int32
 
 # The wrappers below transform tensors and array to the correct type
 def int_me(i):
+    """ Cast the input to the `DTYPEINT` type """
     return tf.cast(i, dtype=DTYPEINT)
 
 
 def float_me(i):
+    """ Cast the input to the `DTYPE` type """
     return tf.cast(i, dtype=DTYPE)
 
 

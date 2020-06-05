@@ -1,3 +1,7 @@
+"""
+    Basic low-level interpolation functions
+"""
+
 import tensorflow as tf
 from pdfflow.configflow import DTYPE, DTYPEINT
 
@@ -148,6 +152,7 @@ def default_bicubic_interpolation(
 
     df_dx = df_dx_func(x_id, s_x, corn_x, A) * dlogx_1
 
+    # TODO: can the 4 cubc interpolation be done in one go looking at the 4 dimension as the batch dimension?
     vl = cubic_interpolation(tlogx, A[1, 1], df_dx[0, 1], A[2, 1], df_dx[1, 1])
     vh = cubic_interpolation(tlogx, A[1, 2], df_dx[0, 2], A[2, 2], df_dx[1, 2])
     edge_vals = (vh - vl) / dlogq_1

@@ -1,3 +1,8 @@
+"""
+    Find the four neighbours in the x, q^2 grid
+    for the given input values
+"""
+
 import tensorflow as tf
 import tensorflow_probability as tfp
 from pdfflow.configflow import DTYPE, DTYPEINT
@@ -52,7 +57,6 @@ def four_neighbour_knots(a_x, a_q2, padded_x, padded_q2, actual_values):
     corn_q2 = tf.gather(padded_q2, corn_q2_id, name="fnk_2")
 
     s = tf.size(padded_q2, out_type=DTYPEINT)
-    x = x_id * s
 
     pdf_idx = tf.reshape(x_id * s + q2_id, (1, -1))
 

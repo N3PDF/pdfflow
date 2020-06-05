@@ -13,7 +13,7 @@ except ModuleNotFoundError:
     lhapdf = None
 
 # import configflow before tf to set some tf options
-from pdfflow.configflow import DTYPE, DTYPEINT, int_me, izero, fzero, float_me
+from pdfflow.configflow import DTYPE, DTYPEINT, int_me, izero, float_me
 import tensorflow as tf
 from pdfflow.subgrid import Subgrid
 
@@ -154,11 +154,13 @@ class PDF:
 
     @property
     def q2max(self):
+        """ Upper boundary in q2 of the grid """
         q2max = self.subgrids[-1].log_q2max
         return np.exp(q2max)
 
     @property
     def q2min(self):
+        """ Lower boundary in q2 of the grid """
         q2min = self.subgrids[0].log_q2min
         return np.exp(q2min)
 
@@ -322,8 +324,8 @@ class PDF:
         # if pid is None, the mask is set to true everywhere
         if pid is None:
             return self.py_xfxQ2_allpid(a_x, a_q2)
-        else:
-            tensor_pid = tf.reshape(int_me(pid), (-1,))
-            a_x = float_me(a_x)
-            a_q2 = float_me(a_q2)
-            return self.xfxQ2(tensor_pid, a_x, a_q2)
+
+        tensor_pid = tf.reshape(int_me(pid), (-1,))
+        a_x = float_me(a_x)
+        a_q2 = float_me(a_q2)
+        return self.xfxQ2(tensor_pid, a_x, a_q2)

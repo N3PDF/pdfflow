@@ -54,7 +54,7 @@ def main(pdfname, pid):
     x = [0.5]
     q2 = [100.]
     s = time.time()
-    p.xfxQ2(21, x,q2)
+    p.py_xfxQ2(21, x,q2)
     print("\nPDFflow\n\tBuilding graph time: %f\n"%(time.time()-s))
 
     plt.figure(figsize=(16.0, 12.0))
@@ -63,7 +63,7 @@ def main(pdfname, pid):
     q2 = np.array([0.1,1.65,1.7,4.92,1e2,1e3,1e4,1e5,1e6,2e6], dtype=float)**2
     for iq2 in q2:
         vl = np.array([l_pdf.xfxQ2(pid, ix, iq2) for ix in x])
-        vp = p.xfxQ2(pid, float_me(x), float_me([iq2]*len(x)))
+        vp = p.py_xfxQ2(pid, float_me(x), float_me([iq2]*len(x)))
         #print('%e'%np.sqrt(iq2), vl,vp,'\n')
 
         plt.plot(x, np.abs(vp-vl)/(np.abs(vl)+EPS), label='$Q=%.2e$' % iq2**0.5)
@@ -79,7 +79,7 @@ def main(pdfname, pid):
     plt.subplot(2, 2, 3)
     for iq2 in q2:
         vl = np.array([l_pdf.xfxQ2(pid, ix, iq2) for ix in x])
-        vp = p.xfxQ2(pid, float_me(x), float_me([iq2]*len(x)))
+        vp = p.py_xfxQ2(pid, float_me(x), float_me([iq2]*len(x)))
         
         plt.plot(x, np.abs(vp-vl), label='$Q=%.2e$' % iq2**0.5)
     plt.xscale('log')
@@ -95,7 +95,7 @@ def main(pdfname, pid):
     plt.subplot(2, 2, 2)
     for ix in x:
         vl = np.array([l_pdf.xfxQ2(pid, ix, iq2) for iq2 in q2])
-        vp = p.xfxQ2(pid, float_me([ix]*len(q2)), float_me(q2))
+        vp = p.py_xfxQ2(pid, float_me([ix]*len(q2)), float_me(q2))
         
         plt.plot(q2**0.5, np.abs(vp-vl)/(np.abs(vl)+EPS), label='$x=%.2e$' % ix)
     plt.hlines(1e-3, plt.xlim()[0], plt.xlim()[1], linestyles='dotted')
@@ -112,7 +112,7 @@ def main(pdfname, pid):
         s_time = time.time()
         vl = np.array([l_pdf.xfxQ2(pid, ix, iq2) for iq2 in q2])
         l_time = time.time()
-        vp = p.xfxQ2(pid, float_me([ix]*len(q2)), float_me(q2))
+        vp = p.py_xfxQ2(pid, float_me([ix]*len(q2)), float_me(q2))
         p_time = time.time()
         
         plt.plot(q2**0.5, np.abs(vp-vl), label='$x=%.2e$' % ix)

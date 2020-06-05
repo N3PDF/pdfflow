@@ -3,7 +3,7 @@ Contains the extrapolation and interpolation functions wrappers for the differen
 """
 
 import tensorflow as tf
-from pdfflow.configflow import DTYPE, DTYPEINT, float_me, int_me, fone
+from pdfflow.configflow import DTYPE, DTYPEINT, float_me, fone
 from pdfflow.neighbour_knots import four_neighbour_knots
 from pdfflow.interpolations import default_bicubic_interpolation
 from pdfflow.interpolations import extrapolate_linear
@@ -11,12 +11,8 @@ from pdfflow.interpolations import extrapolate_linear
 INTERPOLATE_SIGNATURE = [
     tf.TensorSpec(shape=[None], dtype=DTYPE),
     tf.TensorSpec(shape=[None], dtype=DTYPE),
-    tf.TensorSpec(shape=[], dtype=DTYPE),
-    tf.TensorSpec(shape=[], dtype=DTYPE),
     tf.TensorSpec(shape=[None], dtype=DTYPE),
     tf.TensorSpec(shape=[], dtype=DTYPEINT),
-    tf.TensorSpec(shape=[], dtype=DTYPE),
-    tf.TensorSpec(shape=[], dtype=DTYPE),
     tf.TensorSpec(shape=[None], dtype=DTYPE),
     tf.TensorSpec(shape=[], dtype=DTYPEINT),
     tf.TensorSpec(shape=[None, None], dtype=DTYPE),
@@ -25,17 +21,7 @@ INTERPOLATE_SIGNATURE = [
 
 @tf.function(input_signature=INTERPOLATE_SIGNATURE)
 def interpolate(
-    a_x,
-    a_q2,
-    log_xmin,
-    log_xmax,
-    padded_x,
-    s_x,
-    log_q2min,
-    log_q2max,
-    padded_q2,
-    s_q2,
-    actual_padded,
+    a_x, a_q2, padded_x, s_x, padded_q2, s_q2, actual_padded,
 ):
     """
     Basic Bicubic Interpolation inside the subgrid
@@ -43,29 +29,19 @@ def interpolate(
     make the interpolation: 4 knots on the x axis and 4 knots on the q2
     axis are needed for each point, plus the pdf fvalues there.
     Default bicubic interpolation performs the interpolation itself
-   
+
     Parameters
     ----------
         a_x: tf.tensor of shape [None]
             query of values of log(x)
         a_q2: tf.tensor of shape [None]
             query of values of log(q2)
-        log_xmin: tf.tensor of shape []
-            value for the lowest knot on the x axis
-        log_xmax: tf.tensor of shape []
-            value for the greatest knot on the x axis
         padded_x: tf.tensor of shape [None]
             value for all the knots on the x axis
             padded with one zero at the beginning and one at the end to
             avoid out of range errors when queryingpoints near boundaries
         s_x: tf.tensor of shape []
             size of x knots tensor without padding
-        log_q2min: tf.tensor of shape []
-            value for the lowest knot on the q2 axis
-            (current subgrid)
-        log_q2max: tf.tensor of shape []
-            value for the greatest knot on the q2 axis
-            (current subgrid)
         padded_q2: tf.tensor of shape [None]
             value for all the knots on the q2 axis
             padded with one zero at the beginning and one at the end to
@@ -87,20 +63,10 @@ def interpolate(
 
 @tf.function(input_signature=INTERPOLATE_SIGNATURE)
 def lowx_extrapolation(
-    a_x,
-    a_q2,
-    log_xmin,
-    log_xmax,
-    padded_x,
-    s_x,
-    log_q2min,
-    log_q2max,
-    padded_q2,
-    s_q2,
-    actual_padded,
+    a_x, a_q2, padded_x, s_x, padded_q2, s_q2, actual_padded,
 ):
-    """ 
-    Extrapolation in low x regime 
+    """
+    Extrapolation in low x regime
 
     Parameters
     ----------
@@ -108,22 +74,12 @@ def lowx_extrapolation(
             query of values of log(x)
         a_q2: tf.tensor of shape [None]
             query of values of log(q2)
-        log_xmin: tf.tensor of shape []
-            value for the lowest knot on the x axis
-        log_xmax: tf.tensor of shape []
-            value for the greatest knot on the x axis
         padded_x: tf.tensor of shape [None]
             value for all the knots on the x axis
             padded with one zero at the beginning and one at the end to
             avoid out of range errors when queryingpoints near boundaries
         s_x: tf.tensor of shape []
             size of x knots tensor without padding
-        log_q2min: tf.tensor of shape []
-            value for the lowest knot on the q2 axis
-            (current subgrid)
-        log_q2max: tf.tensor of shape []
-            value for the greatest knot on the q2 axis
-            (current subgrid)
         padded_q2: tf.tensor of shape [None]
             value for all the knots on the q2 axis
             padded with one zero at the beginning and one at the end to
@@ -142,12 +98,8 @@ def lowx_extrapolation(
     y = interpolate(
         tf.reshape(x, [-1]),
         tf.reshape(q2, [-1]),
-        log_xmin,
-        log_xmax,
         padded_x,
         s_x,
-        log_q2min,
-        log_q2max,
         padded_q2,
         s_q2,
         actual_padded,
@@ -158,19 +110,9 @@ def lowx_extrapolation(
 
 @tf.function(input_signature=INTERPOLATE_SIGNATURE)
 def lowq2_extrapolation(
-    a_x,
-    a_q2,
-    log_xmin,
-    log_xmax,
-    padded_x,
-    s_x,
-    log_q2min,
-    log_q2max,
-    padded_q2,
-    s_q2,
-    actual_padded,
+    a_x, a_q2, padded_x, s_x, padded_q2, s_q2, actual_padded,
 ):
-    """ 
+    """
     Extrapolation in low q2 regime
 
     Parameters
@@ -179,22 +121,12 @@ def lowq2_extrapolation(
             query of values of log(x)
         a_q2: tf.tensor of shape [None]
             query of values of log(q2)
-        log_xmin: tf.tensor of shape []
-            value for the lowest knot on the x axis
-        log_xmax: tf.tensor of shape []
-            value for the greatest knot on the x axis
         padded_x: tf.tensor of shape [None]
             value for all the knots on the x axis
             padded with one zero at the beginning and one at the end to
             avoid out of range errors when queryingpoints near boundaries
         s_x: tf.tensor of shape []
             size of x knots tensor without padding
-        log_q2min: tf.tensor of shape []
-            value for the lowest knot on the q2 axis
-            (current subgrid)
-        log_q2max: tf.tensor of shape []
-            value for the greatest knot on the q2 axis
-            (current subgrid)
         padded_q2: tf.tensor of shape [None]
             value for all the knots on the q2 axis
             padded with one zero at the beginning and one at the end to
@@ -215,12 +147,8 @@ def lowq2_extrapolation(
     fq2Min = interpolate(
         tf.reshape(x, [-1]),
         tf.reshape(q2, [-1]),
-        log_xmin,
-        log_xmax,
         padded_x,
         s_x,
-        log_q2min,
-        log_q2max,
         padded_q2,
         s_q2,
         actual_padded,
@@ -246,20 +174,10 @@ def lowq2_extrapolation(
 
 @tf.function(input_signature=INTERPOLATE_SIGNATURE)
 def highq2_extrapolation(
-    a_x,
-    a_q2,
-    log_xmin,
-    log_xmax,
-    padded_x,
-    s_x,
-    log_q2min,
-    log_q2max,
-    padded_q2,
-    s_q2,
-    actual_padded,
+    a_x, a_q2, padded_x, s_x, padded_q2, s_q2, actual_padded,
 ):
-    """ 
-    Extrapolation in high q2 regime 
+    """
+    Extrapolation in high q2 regime
 
     Parameters
     ----------
@@ -267,22 +185,12 @@ def highq2_extrapolation(
             query of values of log(x)
         a_q2: tf.tensor of shape [None]
             query of values of log(q2)
-        log_xmin: tf.tensor of shape []
-            value for the lowest knot on the x axis
-        log_xmax: tf.tensor of shape []
-            value for the greatest knot on the x axis
         padded_x: tf.tensor of shape [None]
             value for all the knots on the x axis
             padded with one zero at the beginning and one at the end to
             avoid out of range errors when queryingpoints near boundaries
         s_x: tf.tensor of shape []
             size of x knots tensor without padding
-        log_q2min: tf.tensor of shape []
-            value for the lowest knot on the q2 axis
-            (current subgrid)
-        log_q2max: tf.tensor of shape []
-            value for the greatest knot on the q2 axis
-            (current subgrid)
         padded_q2: tf.tensor of shape [None]
             value for all the knots on the q2 axis
             padded with one zero at the beginning and one at the end to
@@ -301,12 +209,8 @@ def highq2_extrapolation(
     y = interpolate(
         tf.reshape(x, [-1]),
         tf.reshape(q2, [-1]),
-        log_xmin,
-        log_xmax,
         padded_x,
         s_x,
-        log_q2min,
-        log_q2max,
         padded_q2,
         s_q2,
         actual_padded,
@@ -317,17 +221,7 @@ def highq2_extrapolation(
 
 @tf.function(input_signature=INTERPOLATE_SIGNATURE)
 def lowx_highq2_extrapolation(
-    a_x,
-    a_q2,
-    log_xmin,
-    log_xmax,
-    padded_x,
-    s_x,
-    log_q2min,
-    log_q2max,
-    padded_q2,
-    s_q2,
-    actual_padded,
+    a_x, a_q2, padded_x, s_x, padded_q2, s_q2, actual_padded,
 ):
     """
     Extrapolation in high q2, low x regime
@@ -338,22 +232,12 @@ def lowx_highq2_extrapolation(
             query of values of log(x)
         a_q2: tf.tensor of shape [None]
             query of values of log(q2)
-        log_xmin: tf.tensor of shape []
-            value for the lowest knot on the x axis
-        log_xmax: tf.tensor of shape []
-            value for the greatest knot on the x axis
         padded_x: tf.tensor of shape [None]
             value for all the knots on the x axis
             padded with one zero at the beginning and one at the end to
             avoid out of range errors when queryingpoints near boundaries
         s_x: tf.tensor of shape []
             size of x knots tensor without padding
-        log_q2min: tf.tensor of shape []
-            value for the lowest knot on the q2 axis
-            (current subgrid)
-        log_q2max: tf.tensor of shape []
-            value for the greatest knot on the q2 axis
-            (current subgrid)
         padded_q2: tf.tensor of shape [None]
             value for all the knots on the q2 axis
             padded with one zero at the beginning and one at the end to
@@ -373,12 +257,8 @@ def lowx_highq2_extrapolation(
     f = interpolate(
         tf.reshape(x, [-1]),
         tf.reshape(q2, [-1]),
-        log_xmin,
-        log_xmax,
         padded_x,
         s_x,
-        log_q2min,
-        log_q2max,
         padded_q2,
         s_q2,
         actual_padded,
@@ -393,20 +273,10 @@ def lowx_highq2_extrapolation(
 
 @tf.function(input_signature=INTERPOLATE_SIGNATURE)
 def lowx_lowq2_extrapolation(
-    a_x,
-    a_q2,
-    log_xmin,
-    log_xmax,
-    padded_x,
-    s_x,
-    log_q2min,
-    log_q2max,
-    padded_q2,
-    s_q2,
-    actual_padded,
+    a_x, a_q2, padded_x, s_x, padded_q2, s_q2, actual_padded,
 ):
-    """ 
-    Extrapolation in low q2, low x regime 
+    """
+    Extrapolation in low q2, low x regime
 
     Parameters
     ----------
@@ -414,22 +284,12 @@ def lowx_lowq2_extrapolation(
             query of values of log(x)
         a_q2: tf.tensor of shape [None]
             query of values of log(q2)
-        log_xmin: tf.tensor of shape []
-            value for the lowest knot on the x axis
-        log_xmax: tf.tensor of shape []
-            value for the greatest knot on the x axis
         padded_x: tf.tensor of shape [None]
             value for all the knots on the x axis
             padded with one zero at the beginning and one at the end to
             avoid out of range errors when queryingpoints near boundaries
         s_x: tf.tensor of shape []
             size of x knots tensor without padding
-        log_q2min: tf.tensor of shape []
-            value for the lowest knot on the q2 axis
-            (current subgrid)
-        log_q2max: tf.tensor of shape []
-            value for the greatest knot on the q2 axis
-            (current subgrid)
         padded_q2: tf.tensor of shape [None]
             value for all the knots on the q2 axis
             padded with one zero at the beginning and one at the end to
@@ -446,12 +306,8 @@ def lowx_lowq2_extrapolation(
     f = interpolate(
         tf.concat([corn_x, corn_x], 0),
         tf.concat([corn_q2, 1.01 * corn_q2], 0),
-        log_xmin,
-        log_xmax,
         padded_x,
         s_x,
-        log_q2min,
-        log_q2max,
         padded_q2,
         s_q2,
         actual_padded,
