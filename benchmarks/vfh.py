@@ -14,13 +14,13 @@ import tensorflow as tf
 
 # Settings
 # Integration parameters
-ncalls = int(1e5)
-niter = 5
+ncalls = int(1e6)
+niter = 10
 ndim = 9
 tech_cut = float_me(1e-5)
 higgs_mass = float_me(125.0)
 muR = tf.square(higgs_mass)
-s_in = float_me(pow(7*1000, 2))
+s_in = float_me(pow(8*1000, 2))
 shat_min = tf.square(higgs_mass) + tech_cut*s_in
 mw = float_me(80.379)
 gw = float_me(2.085)
@@ -36,6 +36,11 @@ costhmin = -fone
 phimax = float_me(2.0*np.pi)
 phimin = fzero
 fbGeV2=float_me(389379365600)
+
+unit_phase = True
+massive_boson = False
+if not massive_boson:
+    shat_min = tech_cut*s_in
 
 @tf.function
 def luminosity(x1, x2):
@@ -73,10 +78,10 @@ def get_x1x2(xarr):
     tau = shat / s_in
     # building rapidity
     ymax = -0.5 * tf.math.log(tau)
-    y = ymax * (2 * xarr[:, 1] - 1)
+    y = ymax * (2.0 * xarr[:, 1] - 1)
     # building jacobian
-    jac = 2 * tau * b * bmax / onemb2  # tau
-    jac *= 2 * ymax  # y
+    jac = 2.0 * tau * b * bmax / onemb2  # tau
+    jac *= 2.0 * ymax  # y
     # building x1 and x2
     sqrttau = tf.sqrt(tau)
     expy = tf.exp(y)
@@ -89,31 +94,90 @@ def sample_linear_all(x):
     """ Receives an array of random numbers and samples the 
     invariant masses of the particles as well as the angles
     of the particles
-    """
-    # Sampele shat
-    shat, wgt, x1, x2 = get_x1x2(x[:,0:2])
 
-    # "detach" the massive boson (the Higgs)
+    Uses 8 random numbers (from index 0 to 7)
+
+    Samples:
+    -------
+        x1, x2: fraction of momenta of incoming partons
+        s12: invariant mass of the system of outgoing massless partons
+        cos12: angle theta of scattering between 1 and 2 
+        phi12: angle phi of scattering between 1 and 2
+    not used but calculated just in case:
+        cosg1g2: angle theta of scattering between decay products of the Higgds
+        phig1g2: angle phi of scattering between decay products of the Higgs
+    """
+    # Sample shat
+    shat, wgt, x1, x2 = get_x1x2(x[:,0:2])
+    if unit_phase:
+        shat = s_in*tf.ones_like(shat)
+        wgt = tf.ones_like(wgt)
+        x1 = tf.ones_like(x1)
+        x2 = tf.ones_like(x2)
     smin = tech_cut*shat
     smax = shat
-    shiggs = tf.square(higgs_mass)
-    wgt *= tf.square(tfpi)*float_me(16.0)
 
-    # deatch the 1-2 system
-    sqrtshat = tf.sqrt(shat)
-    smax = tf.pow(sqrtshat-higgs_mass, 2)
-    s12, jac = pick_within(x[:,2], smin, smax)
-    wgt *= jac
-    cos12, jac = pick_within(x[:,3], costhmin, costhmax)
-    wgt *= jac
-    phi12, jac = pick_within(x[:,4], phimin, phimax)
-    wgt *= jac
-    
-    # finally the lambda(shat, sh, s12) stuff...
-    wgt *= fone/(float_me(32.0)*tf.square(tfpi))
-    
-    # return everything
+    # Assume no massive boson
+    if not massive_boson:
+        # Detach one particle
+        s2, jac = pick_within(x[:,2], smin, smax)
+        wgt *= jac
+        # And the angles of its decay
+        costh2, jac = pick_within(x[:,3], costhmin, costhmax)
+        wgt *= jac
+        phi2, jac = pick_within(x[:,4], phimin, phimax)
+        wgt *= jac
+        wgt *= fone/2.0/tfpi
+        # For the first one there is no lambda to be computed
+        wgt *= fone/32.0/tf.square(tfpi)
+        # Detach the next particle and the angles of its decay
+        s3, jac = pick_within(x[:,5], smin, s2)
+        wgt *= jac
+        costh3, jac = pick_within(x[:,6], costhmin, costhmax)
+        wgt *= jac
+        phi3, jac = pick_within(x[:,7], phimin, phimax)
+        wgt *= jac
+        wgt *= fone/2.0/tfpi
+        wgt *= tf.sqrt(dlambda(s2, fzero, s3))/s2/32.0/tf.square(tfpi)
+        s12 = s2
+        shiggs = s3
+        cos12 = costh3
+        phi12 = phi3
     return x1, x2, shat, shiggs, s12, cos12, phi12, wgt
+
+#     # "detach" the massive boson (the Higgs)
+#     if massive_boson:
+#         shiggs = tf.square(higgs_mass)
+#         wgt *= tf.square(tfpi)*float_me(16.0)
+#         # consumes x[:,2]
+#         # decay of the Higgs into two photons
+#         wgt *= 2.0*(2.0*tfpi)/64.0/tf.pow(tfpi,3)
+#         # consumnes x[:,3:5]
+#     else:
+#         smax = shat - smin
+#         shiggs, jac = pick_within(x[:,2], smin, smax)
+#         wgt *= jac
+#         wgt *= 2.0 # pick cosgamma with x[:,3]
+#         wgt *= 2.0*tfpi # pick phigamma with x[:,4]
+#         wgt *= fone/2.0/tfpi
+#         wgt *= dlambda(shat, 0.0,  
+# 
+# 
+#     # deatch the 1-2 system
+#     sqrtshat = tf.sqrt(shat)
+#     smax = tf.pow(sqrtshat-tf.sqrt(shiggs), 2)
+#     s12, jac = pick_within(x[:,5], smin, smax)
+#     wgt *= jac
+#     cos12, jac = pick_within(x[:,6], costhmin, costhmax)
+#     wgt *= jac
+#     phi12, jac = pick_within(x[:,7], phimin, phimax)
+#     wgt *= jac
+# 
+#     # finally the lambda(shat, sh, s12) stuff...
+#     wgt *= fone/(float_me(32.0)*tf.square(tfpi))
+#     
+#     # return everything
+#     return x1, x2, shat, shiggs, s12, cos12, phi12, wgt
 
 @tf.function
 def dlambda(a, b, c):
@@ -123,7 +187,7 @@ def dlambda(a, b, c):
 def pcommon2to2(r, shat, s1, s2):
     """ Receives a random number (r) and shat=(pa+pb)^2
     and the invariant masses of p1 and p2
-    and returns pa, pb, p1, p2.
+    and returns pa, pb, p1, p2
     The shape of r is (batch_size, 1)
     all the momenta (p) is of size (4, batch_size)
     """
@@ -141,7 +205,7 @@ def pcommon2to2(r, shat, s1, s2):
     # Check that the cosine is not greater than 1 at this point
     # nor less than -1
     sinth = tf.sqrt(fone - tf.square(costh))
-    wgt = fone/(16.0*tfpi*tfpi*shat)
+    wgt *= fone/(16.0*tfpi*tfpi*shat)
 
     # Since there are rotational symmetry around the beam axis
     # we can set the phi angle to 0.0
@@ -211,16 +275,25 @@ def pcommon1to2(sin, pin, s1, s2, costh, phi):
     return tf.transpose(up1t), tf.transpose(up2t)
 
 def psgen_2to3(xarr):
-    """ Generates a 2 -> 3 phase space 
-    where one particle is massive
+    """ Generates a 2 -> 4 phase space 
+    where the two last particles are the results of the decay of the massive higgs
+    for the Matrix Element this is equivalent to pa pb -> p1, p2, pH 
+    where p1 and p2 are massless and pH massive
+
+    uses 9 random numbers
 
     Convention:
         p = (px, py, pz, E)
     """
-    x1, x2, shat, sh, s12, cos12, phi12, jac = sample_linear_all(xarr[:, 0:5])
-    pa, pb, ph, p12, wgt = pcommon2to2(xarr[:, 5], shat, sh, s12)
-    p1, p2 = pcommon1to2(s12, p12, fzero, fzero, cos12, phi12)
-    return pa, pb, p1, p2, ph, x1, x2, shat, wgt*jac
+    x1, x2, shat, sh, s12, cos12, phi12, wgt = sample_linear_all(xarr[:, 0:8])
+    if massive_boson:
+        pa, pb, ph, p12, jac = pcommon2to2(xarr[:, 8], shat, sh, s12)
+        p1, p2 = pcommon1to2(s12, p12, fzero, fzero, cos12, phi12)
+    else:
+        pa, pb, p1, p2h, jac = pcommon2to2(xarr[:,8], shat, 0.0, s12)
+        p2, ph = pcommon1to2(s12, p2h, fzero, s12, cos12, phi12)
+    wgt *= jac
+    return pa, pb, p1, p2, ph, x1, x2, shat, wgt
 
 @tf.function
 def propagator_w(s):
@@ -258,7 +331,9 @@ def vfh_production(xarr, n_dim = None, **kwars):
     lumi = luminosity(x1, x2)
     me_lo = qq_h_lo(pa, pb, p1, p2, pH)
     res = lumi*me_lo*wgt/tf.square(s_in)
-    return tf.reduce_sum(res)*fbGeV2
+    if unit_phase:
+        return wgt
+    return res*fbGeV2
 
 if __name__ == "__main__":
     print(f"Vegas MC VFH LO production")
