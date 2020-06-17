@@ -14,19 +14,19 @@ import tensorflow as tf
 
 # Settings
 # Integration parameters
-ncalls = int(1e6)
+ncalls = int(4e6)
 niter = 10
 ndim = 9
-tech_cut = float_me(1e-5)
+tech_cut = float_me(1e-7)
 higgs_mass = float_me(125.0)
 muR = tf.square(higgs_mass)
 s_in = float_me(pow(8*1000, 2))
-shat_min = tf.square(higgs_mass) + tech_cut*s_in
+shat_min = tf.square(higgs_mass)*(1+tf.sqrt(tech_cut))
 mw = float_me(80.379)
 gw = float_me(2.085)
 stw = float_me(0.22264585341299603)
 # Select PDF
-pdfset = "NNPDF31_nlo_as_0118/0"
+pdfset = "NNPDF31_nnlo_as_0118/0"
 DIRNAME = sp.run(['lhapdf-config','--datadir'], stdout=sp.PIPE,  universal_newlines=True ).stdout.strip('\n') + '/'
 pdf = mkPDF(pdfset, DIRNAME)
 # Math parameters
@@ -37,8 +37,8 @@ phimax = float_me(2.0*np.pi)
 phimin = fzero
 fbGeV2=float_me(389379365600)
 
-unit_phase = True
-massive_boson = False
+unit_phase = False
+massive_boson = True
 if not massive_boson:
     shat_min = tech_cut*s_in
 
@@ -114,11 +114,32 @@ def sample_linear_all(x):
         wgt = tf.ones_like(wgt)
         x1 = tf.ones_like(x1)
         x2 = tf.ones_like(x2)
-    smin = tech_cut*shat
+    smin = tech_cut
     smax = shat
 
     # Assume no massive boson
-    if not massive_boson:
+    if massive_boson:
+        # Detach the massive boson
+        shiggs = tf.square(higgs_mass)
+        wgt *= tfpi*(16.0*tfpi)
+        # And the angles of its decay
+        # (which for now are not to be used, but they 
+        # do affect the weight)
+        # this consumes random numbers 2, 3, 4
+        wgt *= (costhmax-costhmin)
+        wgt *= (phimax-phimin)
+        wgt *= fone/(2.0*tfpi*32.0*tf.square(tfpi))
+        # the remaining mass in the new smax
+        roots = tf.sqrt(shat)
+        smax = tf.square(roots - higgs_mass)
+        s12, jac = pick_within(x[:,5], smin, smax)
+        wgt *= jac
+        cos12, jac = pick_within(x[:,6], costhmin, costhmax)
+        wgt *= jac
+        phi12, jac = pick_within(x[:,7], phimin, phimax)
+        wgt *= jac
+        wgt *= fone/(32.0*tf.square(tfpi))
+    else:
         # Detach one particle
         s2, jac = pick_within(x[:,2], smin, smax)
         wgt *= jac
@@ -144,40 +165,6 @@ def sample_linear_all(x):
         cos12 = costh3
         phi12 = phi3
     return x1, x2, shat, shiggs, s12, cos12, phi12, wgt
-
-#     # "detach" the massive boson (the Higgs)
-#     if massive_boson:
-#         shiggs = tf.square(higgs_mass)
-#         wgt *= tf.square(tfpi)*float_me(16.0)
-#         # consumes x[:,2]
-#         # decay of the Higgs into two photons
-#         wgt *= 2.0*(2.0*tfpi)/64.0/tf.pow(tfpi,3)
-#         # consumnes x[:,3:5]
-#     else:
-#         smax = shat - smin
-#         shiggs, jac = pick_within(x[:,2], smin, smax)
-#         wgt *= jac
-#         wgt *= 2.0 # pick cosgamma with x[:,3]
-#         wgt *= 2.0*tfpi # pick phigamma with x[:,4]
-#         wgt *= fone/2.0/tfpi
-#         wgt *= dlambda(shat, 0.0,  
-# 
-# 
-#     # deatch the 1-2 system
-#     sqrtshat = tf.sqrt(shat)
-#     smax = tf.pow(sqrtshat-tf.sqrt(shiggs), 2)
-#     s12, jac = pick_within(x[:,5], smin, smax)
-#     wgt *= jac
-#     cos12, jac = pick_within(x[:,6], costhmin, costhmax)
-#     wgt *= jac
-#     phi12, jac = pick_within(x[:,7], phimin, phimax)
-#     wgt *= jac
-# 
-#     # finally the lambda(shat, sh, s12) stuff...
-#     wgt *= fone/(float_me(32.0)*tf.square(tfpi))
-#     
-#     # return everything
-#     return x1, x2, shat, shiggs, s12, cos12, phi12, wgt
 
 @tf.function
 def dlambda(a, b, c):
@@ -301,6 +288,7 @@ def propagator_w(s):
     t2 = tf.square(mw*gw)
     return t1+t2
 
+factor_lo = float_me(1.0702411577062499e-4)
 @tf.function
 def qq_h_lo(pa, pb, p1, p2, pH):
     """ Computes the LO q Q -> Q q H (WW->H) """
@@ -309,7 +297,7 @@ def qq_h_lo(pa, pb, p1, p2, pH):
     pb2 = tf.transpose(pb-p2)
 
     sa1 = tf.keras.backend.batch_dot(pa1, pa1)[:,0]
-    sb2 = tf.keras.backend.batch_dot(pa1, pa1)[:,0]
+    sb2 = tf.keras.backend.batch_dot(pb2, pb2)[:,0]
 
     prop = propagator_w(sa1)*propagator_w(sb2)
     coup = tf.sqrt(tf.square(mw)/tf.pow(stw, 3))
@@ -320,23 +308,26 @@ def qq_h_lo(pa, pb, p1, p2, pH):
     sab = tf.keras.backend.batch_dot(pab, pab)[:,0]
     p12 = tf.transpose(p1+p2)
     s12 = tf.keras.backend.batch_dot(p12, p12)[:,0]
-    
     res = tf.square(s12*sab)
 
-    return 2.0*res/prop*coup
+    me_res = 2.0*res/prop*coup
+    return factor_lo#me_res
 
+@tf.function
 def vfh_production(xarr, n_dim = None, **kwars):
     """ Wrapper for the VFH calculation """
     pa, pb, p1, p2, pH, x1, x2, shat, wgt = psgen_2to3(xarr)
     lumi = luminosity(x1, x2)
     me_lo = qq_h_lo(pa, pb, p1, p2, pH)
-    res = lumi*me_lo*wgt/tf.square(s_in)
     if unit_phase:
-        return wgt
+        return wgt*lumi
+    res = lumi*me_lo*wgt/s_in
+    # Im missing a 4pi somewhere?
+    res *= 4*tfpi
     return res*fbGeV2
 
 if __name__ == "__main__":
     print(f"Vegas MC VFH LO production")
     print(f"ncalls={ncalls}, niter={niter}")
-    res = vegas_wrapper(vfh_production, ndim, niter, ncalls, compilable=False)
+    res = vegas_wrapper(vfh_production, ndim, niter, ncalls, compilable=True)
     print("Finished!")
