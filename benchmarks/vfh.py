@@ -389,16 +389,20 @@ def partial_qq_h_qQg(pa, pb, p1, p2, p3):
     rmcom = coup/prop
 
     # compute the amplitude
-    zUp = (zB(pa,p1, cross=True)*zA(p2,p1) + zB(pa,p3, cross=True)*zA(p2,p3))
-    zFp = 2.0*zB(pa,pb)/(zB(p1,p3)*zB(pa,p3, cross=True))
+    zUp = (zB(pa,p1, cross=True)*zA(p2,p1) - zB(pa,p3, cross=True)*zA(p2,p3))
+    zFp = zB(pa,pb)
     zAp = zFp*zUp
 
-    zUm = (zA(pa,p1, cross=True)*zB(pa,pb) + zB(pb,p3, cross=True)*zA(p1,p3))
-    zFm = 2.0*zA(pa,pb)/(zA(p1,p3)*zA(pa,p3, cross=True))
+    zUm = (zA(pa,p1, cross=True)*zB(pa,pb) - zB(pb,p3, cross=True)*zA(p1,p3))
+    zFm = zA(p1,p2)
     zAm = zFm*zUm
 
     zamp2 = zAp*tf.math.conj(zAp) + zAm*tf.math.conj(zAm)
-    amp = tf.math.real(zamp2)
+    s13 = 2.0*dot_product(p1, p3)
+    sa3 = 2.0*dot_product(pa, p3)
+    amp = tf.math.real(zamp2)/s13/sa3
+
+
 
     return amp*rmcom
 
