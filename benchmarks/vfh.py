@@ -9,13 +9,12 @@ import numpy as np
 from pdfflow.pflow import mkPDF
 from pdfflow.configflow import float_me, fone, fzero
 from vegasflow.vflow import vegas_wrapper
-from singletop_lo import za, zb
 
 import tensorflow as tf
 
 # Settings
 # Integration parameters
-ncalls = int(1e6)
+ncalls = int(1e5)
 niter = 5
 ndim = 9
 tech_cut = float_me(1e-7)
@@ -46,6 +45,39 @@ if not massive_boson:
 
 RUN_LO = True
 RUN_R = False
+
+@tf.function
+def calc_zea(pa):
+    at2 = calc_pt2(pa)
+    at = tf.sqrt(at2)
+    aE = pa[0,:]
+    ap = aE + pa[3,:]
+    am = aE- pa[3,:]
+    ap = tf.where(ap < aE/2.0, at2/am, ap)
+    am = tf.where(am < aE/2.0, at2/ap, am)
+
+    zea = tf.complex(pa[1,:], pa[2,:])/tf.complex(at+tech_cut, fzero)
+    zea = tf.where(at == fzero, tf.complex(fone, fzero), zea)
+
+    return zea, am, ap
+
+@tf.function
+def zA(pa, pb, cross = False): # cross == when only one of (pa,pb) is initial-state
+    zi = tf.complex(fzero, fone)
+    zea, am, ap = calc_zea(pa)
+    zeb, bm, bp = calc_zea(pb)
+    ra = tf.complex(tf.sqrt(am*bp), fzero)
+    rb = tf.complex(tf.sqrt(ap*bm), fzero)
+    res = (ra*zea - rb*zeb)*zi
+    if cross:
+        return -res
+    else:
+        return res
+
+@tf.function
+def zB(pa, pb, cross= False):
+    return tf.math.conj(zA(pb, pa, cross=cross))
+
 
 @tf.function
 def luminosity(x1, x2):
@@ -340,11 +372,10 @@ def qq_h_lo(pa, pb, p1, p2):
     
     # Compute the amplitude
     # W-boson, so only Left-Left
-    sab = 2.0*dot_product(pa, pb)
-    s12 = 2.0*dot_product(p1, p2)
-    amp = s12*sab
+    amplitude = zA(pa,pb)*zB(p1,p2)
+    amp2 = tf.math.real(amplitude*tf.math.conj(amplitude))
 
-    me_res = 2.0*amp*rmcom
+    me_res = 2.0*amp2*rmcom
     return factor_lo*me_res
 
 @tf.function
