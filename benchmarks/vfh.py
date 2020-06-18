@@ -25,6 +25,7 @@ shat_min = tf.square(higgs_mass)*(1+tf.sqrt(tech_cut))
 mw = float_me(80.379)
 gw = float_me(2.085)
 stw = float_me(0.22264585341299603)
+min_pt = float_me(30) # GeV
 # Select PDF
 pdfset = "NNPDF31_nnlo_as_0118/0"
 DIRNAME = sp.run(['lhapdf-config','--datadir'], stdout=sp.PIPE,  universal_newlines=True ).stdout.strip('\n') + '/'
@@ -320,6 +321,21 @@ def qq_h_lo(pa, pb, p1, p2):
     return factor_lo*me_res
 
 @tf.function
+def calc_pt2(p):
+    pxpy2 = tf.square(p[0:2, :])
+    pt2 = tf.reduce_sum(pxpy2, axis=0)
+    return pt2
+
+@tf.function
+def pt_cut(p, wgt):
+    """ Returns wgt when pt > min_pt
+    and 0 when pt < min_pt """
+    pt2 = calc_pt2(p)
+    comp = pt2 > tf.square(min_pt)
+    return tf.where(comp, wgt, fzero)
+
+
+@tf.function
 def vfh_production(xarr, n_dim = None, **kwars):
 #     xarr = np.zeros_like(xarr_raw)
 #     xarr[:,8] =  0.56944018602371271
@@ -360,6 +376,9 @@ def vfh_production(xarr, n_dim = None, **kwars):
     me_lo = qq_h_lo(pa, pb, p1, p2)
     if unit_phase:
         return wgt
+    # set to 0 weights in which pt < ptcut
+    wgt = pt_cut(p1, wgt)
+    wgt = pt_cut(p2, wgt)
     flux = fbGeV2/2.0/(s_in*x1*x2)
     res = lumi*me_lo*wgt
     return res*flux
