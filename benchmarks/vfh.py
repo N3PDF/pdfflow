@@ -14,7 +14,7 @@ import tensorflow as tf
 
 # Settings
 # Integration parameters
-ncalls = int(1e5)
+ncalls = int(5e6)
 niter = 5
 ndim = 9
 tech_cut = float_me(1e-7)
@@ -43,8 +43,8 @@ massive_boson = True
 if not massive_boson:
     shat_min = tech_cut*s_in
 
-RUN_LO = True
-RUN_R = False
+RUN_LO = False
+RUN_R = True
 
 @tf.function
 def calc_zea(pa):
@@ -389,6 +389,16 @@ def partial_qq_h_qQg(pa, pb, p1, p2, p3):
     rmcom = coup/prop
 
     # compute the amplitude
+    zUp = (zB(pa,p1, cross=True)*zA(p2,p1) + zB(pa,p3, cross=True)*zA(p2,p3))
+    zFp = 2.0*zB(pa,pb)/(zB(p1,p3)*zB(pa,p3, cross=True))
+    zAp = zFp*zUp
+
+    zUm = (zA(pa,p1, cross=True)*zB(pa,pb) + zB(pb,p3, cross=True)*zA(p1,p3))
+    zFm = 2.0*zA(pa,pb)/(zA(p1,p3)*zA(pa,p3, cross=True))
+    zAm = zFm*zUm
+
+    zamp2 = zAp*tf.math.conj(zAp) + zAm*tf.math.conj(zAm)
+    amp = tf.math.real(zamp2)
 
     return amp*rmcom
 
