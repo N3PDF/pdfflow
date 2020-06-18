@@ -9,6 +9,7 @@ import numpy as np
 from pdfflow.pflow import mkPDF
 from pdfflow.configflow import float_me, fone, fzero
 from vegasflow.vflow import vegas_wrapper
+from singletop_lo import za, zb
 
 import tensorflow as tf
 
@@ -43,8 +44,8 @@ massive_boson = True
 if not massive_boson:
     shat_min = tech_cut*s_in
 
-RUN_LO = False
-RUN_R = True
+RUN_LO = True
+RUN_R = False
 
 @tf.function
 def luminosity(x1, x2):
@@ -217,15 +218,15 @@ def pcommon2to2(r, shat, s1, s2):
 
     # Now generate all the momenta
     zeros = tf.zeros_like(r)
-    pa = tf.stack([zeros, zeros, pin, Eab])
-    pb = tf.stack([zeros, zeros, -pin, Eab])
+    pa = tf.stack([Eab, zeros, zeros, pin])
+    pb = tf.stack([Eab, zeros, zeros, -pin])
 
     px = pout*sinth*cosphi
     py = zeros # sinphi = 0.0
     pz = pout*costh
 
-    p1 = tf.stack([-px, -py, -pz, E1])
-    p2 = tf.stack([px, py, pz, E2])
+    p1 = tf.stack([E1, -px, -py, -pz])
+    p2 = tf.stack([E2, px, py, pz])
 
     return pa, pb, p1, p2, wgt
 
@@ -249,23 +250,23 @@ def pcommon1to2(sin, pin, s1, s2, costh, phi):
     py = pp*sinth*sinphi
     pz = pp*costh
     
-    p1 = tf.stack([px, py, pz, E1])
-    p2 = tf.stack([-px, -py, -pz, E2])
+    p1 = tf.stack([E1, px, py, pz])
+    p2 = tf.stack([E2, -px, -py, -pz])
 
     # Now boost both p1 and p2 back to the lab frame
     # Construct the boosting matrix
-    gamma = pin[3,:]/roots
-    vx = -pin[0,:]/pin[3,:]
-    vy = -pin[1,:]/pin[3,:]
-    vz = -pin[2,:]/pin[3,:]
+    gamma = pin[0,:]/roots
+    vx = -pin[1,:]/pin[0,:]
+    vy = -pin[2,:]/pin[0,:]
+    vz = -pin[3,:]/pin[0,:]
     v2 = vx*vx + vy*vy + vz*vz
 
     omgdv = (gamma-fone)/v2
-    bmatx = tf.stack([omgdv*vx*vx+fone, omgdv*vx*vy, omgdv*vx*vz,-gamma*vx])
-    bmaty = tf.stack([omgdv*vy*vx, omgdv*vy*vy+fone, omgdv*vy*vz,-gamma*vy])
-    bmatz = tf.stack([omgdv*vz*vx, omgdv*vz*vy, omgdv*vz*vz+fone,-gamma*vz])
-    bmatE = tf.stack([-gamma*vx, -gamma*vy,-gamma*vz, gamma])
-    bmat = tf.stack([bmatx, bmaty, bmatz, bmatE])
+    bmatE = tf.stack([gamma, -gamma*vx, -gamma*vy,-gamma*vz])
+    bmatx = tf.stack([-gamma*vx, omgdv*vx*vx+fone, omgdv*vx*vy, omgdv*vx*vz])
+    bmaty = tf.stack([-gamma*vy, omgdv*vy*vx, omgdv*vy*vy+fone, omgdv*vy*vz])
+    bmatz = tf.stack([-gamma*vz, omgdv*vz*vx, omgdv*vz*vy, omgdv*vz*vz+fone])
+    bmat = tf.stack([bmatE, bmatx, bmaty, bmatz])
 
     # Now unboost
     bmatt = tf.transpose(bmat)
@@ -315,8 +316,8 @@ def psgen_2to4(xarr):
 def dot_product(par, pbr):
     pa = tf.transpose(par)
     pb = tf.transpose(pbr)
-    ener = pa[:,3]*pb[:,3]
-    mome = tf.keras.backend.batch_dot(pa[:,:3], pb[:,:3])[:,0]
+    ener = pa[:,0]*pb[:,0]
+    mome = tf.keras.backend.batch_dot(pa[:,1:4], pb[:,1:4])[:,0]
     return ener-mome
 
 @tf.function
@@ -344,17 +345,37 @@ def qq_h_lo(pa, pb, p1, p2):
     amp = s12*sab
 
     me_res = 2.0*amp*rmcom
-#     import ipdb; ipdb.set_trace()
     return factor_lo*me_res
+
+@tf.function
+def partial_qq_h_qQg(pa, pb, p1, p2, p3):
+    """ Gluon radiated from leg pa-p1 """
+    pa13 = pa - (p1+p3)
+    sa13 = dot_product(pa13, pa13)
+    sb2 =-2.0*dot_product(pb, p2)
+    prop = propagator_w(sa13)*propagator_w(sb2)
+    coup = tf.square(mw/tf.pow(stw, 1.5))
+    rmcom = coup/prop
+
+    # compute the amplitude
+
+    return amp*rmcom
 
 factor_re = float_me(4.0397470069216974E-004)
 @tf.function
-def qq_h_q(pa, pb, p1, p2, p3):
-    return factor_re
+def qq_h_qQg(pa, pb, p1, p2, p3):
+    """ Computes q Q -> Q q g H (WW -> H)
+    Q = p1
+    q = p2
+    g = p3
+    """
+    r1 = partial_qq_h_qQg(pa, pb, p1, p2, p3)
+    r2 = partial_qq_h_qQg(pb, pa, p2, p1, p3)
+    return (r1+r2)*factor_re
 
 @tf.function
 def calc_pt2(p):
-    pxpy2 = tf.square(p[0:2, :])
+    pxpy2 = tf.square(p[1:3, :])
     pt2 = tf.reduce_sum(pxpy2, axis=0)
     return pt2
 
@@ -369,40 +390,8 @@ def pt_cut(p, wgt):
 
 @tf.function
 def vfh_production_lo(xarr, n_dim = None, **kwars):
-#     xarr = np.zeros_like(xarr_raw)
-#     xarr[:,8] =  0.56944018602371271
-#     xarr[:,5] =  0.12544047832489025
-#     xarr[:,6] =  0.29641354084014920
-#     xarr[:,7] =  0.45437502861022988
-#     xarr[:,2] =  0.87302517890930253
-#     xarr[:,3] =  3.4118890762329129E-002
-#     xarr[:,4] =  0.92426478862762518
-#     xarr[:,0] =  0.22444814443588276 
-#     xarr[:,1] =  0.29213094711303739
     """ Wrapper for the VFH calculation """
     pa, pb, p1, p2, _, x1, x2, wgt = psgen_2to3(xarr)
-#     x1 = 0.15190566969332409*tf.ones_like(x1)
-#     x2 = 1.0395695634133438e-2*tf.ones_like(x1)
-# 
-#     pa = np.zeros_like(pa)
-#     pb = np.zeros_like(pa)
-#     p1 = np.zeros_like(pa)
-#     p2 = np.zeros_like(pa)
-# 
-#     pa[2,:] =    0.60762267877329622934e+03
-#     pa[3,:] =    0.60762267877329622934e+03
-#     pb[2,:] =   -0.41582782536533784423e+02
-#     pb[3,:] =    0.41582782536533784423e+02
-# 
-#     p1[0,:] = 0.10409882905606256287e+02
-#     p1[1,:] = 0.00000000000000000000e+00
-#     p1[2,:] = 0.37819754933937451824e+03
-#     p1[3,:] = 0.37834078816381543220e+03
-# 
-#     p2[0,:] =   -0.34608460993470686162e+02
-#     p2[1,:] =    0.18140389768719810348e+02
-#     p2[2,:] =    0.11845584613802850527e+03
-#     p2[3,:] =    0.12473414447365217939e+03
 
     lumi = luminosity(x1, x2)
     me_lo = qq_h_lo(pa, pb, p1, p2)
@@ -422,7 +411,7 @@ def vfh_production_r(xarr, n_dim = None, **kwars):
         return wgt
 
     lumi = luminosity(x1, x2)
-    me_r = qq_h_q(pa, pb, p1, p2, p3)
+    me_r = qq_h_qQg(pa, pb, p1, p2, p3)
     # set to 0 weights in which pt < ptcut
     wgt = pt_cut(p1, wgt)
     wgt = pt_cut(p2, wgt)
