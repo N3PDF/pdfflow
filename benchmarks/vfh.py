@@ -14,8 +14,8 @@ import tensorflow as tf
 
 # Settings
 # Integration parameters
-ncalls = int(4e6)
-niter = 10
+ncalls = int(1e6)
+niter = 5
 ndim = 9
 tech_cut = float_me(1e-7)
 higgs_mass = float_me(125.0)
@@ -32,7 +32,7 @@ pdf = mkPDF(pdfset, DIRNAME)
 # Math parameters
 tfpi = float_me(np.pi)
 costhmax = fone
-costhmin = -fone
+costhmin = -1.0*fone
 phimax = float_me(2.0*np.pi)
 phimin = fzero
 fbGeV2=float_me(389379365600)
@@ -46,9 +46,10 @@ if not massive_boson:
 def luminosity(x1, x2):
     """ Returns f(x1)*f(x2) """
     q2array = tf.fill(x1.shape, muR)
-    utype = pdf.xfxQ2([2], x1, q2array)
-    dtype = pdf.xfxQ2([1], x2, q2array)
-    return utype*dtype/x1/x2
+    utype = pdf.xfxQ2([2,4], x1, q2array)
+    dtype = pdf.xfxQ2([1,3], x2, q2array)
+    lumi = tf.reduce_sum(utype*dtype, axis=1)
+    return lumi/x1/x2
 
 # PhaseSpace functions
 @tf.function
@@ -62,6 +63,14 @@ def pick_within(r, valmin, valmax):
     return val, delta_val
 
 @tf.function
+def log_pick(r, valmin, valmax):
+    ratio_val = valmax/valmin
+    val = valmin*tf.pow(ratio_val, r)
+    jac = val*tf.math.log(ratio_val)
+    return val, jac
+
+
+@tf.function
 def get_x1x2(xarr):
     """Receives two random numbers and return the
     value of the invariant mass of the center of mass
@@ -70,24 +79,16 @@ def get_x1x2(xarr):
 
     The xarr array is of shape (batch_size, 2)
     """
-    # building shat
-    bmax = tf.sqrt(1 - shat_min / s_in)
-    b = bmax * xarr[:, 0]
-    onemb2 = 1 - tf.square(b)
-    shat = shat_min / onemb2
-    tau = shat / s_in
-    # building rapidity
-    ymax = -0.5 * tf.math.log(tau)
-    y = ymax * (2.0 * xarr[:, 1] - 1)
-    # building jacobian
-    jac = 2.0 * tau * b * bmax / onemb2  # tau
-    jac *= 2.0 * ymax  # y
-    # building x1 and x2
-    sqrttau = tf.sqrt(tau)
-    expy = tf.exp(y)
-    x1 = sqrttau * expy
-    x2 = sqrttau / expy
-    return shat, jac, x1, x2
+    taumin = shat_min/s_in
+    taumax = fone
+    # Get tau logarithmically
+    tau, wgt = log_pick(xarr[:,0], taumin, taumax)
+    x1 = tf.pow(tau, xarr[:,1])
+    x2 = tau/x1
+    wgt *= -1.0*tf.math.log(tau)
+    shat = x1*x2*s_in
+    return shat, wgt, x1, x2
+
 
 @tf.function
 def sample_linear_all(x):
@@ -138,7 +139,7 @@ def sample_linear_all(x):
         wgt *= jac
         phi12, jac = pick_within(x[:,7], phimin, phimax)
         wgt *= jac
-        wgt *= fone/(32.0*tf.square(tfpi))
+        wgt *= fone/(2.0*tfpi*32.0*tf.square(tfpi))
     else:
         # Detach one particle
         s2, jac = pick_within(x[:,2], smin, smax)
@@ -209,8 +210,8 @@ def pcommon2to2(r, shat, s1, s2):
     py = zeros # sinphi = 0.0
     pz = pout*costh
 
-    p1 = tf.stack([px, py, pz, E1])
-    p2 = tf.stack([-px, -py, -pz, E2])
+    p1 = tf.stack([-px, -py, -pz, E1])
+    p2 = tf.stack([px, py, pz, E2])
 
     return pa, pb, p1, p2, wgt
 
@@ -245,11 +246,11 @@ def pcommon1to2(sin, pin, s1, s2, costh, phi):
     vz = -pin[2,:]/pin[3,:]
     v2 = vx*vx + vy*vy + vz*vz
 
-    omgdv = (fone - gamma)/v2
-    bmatx = tf.stack([omgdv*vx*vx, omgdv*vx*vy, omgdv*vx*vz, gamma*vx])
-    bmaty = tf.stack([omgdv*vy*vx, omgdv*vy*vy, omgdv*vy*vz, gamma*vy])
-    bmatz = tf.stack([omgdv*vz*vx, omgdv*vz*vy, omgdv*vz*vz, gamma*vz])
-    bmatE = tf.stack([gamma*vx, gamma*vy, gamma*vz, gamma])
+    omgdv = (gamma-fone)/v2
+    bmatx = tf.stack([omgdv*vx*vx+fone, omgdv*vx*vy, omgdv*vx*vz,-gamma*vx])
+    bmaty = tf.stack([omgdv*vy*vx, omgdv*vy*vy+fone, omgdv*vy*vz,-gamma*vy])
+    bmatz = tf.stack([omgdv*vz*vx, omgdv*vz*vy, omgdv*vz*vz+fone,-gamma*vz])
+    bmatE = tf.stack([-gamma*vx, -gamma*vy,-gamma*vz, gamma])
     bmat = tf.stack([bmatx, bmaty, bmatz, bmatE])
 
     # Now unboost
@@ -258,7 +259,7 @@ def pcommon1to2(sin, pin, s1, s2, costh, phi):
     p2t = tf.transpose(p2)
     up1t = tf.keras.backend.batch_dot(p1t, bmatt)
     up2t = tf.keras.backend.batch_dot(p2t, bmatt)
-    
+
     return tf.transpose(up1t), tf.transpose(up2t)
 
 def psgen_2to3(xarr):
@@ -280,7 +281,15 @@ def psgen_2to3(xarr):
         pa, pb, p1, p2h, jac = pcommon2to2(xarr[:,8], shat, 0.0, s12)
         p2, ph = pcommon1to2(s12, p2h, fzero, s12, cos12, phi12)
     wgt *= jac
-    return pa, pb, p1, p2, ph, x1, x2, shat, wgt
+    return pa, pb, p1, p2, ph, x1, x2, wgt
+
+@tf.function
+def dot_product(par, pbr):
+    pa = tf.transpose(par)
+    pb = tf.transpose(pbr)
+    ener = pa[:,3]*pb[:,3]
+    mome = tf.keras.backend.batch_dot(pa[:,:3], pb[:,:3])[:,0]
+    return ener-mome
 
 @tf.function
 def propagator_w(s):
@@ -290,41 +299,70 @@ def propagator_w(s):
 
 factor_lo = float_me(1.0702411577062499e-4)
 @tf.function
-def qq_h_lo(pa, pb, p1, p2, pH):
+def qq_h_lo(pa, pb, p1, p2):
     """ Computes the LO q Q -> Q q H (WW->H) """
-    # Compute the propagator
-    pa1 = tf.transpose(pa-p1)
-    pb2 = tf.transpose(pb-p2)
-
-    sa1 = tf.keras.backend.batch_dot(pa1, pa1)[:,0]
-    sb2 = tf.keras.backend.batch_dot(pb2, pb2)[:,0]
+    # Compute the propagators
+    sa1 =-2.0*dot_product(pa, p1)
+    sb2 =-2.0*dot_product(pb, p2)
 
     prop = propagator_w(sa1)*propagator_w(sb2)
-    coup = tf.sqrt(tf.square(mw)/tf.pow(stw, 3))
+    coup = tf.square(mw/tf.pow(stw, 1.5))
+    rmcom = coup/prop
     
     # Compute the amplitude
     # W-boson, so only Left-Left
-    pab = tf.transpose(pa+pb)
-    sab = tf.keras.backend.batch_dot(pab, pab)[:,0]
-    p12 = tf.transpose(p1+p2)
-    s12 = tf.keras.backend.batch_dot(p12, p12)[:,0]
-    res = tf.square(s12*sab)
+    sab = 2.0*dot_product(pa, pb)
+    s12 = 2.0*dot_product(p1, p2)
+    amp = s12*sab
 
-    me_res = 2.0*res/prop*coup
-    return factor_lo#me_res
+    me_res = 2.0*amp*rmcom
+#     import ipdb; ipdb.set_trace()
+    return factor_lo*me_res
 
 @tf.function
 def vfh_production(xarr, n_dim = None, **kwars):
+#     xarr = np.zeros_like(xarr_raw)
+#     xarr[:,8] =  0.56944018602371271
+#     xarr[:,5] =  0.12544047832489025
+#     xarr[:,6] =  0.29641354084014920
+#     xarr[:,7] =  0.45437502861022988
+#     xarr[:,2] =  0.87302517890930253
+#     xarr[:,3] =  3.4118890762329129E-002
+#     xarr[:,4] =  0.92426478862762518
+#     xarr[:,0] =  0.22444814443588276 
+#     xarr[:,1] =  0.29213094711303739
     """ Wrapper for the VFH calculation """
-    pa, pb, p1, p2, pH, x1, x2, shat, wgt = psgen_2to3(xarr)
+    pa, pb, p1, p2, _, x1, x2, wgt = psgen_2to3(xarr)
+#     x1 = 0.15190566969332409*tf.ones_like(x1)
+#     x2 = 1.0395695634133438e-2*tf.ones_like(x1)
+# 
+#     pa = np.zeros_like(pa)
+#     pb = np.zeros_like(pa)
+#     p1 = np.zeros_like(pa)
+#     p2 = np.zeros_like(pa)
+# 
+#     pa[2,:] =    0.60762267877329622934e+03
+#     pa[3,:] =    0.60762267877329622934e+03
+#     pb[2,:] =   -0.41582782536533784423e+02
+#     pb[3,:] =    0.41582782536533784423e+02
+# 
+#     p1[0,:] = 0.10409882905606256287e+02
+#     p1[1,:] = 0.00000000000000000000e+00
+#     p1[2,:] = 0.37819754933937451824e+03
+#     p1[3,:] = 0.37834078816381543220e+03
+# 
+#     p2[0,:] =   -0.34608460993470686162e+02
+#     p2[1,:] =    0.18140389768719810348e+02
+#     p2[2,:] =    0.11845584613802850527e+03
+#     p2[3,:] =    0.12473414447365217939e+03
+
     lumi = luminosity(x1, x2)
-    me_lo = qq_h_lo(pa, pb, p1, p2, pH)
+    me_lo = qq_h_lo(pa, pb, p1, p2)
     if unit_phase:
-        return wgt*lumi
-    res = lumi*me_lo*wgt/s_in
-    # Im missing a 4pi somewhere?
-    res *= 4*tfpi
-    return res*fbGeV2
+        return wgt
+    flux = fbGeV2/2.0/(s_in*x1*x2)
+    res = lumi*me_lo*wgt
+    return res*flux
 
 if __name__ == "__main__":
     print(f"Vegas MC VFH LO production")

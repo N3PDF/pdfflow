@@ -9,7 +9,7 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "1"
 import tensorflow as tf
 
 # uncomment this line for debugging to avoid compiling any tf.function
-# tf.config.experimental_run_functions_eagerly(True)
+#tf.config.experimental_run_functions_eagerly(True)
 
 # Configure pdfflow logging
 import logging
