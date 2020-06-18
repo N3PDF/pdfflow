@@ -20,7 +20,7 @@ ndim = 9
 tech_cut = float_me(1e-7)
 higgs_mass = float_me(125.0)
 muR = tf.square(higgs_mass)
-s_in = float_me(pow(8*1000, 2))
+s_in = float_me(pow(13*1000, 2))
 shat_min = tf.square(higgs_mass)*(1+tf.sqrt(tech_cut))
 mw = float_me(80.379)
 gw = float_me(2.085)
@@ -42,6 +42,9 @@ unit_phase = False
 massive_boson = True
 if not massive_boson:
     shat_min = tech_cut*s_in
+
+RUN_LO = False
+RUN_R = True
 
 @tf.function
 def luminosity(x1, x2):
@@ -92,7 +95,7 @@ def get_x1x2(xarr):
 
 
 @tf.function
-def sample_linear_all(x):
+def sample_linear_all(x, nfspartons = 2):
     """ Receives an array of random numbers and samples the 
     invariant masses of the particles as well as the angles
     of the particles
@@ -118,7 +121,8 @@ def sample_linear_all(x):
         x2 = tf.ones_like(x2)
     smin = tech_cut
     smax = shat
-
+    
+    fspartons = []
     # Assume no massive boson
     if massive_boson:
         # Detach the massive boson
@@ -134,13 +138,21 @@ def sample_linear_all(x):
         # the remaining mass in the new smax
         roots = tf.sqrt(shat)
         smax = tf.square(roots - higgs_mass)
-        s12, jac = pick_within(x[:,5], smin, smax)
-        wgt *= jac
-        cos12, jac = pick_within(x[:,6], costhmin, costhmax)
-        wgt *= jac
-        phi12, jac = pick_within(x[:,7], phimin, phimax)
-        wgt *= jac
-        wgt *= fone/(2.0*tfpi*32.0*tf.square(tfpi))
+        # Now loop over the final state partons
+        for i in range(1, nfspartons):
+            j = i*3 + 2
+            prev_smax = smax
+            smax, jac = pick_within(x[:,j], smin, prev_smax)
+            wgt *= jac
+            cos12, jac = pick_within(x[:,j+1], costhmin, costhmax)
+            wgt *= jac
+            phi12, jac = pick_within(x[:,j+2], phimin, phimax)
+            wgt *= jac
+            wgt *= fone/(2.0*tfpi)
+            fspartons.append((smax, cos12, phi12))
+            wgt *=  fone/(32.0*tf.square(tfpi))
+            if i > 1:
+                wgt *= (prev_smax-smax)/prev_smax
     else:
         # Detach one particle
         s2, jac = pick_within(x[:,2], smin, smax)
@@ -166,7 +178,8 @@ def sample_linear_all(x):
         shiggs = s3
         cos12 = costh3
         phi12 = phi3
-    return x1, x2, shat, shiggs, s12, cos12, phi12, wgt
+        fspartons.append((s12, cos12, phi12))
+    return x1, x2, shat, shiggs, fspartons , wgt
 
 @tf.function
 def dlambda(a, b, c):
@@ -274,7 +287,8 @@ def psgen_2to3(xarr):
     Convention:
         p = (px, py, pz, E)
     """
-    x1, x2, shat, sh, s12, cos12, phi12, wgt = sample_linear_all(xarr[:, 0:8])
+    x1, x2, shat, sh, fspartons, wgt = sample_linear_all(xarr[:, 0:8], nfspartons = 2)
+    s12, cos12, phi12 = fspartons[0]
     if massive_boson:
         pa, pb, ph, p12, jac = pcommon2to2(xarr[:, 8], shat, sh, s12)
         p1, p2 = pcommon1to2(s12, p12, fzero, fzero, cos12, phi12)
@@ -283,6 +297,19 @@ def psgen_2to3(xarr):
         p2, ph = pcommon1to2(s12, p2h, fzero, s12, cos12, phi12)
     wgt *= jac
     return pa, pb, p1, p2, ph, x1, x2, wgt
+
+def psgen_2to4(xarr):
+    x1, x2, shat, sh, fspartons, wgt = sample_linear_all(xarr[:, 0:11], nfspartons = 3)
+    if massive_boson:
+        s123, cos123, phi123 = fspartons[0]
+        pa, pb, ph, p123, jac = pcommon2to2(xarr[:, 11], shat, sh, s123)
+        s23, cos23, phi23 = fspartons[1]
+        p1, p23 = pcommon1to2(s123, p123, fzero, s23, cos123, phi123)
+        p2, p3 = pcommon1to2(s23, p23, fzero, fzero, cos23, phi23)
+    else:
+        raise Exception("Not implemented @ psgen_2to4")
+    wgt *= jac
+    return pa, pb, p1, p2, p3, ph, x1, x2, wgt
 
 @tf.function
 def dot_product(par, pbr):
@@ -320,6 +347,11 @@ def qq_h_lo(pa, pb, p1, p2):
 #     import ipdb; ipdb.set_trace()
     return factor_lo*me_res
 
+factor_re = float_me(4.0397470069216974E-004)
+@tf.function
+def qq_h_q(pa, pb, p1, p2, p3):
+    return factor_re
+
 @tf.function
 def calc_pt2(p):
     pxpy2 = tf.square(p[0:2, :])
@@ -336,7 +368,7 @@ def pt_cut(p, wgt):
 
 
 @tf.function
-def vfh_production(xarr, n_dim = None, **kwars):
+def vfh_production_lo(xarr, n_dim = None, **kwars):
 #     xarr = np.zeros_like(xarr_raw)
 #     xarr[:,8] =  0.56944018602371271
 #     xarr[:,5] =  0.12544047832489025
@@ -383,8 +415,31 @@ def vfh_production(xarr, n_dim = None, **kwars):
     res = lumi*me_lo*wgt
     return res*flux
 
+@tf.function
+def vfh_production_r(xarr, n_dim = None, **kwars):
+    pa, pb, p1, p2, p3, _, x1, x2, wgt = psgen_2to4(xarr)
+    if unit_phase:
+        return wgt
+
+    lumi = luminosity(x1, x2)
+    me_r = qq_h_q(pa, pb, p1, p2, p3)
+    # set to 0 weights in which pt < ptcut
+    wgt = pt_cut(p1, wgt)
+    wgt = pt_cut(p2, wgt)
+    wgt = pt_cut(p3, wgt)
+    flux = fbGeV2/2.0/(s_in*x1*x2)
+    res = wgt*lumi*me_r
+    return res*flux
+
+
 if __name__ == "__main__":
-    print(f"Vegas MC VFH LO production")
-    print(f"ncalls={ncalls}, niter={niter}")
-    res = vegas_wrapper(vfh_production, ndim, niter, ncalls, compilable=True)
-    print("Finished!")
+    print(f"Vegas MC VFH NLO production")
+    if RUN_LO:
+        print("Running Leading Order")
+        print(f"ncalls={ncalls}, niter={niter}")
+        res = vegas_wrapper(vfh_production_lo, ndim, niter, ncalls, compilable=True)
+    if RUN_R:
+        print("Running Real Correction")
+        print(f"ncalls={ncalls}, niter={niter}")
+        res = vegas_wrapper(vfh_production_r, ndim+3, niter, ncalls, compilable=True)
+
