@@ -7,20 +7,23 @@ import subprocess as sp
 import numpy as np
 
 from pdfflow.pflow import mkPDF
-from pdfflow.configflow import float_me, fone, fzero
+from pdfflow.configflow import float_me, fone, fzero, DTYPE
+from pdfflow.functions import _condition_to_idx
 from vegasflow.vflow import vegas_wrapper
 
 import tensorflow as tf
 
 # Settings
+tfloat1 = tf.TensorSpec(shape=[None], dtype=DTYPE)
+tfloat4 = tf.TensorSpec(shape=[4, None], dtype=DTYPE)
 # Integration parameters
-ncalls = int(5e6)
-niter = 5
+ncalls = int(1e8)
+niter = 10
 ndim = 9
 tech_cut = float_me(1e-7)
 higgs_mass = float_me(125.0)
 muR = tf.square(higgs_mass)
-s_in = float_me(pow(13*1000, 2))
+s_in = float_me(pow(8*1000, 2))
 shat_min = tf.square(higgs_mass)*(1+tf.sqrt(tech_cut))
 mw = float_me(80.379)
 gw = float_me(2.085)
@@ -46,43 +49,41 @@ if not massive_boson:
 RUN_LO = False
 RUN_R = True
 
-@tf.function
-def calc_zea(pa):
-    at2 = calc_pt2(pa)
-    at = tf.sqrt(at2)
-    aE = pa[0,:]
-    ap = aE + pa[3,:]
-    am = aE- pa[3,:]
-    ap = tf.where(ap < aE/2.0, at2/am, ap)
-    am = tf.where(am < aE/2.0, at2/ap, am)
+@tf.function(input_signature=[tfloat4])
+def calc_zt2(pa):
+    """ transverse momentum along the y axis """
+    bb = tf.square(pa[1,:]) + tf.square(pa[3,:])
+    return bb
 
-    zea = tf.complex(pa[1,:], pa[2,:])/tf.complex(at+tech_cut, fzero)
-    zea = tf.where(at == fzero, tf.complex(fone, fzero), zea)
+@tf.function(input_signature=[tfloat4])
+def calc_ap(pa):
+    at2 = calc_zt2(pa)
+    ap = pa[2,:] + pa[0,:]
+    conditional_p = at2/(pa[0,:] - pa[2,:])
+    ap = tf.where(ap < pa[0,:]/2.0, conditional_p, ap)
+    return tf.complex(ap, fzero)
 
-    return zea, am, ap
-
-@tf.function
+@tf.function(input_signature=[tfloat4, tfloat4, tf.TensorSpec(shape=[], dtype=bool)])
 def zA(pa, pb, cross = False): # cross == when only one of (pa,pb) is initial-state
-    zi = tf.complex(fzero, fone)
-    zea, am, ap = calc_zea(pa)
-    zeb, bm, bp = calc_zea(pb)
-    ra = tf.complex(tf.sqrt(am*bp), fzero)
-    rb = tf.complex(tf.sqrt(ap*bm), fzero)
-    res = (ra*zea - rb*zeb)*zi
-    if cross:
-        return -res
+    ap = calc_ap(pa)
+    bp = calc_ap(pb)
+    ra = tf.complex(pa[1,:],-pa[3,:])*bp
+    rb = tf.complex(pb[1,:],-pb[3,:])*ap
+    zval = tf.complex(fzero, fone)*(ra-rb)/tf.sqrt(ap*bp)
+    if not cross:
+        return zval
     else:
-        return res
+        return zval*tf.complex(fzero, fone)
 
-@tf.function
+@tf.function(input_signature=[tfloat4, tfloat4, tf.TensorSpec(shape=[], dtype=bool)])
 def zB(pa, pb, cross= False):
-    return tf.math.conj(zA(pb, pa, cross=cross))
+    return tf.math.conj(zA(pa, pb, cross=cross))
 
 
-@tf.function
+@tf.function(input_signature=[tfloat1, tfloat1])
 def luminosity(x1, x2):
     """ Returns f(x1)*f(x2) """
-    q2array = tf.fill(x1.shape, muR)
+    q2array = muR * tf.ones_like(x1)
     utype = pdf.xfxQ2([2,4], x1, q2array)
     dtype = pdf.xfxQ2([1,3], x2, q2array)
     lumi = tf.reduce_sum(utype*dtype, axis=1)
@@ -340,11 +341,28 @@ def psgen_2to4(xarr):
         p1, p23 = pcommon1to2(s123, p123, fzero, s23, cos123, phi123)
         p2, p3 = pcommon1to2(s23, p23, fzero, fzero, cos23, phi23)
     else:
-        raise Exception("Not implemented @ psgen_2to4")
+        raise NotImplementedError("Not implemented @ psgen_2to4")
     wgt *= jac
-    return pa, pb, p1, p2, p3, ph, x1, x2, wgt
 
-@tf.function
+    # Check the values that actually pass the cuts
+    min_pt2 = tf.square(min_pt)
+    p1t2 = tf.greater_equal(calc_pt2(p1), min_pt2)
+    p2t2 = tf.greater_equal(calc_pt2(p2), min_pt2)
+    p3t2 = tf.greater_equal(calc_pt2(p3), min_pt2)
+
+    stripe, idx = _condition_to_idx(tf.logical_and(p1t2, p2t2), p3t2)
+    # Mask all the outputs
+    pa = tf.boolean_mask(pa, stripe, axis=1)
+    pb = tf.boolean_mask(pb, stripe, axis=1)
+    p1 = tf.boolean_mask(p1, stripe, axis=1)
+    p2 = tf.boolean_mask(p2, stripe, axis=1)
+    p3 = tf.boolean_mask(p3, stripe, axis=1)
+    x1 = tf.boolean_mask(x1, stripe)
+    x2 = tf.boolean_mask(x2, stripe)
+    wgt = tf.boolean_mask(wgt, stripe)
+    return pa, pb, p1, p2, p3, ph, x1, x2, wgt, idx
+
+@tf.function(input_signature=[tfloat4]*2)
 def dot_product(par, pbr):
     pa = tf.transpose(par)
     pb = tf.transpose(pbr)
@@ -352,7 +370,7 @@ def dot_product(par, pbr):
     mome = tf.keras.backend.batch_dot(pa[:,1:4], pb[:,1:4])[:,0]
     return ener-mome
 
-@tf.function
+@tf.function(input_signature=[tfloat1])
 def propagator_w(s):
     t1 = tf.square(s - tf.square(mw))
     t2 = tf.square(mw*gw)
@@ -378,7 +396,14 @@ def qq_h_lo(pa, pb, p1, p2):
     me_res = 2.0*amp2*rmcom
     return factor_lo*me_res
 
-@tf.function
+def zprod(pa,pb):
+    return tf.math.real(zA(pa, pb)*zB(pa,pb))
+
+def sprod(pa,pb):
+    pp = pa+pb
+    return dot_product(pp,pp)
+
+@tf.function(input_signature=[tfloat4]*5)
 def partial_qq_h_qQg(pa, pb, p1, p2, p3):
     """ Gluon radiated from leg pa-p1 """
     pa13 = pa - (p1+p3)
@@ -389,20 +414,19 @@ def partial_qq_h_qQg(pa, pb, p1, p2, p3):
     rmcom = coup/prop
 
     # compute the amplitude
-    zUp = (zB(pa,p1, cross=True)*zA(p2,p1) - zB(pa,p3, cross=True)*zA(p2,p3))
-    zFp = zB(pa,pb)
+    zUp = (zB(pa,p1, cross=True)*zA(p2,p1) + zB(pa,p3, cross=True)*zA(p2,p3))
+    zFp = zB(pb,pa)#(zB(p1,p3)*zB(pa,p3,cross=True))
     zAp = zFp*zUp
 
-    zUm = (zA(pa,p1, cross=True)*zB(pa,pb) - zB(pb,p3, cross=True)*zA(p1,p3))
-    zFm = zA(p1,p2)
+    zUm = (zA(pa,p1, cross=True)*zB(pa,pb) + zB(pb,p3, cross=True)*zA(p1,p3))
+    zFm = zA(p1,p2)#(zA(p1,p3)*zA(pa,p3,cross=True))
     zAm = zFm*zUm
 
-    zamp2 = zAp*tf.math.conj(zAp) + zAm*tf.math.conj(zAm)
-    s13 = 2.0*dot_product(p1, p3)
-    sa3 = 2.0*dot_product(pa, p3)
+    s13 = 2.0*dot_product(p1,p3)
+    sa3 = 2.0*dot_product(pa,p3)
+
+    zamp2 = (zAp*tf.math.conj(zAp) + zAm*tf.math.conj(zAm))
     amp = tf.math.real(zamp2)/s13/sa3
-
-
 
     return amp*rmcom
 
@@ -414,8 +438,8 @@ def qq_h_qQg(pa, pb, p1, p2, p3):
     q = p2
     g = p3
     """
-    r1 = partial_qq_h_qQg(pa, pb, p1, p2, p3)
-    r2 = partial_qq_h_qQg(pb, pa, p2, p1, p3)
+    r1 = partial_qq_h_qQg(pb, pa, p2, p1, p3)
+    r2 = partial_qq_h_qQg(pa, pb, p1, p2, p3)
     return (r1+r2)*factor_re
 
 @tf.function
@@ -424,7 +448,7 @@ def calc_pt2(p):
     pt2 = tf.reduce_sum(pxpy2, axis=0)
     return pt2
 
-@tf.function
+@tf.function # not used at R
 def pt_cut(p, wgt):
     """ Returns wgt when pt > min_pt
     and 0 when pt < min_pt """
@@ -451,19 +475,51 @@ def vfh_production_lo(xarr, n_dim = None, **kwars):
 
 @tf.function
 def vfh_production_r(xarr, n_dim = None, **kwars):
-    pa, pb, p1, p2, p3, _, x1, x2, wgt = psgen_2to4(xarr)
+    pa, pb, p1, p2, p3, _, x1, x2, wgt, idx = psgen_2to4(xarr)
     if unit_phase:
         return wgt
+# 
+#     x1 = np.ones_like(x1)
+#     x2 = np.ones_like(x2)
+#     pa = np.zeros_like(pa)
+#     pb = np.zeros_like(pb)
+#     p1 = np.zeros_like(p1)
+#     p2 = np.zeros_like(p2)
+#     p3 = np.zeros_like(p3)
+# 
+# 
+#     x1 *=  0.51306089926047227
+#     x2 *=  5.2644661467767841E-002
+# 
+#     pa[  1 ,:] = 0.0000000000000000
+#     pb[  1 ,:] =-0.0000000000000000
+#     p1[  1 ,:] = 75.238092924633293
+#     p2[  1 ,:] = 129.36393855989468
+#     p3[  1 ,:] = 372.29394411611491
+#     pa[  2 ,:] = 0.0000000000000000
+#     pb[  2 ,:] =-0.0000000000000000
+#     p1[  2 ,:] =-6.9092298883074905
+#     p2[  2 ,:] = 35.399743675152976
+#     p3[  2 ,:] =-28.490513786845483
+#     pa[  3 ,:] = 657.38776811152911
+#     pb[  3 ,:] =-657.38776811152911
+#     p1[  3 ,:] = 3.6286971300483559
+#     p2[  3 ,:] = 150.92635439952076
+#     p3[  3 ,:] =-235.45860221519800
+#     pa[  0 ,:] = 657.38776811152911
+#     pb[  0 ,:] = 657.38776811152911
+#     p1[  0 ,:] = 75.641757828905796
+#     p2[  0 ,:] = 201.90823386955890
+#     p3[  0 ,:] = 441.42410849262205
+
 
     lumi = luminosity(x1, x2)
-    me_r = qq_h_qQg(pa, pb, p1, p2, p3)
+    me_r = qq_h_qQg(pa, pb, p2, p3, p1)
     # set to 0 weights in which pt < ptcut
-    wgt = pt_cut(p1, wgt)
-    wgt = pt_cut(p2, wgt)
-    wgt = pt_cut(p3, wgt)
     flux = fbGeV2/2.0/(s_in*x1*x2)
     res = wgt*lumi*me_r
-    return res*flux
+    final_result = res*flux
+    return tf.scatter_nd(idx, final_result, shape = xarr.shape[0:1])
 
 
 if __name__ == "__main__":
