@@ -60,7 +60,30 @@ def vfh_production_leading_order(xarr, **kwargs):
     me_lo = me.qq_h_lo(pa, pb, p1, p2)
     res = lumi * me_lo * wgt
     final_result = res * flux / x1 / x2
-    return tf.scatter_nd(idx, final_result, shape = xarr.shape[0:1])
+    return tf.scatter_nd(idx, final_result, shape=xarr.shape[0:1])
+
+
+@tf.function
+def vfh_production_real(xarr, **kwargs):
+    """ Wrapper for R VFH calculation """
+    # Compute the phase space point
+    pa, pb, p1, p2, p3, x1, x2, wgt = phase_space.psgen_2to4(xarr)
+    # Apply cuts
+    stripe, idx = phase_space.pt_cut_3of3(p1, p2, p3)
+    pa = tf.boolean_mask(pa, stripe, axis=1)
+    pb = tf.boolean_mask(pb, stripe, axis=1)
+    p1 = tf.boolean_mask(p1, stripe, axis=1)
+    p2 = tf.boolean_mask(p2, stripe, axis=1)
+    p3 = tf.boolean_mask(p3, stripe, axis=1)
+    wgt = tf.boolean_mask(wgt, stripe, axis=0)
+    x1 = tf.boolean_mask(x1, stripe, axis=0)
+    x2 = tf.boolean_mask(x2, stripe, axis=0)
+    # Compute luminosity
+    lumi = luminosity(x1, x2)
+    me_r = me.qq_h_r(pa, pb, p1, p2, p3)
+    res = lumi * me_r * wgt
+    final_result = res * flux / x1 / x2
+    return tf.scatter_nd(idx, final_result, shape=xarr.shape[0:1])
 
 
 if __name__ == "__main__":
@@ -84,3 +107,8 @@ if __name__ == "__main__":
         res = vegas_wrapper(
             vfh_production_leading_order, ndim, niter, ncalls, compilable=True
         )
+    elif args.level == "R":
+        print("Running Real Tree level")
+        print(f"ncalls={ncalls}, niter={niter}")
+        ndim = 12
+        res = vegas_wrapper(vfh_production_real, ndim, niter, ncalls, compilable=True)

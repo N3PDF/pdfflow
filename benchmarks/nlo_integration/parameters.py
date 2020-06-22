@@ -13,8 +13,8 @@ stw = float_me(0.22264585341299603)
 muR2 = float_me(pow(80, 2))
 
 # Cuts
-mjj_cut = float_me(600**2)
-pt2_cut = float_me(30**2)
+mjj_cut = float_me(600 ** 2)
+pt2_cut = float_me(30 ** 2)
 
 
 # Collision parameters

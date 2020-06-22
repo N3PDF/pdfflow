@@ -18,7 +18,6 @@ from parameters import TFLOAT1, TFLOAT4, shat_min, s_in, higgs_mass, pt2_cut, mj
 
 # Control flags
 UNIT_PHASE = False
-MASSIVE_BOSON = True
 
 # Technical settings
 TECH_CUT = 1e-7
@@ -45,6 +44,19 @@ def pt_cut_2of2(p1, p2):
     p1pass = pt2(p1) > pt2_cut
     p2pass = pt2(p2) > pt2_cut
     stripe, idx = _condition_to_idx(p1pass, p2pass)
+    return stripe, idx
+
+
+@tf.function
+def pt_cut_3of3(p1, p2, p3):
+    """ Ensures that both p1 and p2 pass the pt_cut
+    returns a boolean mask and the list of true indices
+    """
+    p1pass = pt2(p1) > pt2_cut
+    p2pass = pt2(p2) > pt2_cut
+    p3pass = pt2(p2) > pt2_cut
+    p1e3pass = tf.logical_and(p1pass, p3pass)
+    stripe, idx = _condition_to_idx(p1e3pass, p2pass)
     return stripe, idx
 
 
@@ -168,62 +180,34 @@ def sample_linear_all(x, nfspartons=2):
     smax = shat
 
     fspartons = []
-    # Assume no massive boson
-    if MASSIVE_BOSON:
-        # Detach the massive boson
-        shiggs = tf.square(higgs_mass)
-        wgt *= tfpi * (16.0 * tfpi)
-        # And the angles of its decay
-        # (which for now are not to be used, but they
-        # do affect the weight)
-        # this consumes random numbers 2, 3, 4
-        wgt *= costhmax - costhmin
-        wgt *= phimax - phimin
-        wgt *= fone / (2.0 * tfpi * 32.0 * tf.square(tfpi))
-        # the remaining mass in the new smax
-        roots = tf.sqrt(shat)
-        smax = tf.square(roots - higgs_mass)
-        # Now loop over the final state partons
-        for i in range(1, nfspartons):
-            j = i * 3 + 2
-            prev_smax = smax
-            smax, jac = pick_within(x[:, j], smin, prev_smax)
-            wgt *= jac
-            cos12, jac = pick_within(x[:, j + 1], costhmin, costhmax)
-            wgt *= jac
-            phi12, jac = pick_within(x[:, j + 2], phimin, phimax)
-            wgt *= jac
-            wgt *= fone / (2.0 * tfpi)
-            fspartons.append((smax, cos12, phi12))
-            wgt *= fone / (32.0 * tf.square(tfpi))
-            if i > 1:
-                wgt *= (prev_smax - smax) / prev_smax
-    #     else:
-    #         # Detach one particle
-    #         s2, jac = pick_within(x[:, 2], smin, smax)
-    #         wgt *= jac
-    #         # And the angles of its decay
-    #         costh2, jac = pick_within(x[:, 3], costhmin, costhmax)
-    #         wgt *= jac
-    #         phi2, jac = pick_within(x[:, 4], phimin, phimax)
-    #         wgt *= jac
-    #         wgt *= fone / 2.0 / tfpi
-    #         # For the first one there is no lambda to be computed
-    #         wgt *= fone / 32.0 / tf.square(tfpi)
-    #         # Detach the next particle and the angles of its decay
-    #         s3, jac = pick_within(x[:, 5], smin, s2)
-    #         wgt *= jac
-    #         costh3, jac = pick_within(x[:, 6], costhmin, costhmax)
-    #         wgt *= jac
-    #         phi3, jac = pick_within(x[:, 7], phimin, phimax)
-    #         wgt *= jac
-    #         wgt *= fone / 2.0 / tfpi
-    #         wgt *= tf.sqrt(dlambda(s2, fzero, s3)) / s2 / 32.0 / tf.square(tfpi)
-    #         s12 = s2
-    #         shiggs = s3
-    #         cos12 = costh3
-    #         phi12 = phi3
-    #         fspartons.append((s12, cos12, phi12))
+    # Detach the massive boson
+    shiggs = tf.square(higgs_mass)
+    wgt *= tfpi * (16.0 * tfpi)
+    # And the angles of its decay
+    # (which for now are not to be used, but they
+    # do affect the weight)
+    # this consumes random numbers 2, 3, 4
+    wgt *= costhmax - costhmin
+    wgt *= phimax - phimin
+    wgt *= fone / (2.0 * tfpi * 32.0 * tf.square(tfpi))
+    # the remaining mass in the new smax
+    roots = tf.sqrt(shat)
+    smax = tf.square(roots - higgs_mass)
+    # Now loop over the final state partons
+    for i in range(1, nfspartons):
+        j = i * 3 + 2
+        prev_smax = smax
+        smax, jac = pick_within(x[:, j], smin, prev_smax)
+        wgt *= jac
+        cos12, jac = pick_within(x[:, j + 1], costhmin, costhmax)
+        wgt *= jac
+        phi12, jac = pick_within(x[:, j + 2], phimin, phimax)
+        wgt *= jac
+        wgt *= fone / (2.0 * tfpi)
+        fspartons.append((smax, cos12, phi12))
+        wgt *= fone / (32.0 * tf.square(tfpi))
+        if i > 1:
+            wgt *= (prev_smax - smax) / prev_smax
     return x1, x2, shat, shiggs, fspartons, wgt
 
 
@@ -388,59 +372,57 @@ def psgen_2to3(xarr):  # tree level phase space
     """
     x1, x2, shat, sh, fspartons, wgt = sample_linear_all(xarr[:, 0:8], nfspartons=2)
     s12, cos12, phi12 = fspartons[0]
-    if MASSIVE_BOSON:
-        pa, pb, ph, p12, jac = pcommon2to2(xarr[:, 8], shat, sh, s12)
-        p1, p2 = pcommon1to2(s12, p12, fzero, fzero, cos12, phi12)
-    else:
-        pa, pb, p1, p2h, jac = pcommon2to2(xarr[:, 8], shat, 0.0, s12)
-        p2, ph = pcommon1to2(s12, p2h, fzero, s12, cos12, phi12)
+    pa, pb, _, p12, jac = pcommon2to2(xarr[:, 8], shat, sh, s12)
+    p1, p2 = pcommon1to2(s12, p12, fzero, fzero, cos12, phi12)
     wgt *= jac
     return pa, pb, p1, p2, x1, x2, wgt
 
 
 def psgen_2to4(xarr):  # Real radiation phase space
     x1, x2, shat, sh, fspartons, wgt = sample_linear_all(xarr[:, 0:11], nfspartons=3)
-    if massive_boson:
-        s123, cos123, phi123 = fspartons[0]
-        pa, pb, ph, p123, jac = pcommon2to2(xarr[:, 11], shat, sh, s123)
-        s23, cos23, phi23 = fspartons[1]
-        p1, p23 = pcommon1to2(s123, p123, fzero, s23, cos123, phi123)
-        p2, p3 = pcommon1to2(s23, p23, fzero, fzero, cos23, phi23)
-    else:
-        raise NotImplementedError("Not implemented @ psgen_2to4")
+    s123, cos123, phi123 = fspartons[0]
+    pa, pb, _, p123, jac = pcommon2to2(xarr[:, 11], shat, sh, s123)
+    s23, cos23, phi23 = fspartons[1]
+    p1, p23 = pcommon1to2(s123, p123, fzero, s23, cos123, phi123)
+    p2, p3 = pcommon1to2(s23, p23, fzero, fzero, cos23, phi23)
     wgt *= jac
+    return pa, pb, p1, p2, p3, x1, x2, wgt
 
-    # Apply the cuts
-    # Check the values that actually pass the cuts
-    min_pt2 = tf.square(min_pt)
-    p1t2 = tf.greater_equal(calc_pt2(p1), min_pt2)
-    p2t2 = tf.greater_equal(calc_pt2(p2), min_pt2)
-    p3t2 = tf.greater_equal(calc_pt2(p3), min_pt2)
-    if njets == 3:
-        # ask for 3 jets with pt > ptmin
-        ptpass = tf.logical_and(tf.logical_and(p1t2, p2t2), p3t2)
 
-        stripe, idx = _condition_to_idx(tf.logical_and(p1t2, p2t2), p3t2)
-    elif njets == 2:
-        # ask for at least 2 jets with pt > ptmin
-        stripe, idx = _condition_to_idx(
-            tf.logical_or(p1t2, p2t2), tf.logical_or(p1t2, p3t2)
-        )
-
-    # Mask all the outputs
-    pa = tf.boolean_mask(pa, stripe, axis=1)
-    pb = tf.boolean_mask(pb, stripe, axis=1)
-    p1 = tf.boolean_mask(p1, stripe, axis=1)
-    p2 = tf.boolean_mask(p2, stripe, axis=1)
-    p3 = tf.boolean_mask(p3, stripe, axis=1)
-    x1 = tf.boolean_mask(x1, stripe)
-    x2 = tf.boolean_mask(x2, stripe)
-    wgt = tf.boolean_mask(wgt, stripe)
-    return pa, pb, p1, p2, p3, ph, x1, x2, wgt, idx
+#     # Apply the cuts
+#     # Check the values that actually pass the cuts
+#     min_pt2 = tf.square(min_pt)
+#     p1t2 = tf.greater_equal(calc_pt2(p1), min_pt2)
+#     p2t2 = tf.greater_equal(calc_pt2(p2), min_pt2)
+#     p3t2 = tf.greater_equal(calc_pt2(p3), min_pt2)
+#     if njets == 3:
+#         # ask for 3 jets with pt > ptmin
+#         ptpass = tf.logical_and(tf.logical_and(p1t2, p2t2), p3t2)
+#
+#         stripe, idx = _condition_to_idx(tf.logical_and(p1t2, p2t2), p3t2)
+#     elif njets == 2:
+#         # ask for at least 2 jets with pt > ptmin
+#         stripe, idx = _condition_to_idx(
+#             tf.logical_or(p1t2, p2t2), tf.logical_or(p1t2, p3t2)
+#         )
+#
+#     # Mask all the outputs
+#     pa = tf.boolean_mask(pa, stripe, axis=1)
+#     pb = tf.boolean_mask(pb, stripe, axis=1)
+#     p1 = tf.boolean_mask(p1, stripe, axis=1)
+#     p2 = tf.boolean_mask(p2, stripe, axis=1)
+#     p3 = tf.boolean_mask(p3, stripe, axis=1)
+#     x1 = tf.boolean_mask(x1, stripe)
+#     x2 = tf.boolean_mask(x2, stripe)
+#     wgt = tf.boolean_mask(wgt, stripe)
+#     return pa, pb, p1, p2, p3, ph, x1, x2, wgt, idx
 
 
 if __name__ == "__main__":
     nevents = 10
     print("Generate a tree level phase space point")
     random_lo = np.random.rand(nevents, 9)
-    momentum_set = psgen_2to3(random_lo)
+    momentum_set_lo = psgen_2to3(random_lo)
+    print("Generate a real level phase space point")
+    random_r = np.random.rand(nevents, 12)
+    momentum_set_r = psgen_2to4(random_r)

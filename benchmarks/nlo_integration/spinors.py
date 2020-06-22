@@ -5,8 +5,8 @@
 import numpy as np
 from pdfflow.configflow import fone, fzero
 import tensorflow as tf
-from parameters  import TFLOAT4, s_in
-from phase_space import psgen_2to3
+from parameters import TFLOAT4, s_in
+from phase_space import psgen_2to3, psgen_2to4
 
 zi = tf.complex(fzero, fone)
 
@@ -71,25 +71,37 @@ def sprod(pa, pb):
 
 if __name__ == "__main__":
     nevents = 10
-    print("Generate a tree level phase space point")
-    random_lo = np.random.rand(nevents, 9)
-    pa, pb, p1, p2, x1, x2, _ = psgen_2to3(random_lo)
-    # Ensure that (pa+pb)^2 is shat in different ways
-    shat = s_in * x1 * x2
-    shat_sprod = sprod(pa, pb)
-    shat_zprod = zprod(pa, pb)
-    zA_ab = zA(pa, pb)
-    zB_ab = zB(pa, pb)
-    zhat = tf.math.real(zA_ab * zB_ab)
-    print("Testing II")
-    np.testing.assert_allclose(shat, shat_sprod)
-    np.testing.assert_allclose(shat, shat_zprod)
-    np.testing.assert_allclose(shat, zhat)
-    # Check sprod and zprod do the same for several cases
-    print("Testing IF")
-    np.testing.assert_allclose(zprod(pa, p1), sprod(pa, p1))
-    np.testing.assert_allclose(zprod(pa, p2), sprod(pa, p2))
-    np.testing.assert_allclose(zprod(pb, p1), sprod(pb, p1))
-    np.testing.assert_allclose(zprod(pb, p2), sprod(pb, p2))
-    print("Testing FF")
-    np.testing.assert_allclose(zprod(p1, p2), sprod(p1, p2))
+    for n in [2, 3]:
+        if n == 2:
+            print("Generate a tree level phase space point")
+            random_r = np.random.rand(nevents, 12)
+            pa, pb, p1, p2, p3, x1, x2, _ = psgen_2to4(random_r)
+        elif n == 3:
+            print("Generate a real level phase space point")
+            random_lo = np.random.rand(nevents, 9)
+            pa, pb, p1, p2, x1, x2, _ = psgen_2to3(random_lo)
+        # Ensure that (pa+pb)^2 is shat in different ways
+        shat = s_in * x1 * x2
+        shat_sprod = sprod(pa, pb)
+        shat_zprod = zprod(pa, pb)
+        zA_ab = zA(pa, pb)
+        zB_ab = zB(pa, pb)
+        zhat = tf.math.real(zA_ab * zB_ab)
+        print("Testing II")
+        np.testing.assert_allclose(shat, shat_sprod)
+        np.testing.assert_allclose(shat, shat_zprod)
+        np.testing.assert_allclose(shat, zhat)
+        # Check sprod and zprod do the same for several cases
+        print("Testing IF")
+        np.testing.assert_allclose(zprod(pa, p1), sprod(pa, p1))
+        np.testing.assert_allclose(zprod(pa, p2), sprod(pa, p2))
+        np.testing.assert_allclose(zprod(pb, p1), sprod(pb, p1))
+        np.testing.assert_allclose(zprod(pb, p2), sprod(pb, p2))
+        if n == 3:
+            np.testing.assert_allclose(zprod(pa, p3), sprod(pa, p3))
+            np.testing.assert_allclose(zprod(pb, p3), sprod(pb, p3))
+        print("Testing FF")
+        np.testing.assert_allclose(zprod(p1, p2), sprod(p1, p2))
+        if n == 3:
+            np.testing.assert_allclose(zprod(p1, p3), sprod(p1, p3))
+            np.testing.assert_allclose(zprod(p2, p3), sprod(p2, p3))
