@@ -44,7 +44,12 @@ def luminosity(x1, x2):
 ### Main functions
 @tf.function
 def vfh_production_leading_order(xarr, **kwargs):
-    """ Wrapper for LO VFH calculation """
+    """ Wrapper for LO VFH calculation 
+
+    In commit:
+    the result was 157.2 +- 0.17 fb (1e6 events, 5 iterations, 0.4s p/it)
+
+    """
     # Compute the phase space point
     pa, pb, p1, p2, x1, x2, wgt = phase_space.psgen_2to3(xarr)
     # Apply cuts
@@ -66,7 +71,12 @@ def vfh_production_leading_order(xarr, **kwargs):
 
 @tf.function
 def vfh_production_real(xarr, **kwargs):
-    """ Wrapper for R VFH calculation """
+    """ Wrapper for R VFH calculation
+
+    In commit:
+    the result was 31.1664 +/- 0.167197 fb (1e6 events, 5 iterations, 7s p/it)
+
+    """
     # Compute the phase space point
     pa, pb, p1, p2, p3, x1, x2, wgt = phase_space.psgen_2to4(xarr)
 
@@ -99,7 +109,12 @@ SUBTRACT = (
 
 @tf.function
 def vfh_production_nlo(xarr, **kwargs):
-    """ Wrapper for R VFH calculation at NLO (2 jets)"""
+    """ Wrapper for R VFH calculation at NLO (2 jets)
+
+    In commit:
+    the result was: 17.0886 +/- 0.0854798 fb (1e7 events, 5 iterations, 10 s p/it)
+
+    """
     # Compute the phase space point
     pa, pb, p1, p2, p3, x1, x2, wgt = phase_space.psgen_2to4(xarr)
 
@@ -161,17 +176,17 @@ if __name__ == "__main__":
     if args.level == "LO":
         print("Running Leading Order")
         print(f"ncalls={ncalls}, niter={niter}")
-        ndim = 9
+        ndim = 6
         res = vegas_wrapper(
             vfh_production_leading_order, ndim, niter, ncalls, compilable=True
         )
     elif args.level == "R":
         print("Running Real Tree level")
         print(f"ncalls={ncalls}, niter={niter}")
-        ndim = 12
+        ndim = 9
         res = vegas_wrapper(vfh_production_real, ndim, niter, ncalls, compilable=True)
     elif args.level == "NLO":
         print("Running Real NLO")
         print(f"ncalls={ncalls}, niter={niter}")
-        ndim = 12
+        ndim = 9
         res = vegas_wrapper(vfh_production_nlo, ndim, niter, ncalls, compilable=True)

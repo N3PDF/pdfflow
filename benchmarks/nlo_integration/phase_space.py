@@ -281,7 +281,7 @@ def sample_linear_all(x, nfspartons=2):
     smax = tf.square(roots - higgs_mass)
     # Now loop over the final state partons
     for i in range(1, nfspartons):
-        j = i * 3 + 2
+        j = i * 3 - 1
         prev_smax = smax
         smax, jac = pick_within(x[:, j], smin, prev_smax)
         wgt *= jac
@@ -456,18 +456,18 @@ def psgen_2to3(xarr):  # tree level phase space
 
         Uses 9 random numbers
     """
-    x1, x2, shat, sh, fspartons, wgt = sample_linear_all(xarr[:, 0:8], nfspartons=2)
+    x1, x2, shat, sh, fspartons, wgt = sample_linear_all(xarr[:, 1:], nfspartons=2)
     s12, cos12, phi12 = fspartons[0]
-    pa, pb, _, p12, jac = pcommon2to2(xarr[:, 8], shat, sh, s12)
+    pa, pb, _, p12, jac = pcommon2to2(xarr[:, 0], shat, sh, s12)
     p1, p2 = pcommon1to2(s12, p12, fzero, fzero, cos12, phi12)
     wgt *= jac
     return pa, pb, p1, p2, x1, x2, wgt
 
 
 def psgen_2to4(xarr):  # Real radiation phase space
-    x1, x2, shat, sh, fspartons, wgt = sample_linear_all(xarr[:, 0:11], nfspartons=3)
+    x1, x2, shat, sh, fspartons, wgt = sample_linear_all(xarr[:, 1:], nfspartons=3)
     s123, cos123, phi123 = fspartons[0]
-    pa, pb, _, p123, jac = pcommon2to2(xarr[:, 11], shat, sh, s123)
+    pa, pb, _, p123, jac = pcommon2to2(xarr[:, 0], shat, sh, s123)
     s23, cos23, phi23 = fspartons[1]
     p1, p23 = pcommon1to2(s123, p123, fzero, s23, cos123, phi123)
     p2, p3 = pcommon1to2(s23, p23, fzero, fzero, cos23, phi23)
