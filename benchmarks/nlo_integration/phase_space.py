@@ -86,6 +86,40 @@ def pt_cut_2of2(p1, p2):
 
 
 @tf.function
+def invariant_cut(pa, pb, p1, p2, p3):
+    sa1 = spinors.dot_product(pa, p1) > TECH_S
+    sa2 = spinors.dot_product(pa, p2) > TECH_S
+    sa3 = spinors.dot_product(pa, p3) > TECH_S
+    sb1 = spinors.dot_product(pb, p1) > TECH_S
+    sb2 = spinors.dot_product(pb, p2) > TECH_S
+    sb3 = spinors.dot_product(pb, p3) > TECH_S
+    s12 = spinors.dot_product(p1, p2) > TECH_S
+    s13 = spinors.dot_product(p1, p3) > TECH_S
+    s23 = spinors.dot_product(p2, p3) > TECH_S
+    return tf.reduce_all([sa1, sa2, sa3, sb1, sb2, sb3, s12, s13, s23], 0)
+
+
+@tf.function
+def pt_cut_2of3(p1, p2, p3):
+    """ Ensures that at least two of the three jets
+    pass the pt cut
+    """
+    p1t2 = pt2(p1)
+    p2t2 = pt2(p2)
+    p3t2 = pt2(p3)
+    p1pass = p1t2 > pt2_cut
+    p2pass = p2t2 > pt2_cut
+    p3pass = p3t2 > pt2_cut
+    p1e2 = tf.logical_and(p1pass, p2pass)
+    p1e3 = tf.logical_and(p1pass, p3pass)
+    p2e1 = tf.logical_and(p2pass, p1pass)
+    ptpass = tf.reduce_any([p1e2, p1e3, p2e1], 0)
+    jetpass = tf.cast(True, dtype=bool)
+    stripe, idx = _condition_to_idx(ptpass, jetpass)
+    return stripe, idx
+
+
+@tf.function
 def pt_cut_3of3(p1, p2, p3, r=False, pa=None, pb=None):
     """ Ensures that both p1 and p2 pass the pt_cut
     returns a boolean mask and the list of true indices
@@ -104,17 +138,7 @@ def pt_cut_3of3(p1, p2, p3, r=False, pa=None, pb=None):
         # Now ensure that the two quarks are not too close
         r12pass = jet_separation(p1, p2, p1t2, p2t2) > rdistance
         rpass = tf.reduce_all([r31pass, r32pass, r12pass], 0)
-        # Now ensure that no invariant is too small
-        sa1 = spinors.dot_product(pa, p1) > TECH_S
-        sa2 = spinors.dot_product(pa, p2) > TECH_S
-        sa3 = spinors.dot_product(pa, p3) > TECH_S
-        sb1 = spinors.dot_product(pb, p1) > TECH_S
-        sb2 = spinors.dot_product(pb, p2) > TECH_S
-        sb3 = spinors.dot_product(pb, p3) > TECH_S
-        s12 = spinors.dot_product(p1, p2) > TECH_S
-        s13 = spinors.dot_product(p1, p3) > TECH_S
-        s23 = spinors.dot_product(p2, p3) > TECH_S
-        tech_cut_pass = tf.reduce_all([sa1, sa2, sa3, sb1, sb2, sb3, s12, s13, s23], 0)
+        tech_cut_pass = invariant_cut(pa, pb, p1, p2, p3)
         jetpass = tf.logical_and(rpass, tech_cut_pass)
     else:
         jetpass = tf.cast(True, dtype=bool)
@@ -451,33 +475,19 @@ def psgen_2to4(xarr):  # Real radiation phase space
     return pa, pb, p1, p2, p3, x1, x2, wgt
 
 
-#     # Apply the cuts
-#     # Check the values that actually pass the cuts
-#     min_pt2 = tf.square(min_pt)
-#     p1t2 = tf.greater_equal(calc_pt2(p1), min_pt2)
-#     p2t2 = tf.greater_equal(calc_pt2(p2), min_pt2)
-#     p3t2 = tf.greater_equal(calc_pt2(p3), min_pt2)
-#     if njets == 3:
-#         # ask for 3 jets with pt > ptmin
-#         ptpass = tf.logical_and(tf.logical_and(p1t2, p2t2), p3t2)
-#
-#         stripe, idx = _condition_to_idx(tf.logical_and(p1t2, p2t2), p3t2)
-#     elif njets == 2:
-#         # ask for at least 2 jets with pt > ptmin
-#         stripe, idx = _condition_to_idx(
-#             tf.logical_or(p1t2, p2t2), tf.logical_or(p1t2, p3t2)
-#         )
-#
-#     # Mask all the outputs
-#     pa = tf.boolean_mask(pa, stripe, axis=1)
-#     pb = tf.boolean_mask(pb, stripe, axis=1)
-#     p1 = tf.boolean_mask(p1, stripe, axis=1)
-#     p2 = tf.boolean_mask(p2, stripe, axis=1)
-#     p3 = tf.boolean_mask(p3, stripe, axis=1)
-#     x1 = tf.boolean_mask(x1, stripe)
-#     x2 = tf.boolean_mask(x2, stripe)
-#     wgt = tf.boolean_mask(wgt, stripe)
-#     return pa, pb, p1, p2, p3, ph, x1, x2, wgt, idx
+##### Mappings
+@tf.function
+def map_3to2(pa, p1, p3):
+    """ Maps a 2 -> 3 ps into a 2 -> 2 ps
+    where particle 3 goes unresolved between a and 1
+    """
+    omx2 = spinors.dot_product(p1, p3) / (
+        spinors.dot_product(pa, p1) + spinors.dot_product(pa, p3)
+    )
+    xx2 = 1 - omx2
+    newpa = xx2 * pa
+    newp1 = p1 + p3 - omx2 * pa
+    return newpa, newp1
 
 
 if __name__ == "__main__":
@@ -488,3 +498,10 @@ if __name__ == "__main__":
     print("Generate a real level phase space point")
     random_r = np.random.rand(nevents, 12)
     momentum_set_r = psgen_2to4(random_r)
+    print("Map the momentum set from p5 to p4")
+    pa = momentum_set_r[0]
+    p1 = momentum_set_r[2]
+    p3 = momentum_set_r[4]
+    npa, np1 = map_3to2(pa, p1, p3*fzero)
+    np.testing.assert_allclose(pa, npa)
+    np.testing.assert_allclose(p1, np1)

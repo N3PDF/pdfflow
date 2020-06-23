@@ -33,4 +33,4 @@ TECH_S = s_in * TECH_CUT / 2.0
 shat_min = tf.square(higgs_mass) + 2.0*pt2_cut + 4.0*higgs_mass*tf.sqrt(pt2_cut) + 4.0*TECH_S
 
 # for 3 jets allowed:
-shat_min = tf.square(higgs_mass) + 6.0*pt2_cut + 6.0*higgs_mass*tf.sqrt(pt2_cut)
+# shat_min = tf.square(higgs_mass) + 6.0*pt2_cut + 6.0*higgs_mass*tf.sqrt(pt2_cut)
