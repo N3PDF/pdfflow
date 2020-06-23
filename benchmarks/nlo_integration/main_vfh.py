@@ -36,7 +36,7 @@ def luminosity(x1, x2):
     q2array = muR2 * tf.ones_like(x1)
     utype = pdf.xfxQ2([2, 4], x1, q2array)
     dtype = pdf.xfxQ2([1, 3], x2, q2array)
-    lumi = tf.reduce_sum(utype * dtype, axis=1)
+    lumi = tf.reduce_sum(utype * dtype, axis=-1)
     return lumi / x1 / x2
 
 
@@ -68,8 +68,44 @@ def vfh_production_real(xarr, **kwargs):
     """ Wrapper for R VFH calculation """
     # Compute the phase space point
     pa, pb, p1, p2, p3, x1, x2, wgt = phase_space.psgen_2to4(xarr)
+
+    # Input a PS point from NNLOJET
+#     pa = np.zeros_like(pa)
+#     pb = np.zeros_like(pb)
+#     p1 = np.zeros_like(p1)
+#     p2 = np.zeros_like(p2)
+#     p3 = np.zeros_like(p3)
+#     x1 = np.ones_like(x1)
+#     x2 = np.ones_like(x2)
+# 
+#     x1 *= 0.51306089926047227
+#     x2 *= 5.2644661467767841E-002
+# 
+#     pb[1,:] =      0.000000
+#     pb[2,:] =      0.000000
+#     pb[3,:] =   2219.522543
+#     pb[0,:] =   2219.522543
+#     pa[1,:] =     -0.000000
+#     pa[2,:] =     -0.000000
+#     pa[3,:] =  -2219.522543
+#     pa[0,:] =   2219.522543
+#     p3[1,:] =     -6.213524
+#     p3[2,:] =     29.208424
+#     p3[3,:] =      4.599521
+#     p3[0,:] =     30.214160
+#     p2[1,:] =   1689.902208
+#     p2[2,:] =   -385.974216
+#     p2[3,:] =    120.388150
+#     p2[0,:] =   1737.595716
+#     p1[1,:] =     23.346000
+#     p1[2,:] =    356.765793
+#     p1[3,:] =    688.767650
+#     p1[0,:] =    776.033339
+# 
+
     # Apply cuts
-    stripe, idx = phase_space.pt_cut_3of3(p1, p2, p3)
+    stripe, idx = phase_space.pt_cut_3of3(p1, p2, p3, True, pa, pb)
+    
     pa = tf.boolean_mask(pa, stripe, axis=1)
     pb = tf.boolean_mask(pb, stripe, axis=1)
     p1 = tf.boolean_mask(p1, stripe, axis=1)
@@ -78,6 +114,9 @@ def vfh_production_real(xarr, **kwargs):
     wgt = tf.boolean_mask(wgt, stripe, axis=0)
     x1 = tf.boolean_mask(x1, stripe, axis=0)
     x2 = tf.boolean_mask(x2, stripe, axis=0)
+    if phase_space.UNIT_PHASE:
+        return tf.scatter_nd(idx, wgt, shape=xarr.shape[0:1])
+
     # Compute luminosity
     lumi = luminosity(x1, x2)
     me_r = me.qq_h_r(pa, pb, p1, p2, p3)

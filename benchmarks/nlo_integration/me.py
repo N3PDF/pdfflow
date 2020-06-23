@@ -66,12 +66,12 @@ def partial_qq_h_qQg(pa, pb, p1, p2, p3):
     sa3 = 2.0 * dot_product(pa, p3)
 
     zamp2 = zAp * tf.math.conj(zAp) + zAm * tf.math.conj(zAm)
-    amp = tf.math.real(zamp2) / s13 / sa3
+    amp = 2.0*tf.math.real(zamp2) / s13 / sa3
 
     return amp * rmcom
 
 
-factor_re = float_me(4.0397470069216974e-004)
+factor_re = float_me(4.0397470069216974e-004) # TODO compute alphas
 
 
 @tf.function
@@ -81,8 +81,10 @@ def qq_h_r(pa, pb, p1, p2, p3):
     q = p2
     g = p3
     """
-    r1 = partial_qq_h_qQg(pb, pa, p2, p1, p3)
-    r2 = partial_qq_h_qQg(pa, pb, p1, p2, p3)
+
+    r1 = partial_qq_h_qQg(pa, pb, p1, p2, p3)
+    r2 = partial_qq_h_qQg(pb, pa, p2, p1, p3)
+
     return (r1 + r2) * factor_re
 
 

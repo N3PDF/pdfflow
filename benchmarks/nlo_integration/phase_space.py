@@ -14,13 +14,22 @@ from pdfflow.configflow import float_me, fone, fzero, DTYPE
 from pdfflow.functions import _condition_to_idx
 import numpy as np
 import tensorflow as tf
-from parameters import TFLOAT1, TFLOAT4, shat_min, s_in, higgs_mass, pt2_cut, mjj_cut
+from parameters import (
+    TFLOAT1,
+    TFLOAT4,
+    TECH_CUT,
+    TECH_S,
+    shat_min,
+    s_in,
+    higgs_mass,
+    pt2_cut,
+    mjj_cut,
+    rdistance,
+)
+import spinors
 
 # Control flags
 UNIT_PHASE = False
-
-# Technical settings
-TECH_CUT = 1e-7
 
 # Constants
 tfpi = float_me(np.pi)
@@ -28,6 +37,35 @@ costhmax = fone
 costhmin = -1.0 * fone
 phimin = fzero
 phimax = 2.0 * tfpi
+
+# Jet separation
+@tf.function
+def rapidity_dif(p1, p2):
+    num = (p1[0, :] + p1[3, :]) * (p2[0, :] - p2[3, :])
+    den = (p1[0, :] - p1[3, :]) * (p2[0, :] + p2[3, :])
+    return 0.5 * tf.math.log(num / den)
+
+
+@tf.function
+def azimuth_dif(p1, p2):
+    num = p1[2, :] * p2[1, :]
+    den = p1[1, :] * p2[2, :]
+    return tf.math.atan(num / den)
+
+
+@tf.function
+def jet_separation(pg, pj, pgt2, pjt2):
+    """ Compute the jet separation in rapidity
+    using anti-kt where pg is the target jet
+    """
+    ydif = tf.square(rapidity_dif(pg, pj))
+    adif = tf.square(azimuth_dif(pg, pj))
+    if pjt2 is None:
+        return ydif + adif
+    else:
+        minpt = tf.where(pgt2 > pjt2, 1.0 / pgt2, 1.0 / pjt2)
+        return (ydif + adif) * minpt * pgt2
+
 
 # Cut function
 @tf.function
@@ -48,15 +86,39 @@ def pt_cut_2of2(p1, p2):
 
 
 @tf.function
-def pt_cut_3of3(p1, p2, p3):
+def pt_cut_3of3(p1, p2, p3, r=False, pa=None, pb=None):
     """ Ensures that both p1 and p2 pass the pt_cut
     returns a boolean mask and the list of true indices
     """
-    p1pass = pt2(p1) > pt2_cut
-    p2pass = pt2(p2) > pt2_cut
-    p3pass = pt2(p2) > pt2_cut
-    p1e3pass = tf.logical_and(p1pass, p3pass)
-    stripe, idx = _condition_to_idx(p1e3pass, p2pass)
+    p1t2 = pt2(p1)
+    p2t2 = pt2(p2)
+    p3t2 = pt2(p3)
+    p1pass = p1t2 > pt2_cut
+    p2pass = p2t2 > pt2_cut
+    p3pass = p3t2 > pt2_cut
+    ptpass = tf.reduce_all([p1pass, p2pass, p3pass], 0)
+    if r:
+        # Check only the gluon is its own jet
+        r31pass = jet_separation(p3, p1, p3t2, p1t2) > rdistance
+        r32pass = jet_separation(p3, p2, p3t2, p2t2) > rdistance
+        # Now ensure that the two quarks are not too close
+        r12pass = jet_separation(p1, p2, p1t2, p2t2) > rdistance
+        rpass = tf.reduce_all([r31pass, r32pass, r12pass], 0)
+        # Now ensure that no invariant is too small
+        sa1 = spinors.dot_product(pa, p1) > TECH_S
+        sa2 = spinors.dot_product(pa, p2) > TECH_S
+        sa3 = spinors.dot_product(pa, p3) > TECH_S
+        sb1 = spinors.dot_product(pb, p1) > TECH_S
+        sb2 = spinors.dot_product(pb, p2) > TECH_S
+        sb3 = spinors.dot_product(pb, p3) > TECH_S
+        s12 = spinors.dot_product(p1, p2) > TECH_S
+        s13 = spinors.dot_product(p1, p3) > TECH_S
+        s23 = spinors.dot_product(p2, p3) > TECH_S
+        tech_cut_pass = tf.reduce_all([sa1, sa2, sa3, sb1, sb2, sb3, s12, s13, s23], 0)
+        jetpass = tf.logical_and(rpass, tech_cut_pass)
+    else:
+        jetpass = tf.cast(True, dtype=bool)
+    stripe, idx = _condition_to_idx(ptpass, jetpass)
     return stripe, idx
 
 

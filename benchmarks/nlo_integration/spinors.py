@@ -6,7 +6,6 @@ import numpy as np
 from pdfflow.configflow import fone, fzero
 import tensorflow as tf
 from parameters import TFLOAT4, s_in
-from phase_space import psgen_2to3, psgen_2to4
 
 zi = tf.complex(fzero, fone)
 
@@ -70,6 +69,7 @@ def sprod(pa, pb):
 
 
 if __name__ == "__main__":
+    from phase_space import psgen_2to3, psgen_2to4
     nevents = 10
     for n in [2, 3]:
         if n == 2:
