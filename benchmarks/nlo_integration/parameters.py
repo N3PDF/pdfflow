@@ -4,7 +4,7 @@ import tensorflow as tf
 # Settings
 TFLOAT1 = tf.TensorSpec(shape=[None], dtype=DTYPE)
 TFLOAT4 = tf.TensorSpec(shape=[4, None], dtype=DTYPE)
-TECH_CUT = 1e-6
+TECH_CUT = 1e-8
 
 # Physical parameters
 higgs_mass = float_me(125.0)
@@ -30,7 +30,12 @@ TECH_S = s_in * TECH_CUT / 2.0
 
 # Compute shat_min taking into account the higgs mass and the cuts
 # only pt cuts, only two jets are required to have pt > pt_cut
-shat_min = tf.square(higgs_mass) + 2.0*pt2_cut + 4.0*higgs_mass*tf.sqrt(pt2_cut) + 4.0*TECH_S
+shat_min = (
+    tf.square(higgs_mass)
+    + 2.0 * pt2_cut
+    + 4.0 * higgs_mass * tf.sqrt(pt2_cut)
+    + 4.0 * TECH_S
+)
 
 # for 3 jets allowed:
 # shat_min = tf.square(higgs_mass) + 6.0*pt2_cut + 6.0*higgs_mass*tf.sqrt(pt2_cut)

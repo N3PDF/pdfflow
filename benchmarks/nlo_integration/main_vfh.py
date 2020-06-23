@@ -16,6 +16,7 @@ import tensorflow as tf
 
 from parameters import *
 import phase_space
+import spinors
 import me
 
 pdfset = "NNPDF31_nnlo_as_0118/0"
@@ -69,43 +70,9 @@ def vfh_production_real(xarr, **kwargs):
     # Compute the phase space point
     pa, pb, p1, p2, p3, x1, x2, wgt = phase_space.psgen_2to4(xarr)
 
-    # Input a PS point from NNLOJET
-#     pa = np.zeros_like(pa)
-#     pb = np.zeros_like(pb)
-#     p1 = np.zeros_like(p1)
-#     p2 = np.zeros_like(p2)
-#     p3 = np.zeros_like(p3)
-#     x1 = np.ones_like(x1)
-#     x2 = np.ones_like(x2)
-# 
-#     x1 *= 0.51306089926047227
-#     x2 *= 5.2644661467767841E-002
-# 
-#     pb[1,:] =      0.000000
-#     pb[2,:] =      0.000000
-#     pb[3,:] =   2219.522543
-#     pb[0,:] =   2219.522543
-#     pa[1,:] =     -0.000000
-#     pa[2,:] =     -0.000000
-#     pa[3,:] =  -2219.522543
-#     pa[0,:] =   2219.522543
-#     p3[1,:] =     -6.213524
-#     p3[2,:] =     29.208424
-#     p3[3,:] =      4.599521
-#     p3[0,:] =     30.214160
-#     p2[1,:] =   1689.902208
-#     p2[2,:] =   -385.974216
-#     p2[3,:] =    120.388150
-#     p2[0,:] =   1737.595716
-#     p1[1,:] =     23.346000
-#     p1[2,:] =    356.765793
-#     p1[3,:] =    688.767650
-#     p1[0,:] =    776.033339
-# 
-
     # Apply cuts
     stripe, idx = phase_space.pt_cut_3of3(p1, p2, p3, True, pa, pb)
-    
+
     pa = tf.boolean_mask(pa, stripe, axis=1)
     pb = tf.boolean_mask(pb, stripe, axis=1)
     p1 = tf.boolean_mask(p1, stripe, axis=1)
@@ -120,6 +87,58 @@ def vfh_production_real(xarr, **kwargs):
     # Compute luminosity
     lumi = luminosity(x1, x2)
     me_r = me.qq_h_r(pa, pb, p1, p2, p3)
+    res = lumi * me_r * wgt
+    final_result = res * flux / x1 / x2
+    return tf.scatter_nd(idx, final_result, shape=xarr.shape[0:1])
+
+
+SUBTRACT = (
+    True  # Set to false to check that indeed the ME integration does not converge
+)
+
+
+@tf.function
+def vfh_production_nlo(xarr, **kwargs):
+    """ Wrapper for R VFH calculation at NLO (2 jets)"""
+    # Compute the phase space point
+    pa, pb, p1, p2, p3, x1, x2, wgt = phase_space.psgen_2to4(xarr)
+
+    # Apply cuts
+    stripe, idx = phase_space.pt_cut_2of3(pa, pb, p1, p2, p3)
+
+    pa = tf.boolean_mask(pa, stripe, axis=1)
+    pb = tf.boolean_mask(pb, stripe, axis=1)
+    p1 = tf.boolean_mask(p1, stripe, axis=1)
+    p2 = tf.boolean_mask(p2, stripe, axis=1)
+    p3 = tf.boolean_mask(p3, stripe, axis=1)
+    wgt = tf.boolean_mask(wgt, stripe, axis=0)
+    x1 = tf.boolean_mask(x1, stripe, axis=0)
+    x2 = tf.boolean_mask(x2, stripe, axis=0)
+    if phase_space.UNIT_PHASE:
+        return tf.scatter_nd(idx, wgt, shape=xarr.shape[0:1])
+
+    # Compute luminosity
+    lumi = luminosity(x1, x2)
+    me_r = me.qq_h_r(pa, pb, p1, p2, p3)
+
+    if SUBTRACT:
+        # Now we need the subtraction terms for leg 1 and leg 2
+        # leg 1, p3 is radiated from pa-p1
+        npa, np1 = phase_space.map_3to2(pa, p1, p3)
+        # Compute the dipole
+        dip_1 = me.antenna_qgq(pa, p3, p1)
+        # Reduced ME
+        red_1 = me.partial_lo(npa, pb, np1, p2)
+
+        # leg 2, p3 is radiated from pb-p2
+        npb, np2 = phase_space.map_3to2(pb, p2, p3)
+        # Compute the dipole
+        dip_2 = me.antenna_qgq(pb, p3, p2)
+        # Reduced ME
+        red_2 = me.partial_lo(pa, npb, p1, np2)
+
+        me_r -= (red_1 * dip_1 + red_2 * dip_2) * me.factor_re
+
     res = lumi * me_r * wgt
     final_result = res * flux / x1 / x2
     return tf.scatter_nd(idx, final_result, shape=xarr.shape[0:1])
@@ -151,3 +170,8 @@ if __name__ == "__main__":
         print(f"ncalls={ncalls}, niter={niter}")
         ndim = 12
         res = vegas_wrapper(vfh_production_real, ndim, niter, ncalls, compilable=True)
+    elif args.level == "NLO":
+        print("Running Real NLO")
+        print(f"ncalls={ncalls}, niter={niter}")
+        ndim = 12
+        res = vegas_wrapper(vfh_production_nlo, ndim, niter, ncalls, compilable=True)

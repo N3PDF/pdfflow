@@ -100,7 +100,7 @@ def invariant_cut(pa, pb, p1, p2, p3):
 
 
 @tf.function
-def pt_cut_2of3(p1, p2, p3):
+def pt_cut_2of3(pa, pb, p1, p2, p3):
     """ Ensures that at least two of the three jets
     pass the pt cut
     """
@@ -114,8 +114,8 @@ def pt_cut_2of3(p1, p2, p3):
     p1e3 = tf.logical_and(p1pass, p3pass)
     p2e1 = tf.logical_and(p2pass, p1pass)
     ptpass = tf.reduce_any([p1e2, p1e3, p2e1], 0)
-    jetpass = tf.cast(True, dtype=bool)
-    stripe, idx = _condition_to_idx(ptpass, jetpass)
+    tech_cut_pass = invariant_cut(pa, pb, p1, p2, p3)
+    stripe, idx = _condition_to_idx(ptpass, tech_cut_pass)
     return stripe, idx
 
 
@@ -476,7 +476,7 @@ def psgen_2to4(xarr):  # Real radiation phase space
 
 
 ##### Mappings
-@tf.function
+@tf.function(input_signature=[TFLOAT4] * 3)
 def map_3to2(pa, p1, p3):
     """ Maps a 2 -> 3 ps into a 2 -> 2 ps
     where particle 3 goes unresolved between a and 1
@@ -502,6 +502,6 @@ if __name__ == "__main__":
     pa = momentum_set_r[0]
     p1 = momentum_set_r[2]
     p3 = momentum_set_r[4]
-    npa, np1 = map_3to2(pa, p1, p3*fzero)
+    npa, np1 = map_3to2(pa, p1, p3 * fzero)
     np.testing.assert_allclose(pa, npa)
     np.testing.assert_allclose(p1, np1)
