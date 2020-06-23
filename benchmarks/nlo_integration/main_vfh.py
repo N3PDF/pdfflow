@@ -46,7 +46,7 @@ def luminosity(x1, x2):
 def vfh_production_leading_order(xarr, **kwargs):
     """ Wrapper for LO VFH calculation 
 
-    In commit:
+    In commit: 5d68c6becb8372b1baaf908222e5d5e6b0a303c4
     the result was 157.2 +- 0.17 fb (1e6 events, 5 iterations, 0.4s p/it)
 
     """
@@ -73,7 +73,7 @@ def vfh_production_leading_order(xarr, **kwargs):
 def vfh_production_real(xarr, **kwargs):
     """ Wrapper for R VFH calculation
 
-    In commit:
+    In commit: 5d68c6becb8372b1baaf908222e5d5e6b0a303c4
     the result was 31.1664 +/- 0.167197 fb (1e6 events, 5 iterations, 7s p/it)
 
     """
@@ -111,7 +111,7 @@ SUBTRACT = (
 def vfh_production_nlo(xarr, **kwargs):
     """ Wrapper for R VFH calculation at NLO (2 jets)
 
-    In commit:
+    In commit: 5d68c6becb8372b1baaf908222e5d5e6b0a303c4
     the result was: 17.0886 +/- 0.0854798 fb (1e7 events, 5 iterations, 10 s p/it)
 
     """
