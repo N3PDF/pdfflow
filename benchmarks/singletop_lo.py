@@ -3,16 +3,19 @@ import sys
 import time
 import numpy as np
 import subprocess as sp
+from pdfflow.configflow import DTYPEINT as pint
 import tensorflow as tf
-from vegasflow.configflow import DTYPE
 from vegasflow.vflow import vegas_wrapper
 from pdfflow.pflow import mkPDF
+from vegasflow.configflow import DTYPE, DTYPEINT, float_me
+from pdfflow.configflow import DTYPE as pfloat
 
 # MC integration setup
 dim = 3
-ncalls = np.int32(1e5)
+ncalls = np.int32(5e6)
 n_iter = 5
 pdfset = "NNPDF31_nlo_as_0118/0"
+epsilon = float_me(1e-7)
 
 # Physics setup
 # top mass
@@ -35,7 +38,7 @@ pdf = mkPDF(pdfset, DIRNAME)
 # nx = 100
 # examplex = np.random.rand(nx)
 # exampleq = np.linspace(5,nx, nx)
-# r = pdf.xfxQ2([5], examplex, exampleq)
+# r = pdf.xfxQ2([5,4,5], examplex, exampleq)
 # import ipdb
 # ipdb.set_trace()
 
@@ -122,7 +125,7 @@ def u0(p, i):
     ones = tf.ones(p[0].shape, dtype=DTYPE)
 
     # case 1) py == 0
-    rz = p[3] / p[0]
+    rz = p[3] / (p[0] + epsilon)
     theta1 = tf.where(rz > 0, zeros, rz)
     theta1 = tf.where(rz < 0, np.pi * ones, theta1)
     phi1 = zeros
@@ -140,7 +143,7 @@ def u0(p, i):
     theta = tf.where(p[1] == 0, theta1, theta2)
     phi = tf.where(p[1] == 0, phi1, phi2)
 
-    prefact = tf.complex(np.sqrt(2), zeros) * tf.sqrt(tf.complex(p[0], zeros))
+    prefact = tf.complex(float_me(np.sqrt(2)), zeros) * tf.sqrt(tf.complex(p[0], zeros))
     if i == 1:
         a = tf.complex(tf.cos(theta / 2), zeros)
         b = tf.complex(tf.sin(theta / 2), zeros)
@@ -168,7 +171,7 @@ def ubar0(p, i):
     ones = tf.ones(p[0].shape, dtype=DTYPE)
 
     # case 1) py == 0
-    rz = p[3] / p[0]
+    rz = p[3] / (p[0] + epsilon)
     theta1 = tf.where(rz > 0, zeros, rz)
     theta1 = tf.where(rz < 0, np.pi * ones, theta1)
     phi1 = zeros
@@ -189,7 +192,7 @@ def ubar0(p, i):
     theta = tf.where(p[1] == 0, theta1, theta2)
     phi = tf.where(p[1] == 0, phi1, phi2)
 
-    prefact = tf.complex(np.sqrt(2), zeros) * tf.sqrt(tf.complex(p[0], zeros))
+    prefact = tf.complex(float_me(np.sqrt(2)), zeros) * tf.sqrt(tf.complex(p[0], zeros))
     if i == -1:
         a = tf.complex(tf.sin(theta / 2), zeros)
         b = tf.complex(tf.abs(tf.cos(theta / 2)), zeros)
@@ -260,12 +263,11 @@ def evaluate_matrix_element_square(p0, p1, p2, p3):
 def build_luminosity(x1, x2):
     """Single-top t-channel luminosity"""
     q2s = tf.fill(x1.shape, mt2)
-    p5x1 = pdf.xfxQ2([5], x1, q2s)
-    pNx2 = pdf.xfxQ2([2, 4, -1, -3], x2, q2s)
+    p5x1 = tf.cast(pdf.xfxQ2([5], x1, q2s), dtype=DTYPE)
+    pNx2 = tf.cast(pdf.xfxQ2([2, 4, -1, -3], x2, q2s), dtype=DTYPE)
     prod = tf.transpose(tf.reshape(p5x1, (-1, 1))*pNx2)
     lumis = tf.math.segment_sum(prod, tf.constant([0,0,1,1]))
     return lumis / x1 / x2
-
 
 @tf.function
 def singletop(xarr, n_dim=None, **kwargs):
@@ -281,7 +283,7 @@ if __name__ == "__main__":
     """Testing a basic integration"""
     print(f"VEGAS MC, ncalls={ncalls}:")
     start = time.time()
-    r = vegas_wrapper(singletop, dim, n_iter, ncalls)
+    r = vegas_wrapper(singletop, dim, n_iter, ncalls, compilable=True)
     end = time.time()
     print(f"time (s): {end-start}")
 

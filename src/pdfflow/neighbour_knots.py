@@ -1,16 +1,22 @@
+"""
+    Find the four neighbours in the x, q^2 grid
+    for the given input values
+"""
+
 import tensorflow as tf
 import tensorflow_probability as tfp
-from pdfflow.interpolations import float64
-from pdfflow.interpolations import int64
-#float64 = tf.float64
-#int64 = tf.int64
+from pdfflow.configflow import DTYPE, DTYPEINT
 
 
-@tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=float64),
-                              tf.TensorSpec(shape=[None], dtype=float64),
-                              tf.TensorSpec(shape=[None], dtype=float64),
-                              tf.TensorSpec(shape=[None], dtype=float64),
-                              tf.TensorSpec(shape=[None,None], dtype=float64)])
+@tf.function(
+    input_signature=[
+        tf.TensorSpec(shape=[None], dtype=DTYPE),
+        tf.TensorSpec(shape=[None], dtype=DTYPE),
+        tf.TensorSpec(shape=[None], dtype=DTYPE),
+        tf.TensorSpec(shape=[None], dtype=DTYPE),
+        tf.TensorSpec(shape=[None, None], dtype=DTYPE),
+    ]
+)
 def four_neighbour_knots(a_x, a_q2, padded_x, padded_q2, actual_values):
     """
     Parameters
@@ -39,31 +45,27 @@ def four_neighbour_knots(a_x, a_q2, padded_x, padded_q2, actual_values):
             pdf values of the 4*4 grid knots around the query point
             (first None is for query points, second None is for query pids)
     """
-    #print('nk')
-    x_id = tf.cast(tfp.stats.find_bins(a_x, padded_x[1:-1],
-                                       name='find_bins_logx'),
-                   dtype=int64) + 1
+    # print('nk')
+    x_id = tfp.stats.find_bins(a_x, padded_x[1:-1], dtype=DTYPEINT) + 1
+    q2_id = tfp.stats.find_bins(a_q2, padded_q2[1:-1], dtype=DTYPEINT) + 1
 
-    q2_id = tf.cast(tfp.stats.find_bins(a_q2, padded_q2[1:-1],
-                                        name='find_bins_logq2'),
-                    dtype=int64) + 1
+    piu = tf.reshape(tf.range(-1, 3, dtype=DTYPEINT), (4, 1))
+    corn_x_id = tf.repeat(tf.reshape(x_id, (1, -1)), 4, axis=0) + piu
+    corn_q2_id = tf.repeat(tf.reshape(q2_id, (1, -1)), 4, axis=0) + piu
 
-    corn_x_id = tf.stack([x_id-1, x_id, x_id+1, x_id+2],0)
-    corn_q2_id = tf.stack([q2_id-1, q2_id, q2_id+1, q2_id+2],0)
+    corn_x = tf.gather(padded_x, corn_x_id, name="fnk_1")
+    corn_q2 = tf.gather(padded_q2, corn_q2_id, name="fnk_2")
 
-    corn_x = tf.gather(padded_x, corn_x_id)
-    corn_q2 = tf.gather(padded_q2, corn_q2_id)
+    s = tf.size(padded_q2, out_type=DTYPEINT)
 
+    pdf_idx = tf.reshape(x_id * s + q2_id, (1, -1))
 
-    s = tf.size(padded_q2, out_type=int64)
-    x = x_id * s
+    a = tf.repeat(pdf_idx - s, 4, axis=0) + piu
+    b = tf.repeat(pdf_idx, 4, axis=0) + piu
+    c = tf.repeat(pdf_idx + s, 4, axis=0) + piu
+    d = tf.repeat(pdf_idx + 2 * s, 4, axis=0) + piu
 
-    a = tf.stack([x+q2_id-s-1, x+q2_id-s, x+q2_id-s+1, x+q2_id-s+2])
-    b = tf.stack([x+q2_id-1, x+q2_id, x+q2_id+1, x+q2_id+2])
-    c = tf.stack([x+q2_id+s-1, x+q2_id+s, x+q2_id+s+1, x+q2_id+s+2])
-    d = tf.stack([x+q2_id+2*s-1, x+q2_id+2*s, x+q2_id+2*s+1, x+q2_id+2*s+2])
+    A_id = tf.stack([a, b, c, d])
+    A = tf.gather(actual_values, A_id, name="fnk_3")
 
-    A_id = tf.stack([a,b,c,d])
-    A = tf.gather(actual_values, A_id)
-    
     return x_id, q2_id, corn_x, corn_q2, A

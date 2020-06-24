@@ -1,465 +1,139 @@
-import tensorflow as tf
-import numpy as np
-from pdfflow.neighbour_knots import four_neighbour_knots
-from pdfflow.interpolations import default_bicubic_interpolation
-from pdfflow.interpolations import extrapolate_linear
-from pdfflow.interpolations import float64
-from pdfflow.interpolations import int64
-#float64 = tf.float64
-#int64 = tf.int64
+"""
+    This module contains the Subgrid main class.
 
-class Subgrid:
+    Upon instantiation the subgrid class will select one of the
+    interpolation functions defined in :py:module:`functions` and
+    compile it using the `GRID_FUNCTION_SIGNATURE` defined in this function.
+"""
+
+import numpy as np
+import tensorflow as tf
+from pdfflow.configflow import DTYPE, DTYPEINT, float_me, int_me
+from pdfflow.functions import inner_subgrid
+from pdfflow.functions import first_subgrid
+from pdfflow.functions import last_subgrid
+
+# Compilation signature and options of the subgrid functions
+GRID_FUNCTION_SIGNATURE = [
+    tf.TensorSpec(shape=[2], dtype=DTYPEINT),  # shape
+    tf.TensorSpec(shape=[None], dtype=DTYPE),  # a_x
+    tf.TensorSpec(shape=[None], dtype=DTYPE),  # a_q2
+    tf.TensorSpec(shape=[], dtype=DTYPE),  # xmin
+    tf.TensorSpec(shape=[], dtype=DTYPE),  # xmax
+    tf.TensorSpec(shape=[None], dtype=DTYPE),  # padded_x
+    tf.TensorSpec(shape=[], dtype=DTYPEINT),  # s_x
+    tf.TensorSpec(shape=[], dtype=DTYPE),  # q2min
+    tf.TensorSpec(shape=[], dtype=DTYPE),  # q2max
+    tf.TensorSpec(shape=[None], dtype=DTYPE),  # padded_q2
+    tf.TensorSpec(shape=[], dtype=DTYPEINT),  # s_q2
+    tf.TensorSpec(shape=[None, None], dtype=DTYPE),  # grid
+]
+AUTOGRAPH_OPT = tf.autograph.experimental.Feature.ALL
+OPT = {
+    "experimental_autograph_options": AUTOGRAPH_OPT,
+    "input_signature": GRID_FUNCTION_SIGNATURE,
+}
+
+
+class Subgrid(tf.Module):
     """
     Wrapper class around subgrdis.
-    This class reads the LHAPDF grid and stores useful information:
+    This class reads the LHAPDF grid, parses it and stores all necessary
+    information as tensorflow tensors.
 
-    - log(x)
-    - log(Q2)
-    - Q2
-    - values
-    """
+    Saving this information as tf.tensors allows to reuse tf.function compiled function
+    with no retracing.
 
-    def __init__(self, grid=None):
-        """
-        Init
-        """
-
-        if grid is None:
-            raise ValueError("Subgrids need a grid to be generated from")
-
-        self.flav = tf.cast(grid[2], dtype=int64)
-
-        xarr = grid[0]
-        self.log_x = tf.cast(tf.math.log(xarr), dtype=float64)
-        self.log_xmin = tf.reduce_min(self.log_x)
-        self.log_xmax = tf.reduce_max(self.log_x)
-        self.padded_x = tf.concat([tf.expand_dims(self.log_xmin*0.99, 0),
-                                   self.log_x,
-                                   tf.expand_dims(self.log_xmax*1.01, 0)],
-                                  axis=0)
-        self.s_x = tf.size(self.log_x, out_type=int64)
-
-        qarr = grid[1]
-        q2arr = tf.constant(pow(qarr, 2), dtype=float64)
-        self.log_q2 = tf.math.log(q2arr)
-        self.log_q2max = tf.reduce_max(self.log_q2)
-        self.log_q2min = tf.reduce_min(self.log_q2)
-        self.padded_q2 = tf.concat([tf.expand_dims(self.log_q2min*0.99, 0),
-                                    self.log_q2,
-                                    tf.expand_dims(self.log_q2max*1.01, 0)],
-                                   axis=0)
-        self.s_q2 = tf.size(self.log_q2, out_type=int64)
-
-        self.grid_values = tf.constant(grid[3], dtype=float64)
-
-        a = tf.reshape(self.grid_values, [self.s_x, self.s_q2,-1])
-        a = tf.pad(a, tf.constant([[1,1],[1,1],[0,0]]))
-        self.padded_grid = tf.reshape(a, [(self.s_x+2)*(self.s_q2+2),-1])
-
-@tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=float64),
-                              tf.TensorSpec(shape=[None], dtype=float64),
-                              tf.TensorSpec(shape=[], dtype=float64),
-                              tf.TensorSpec(shape=[], dtype=float64),
-                              tf.TensorSpec(shape=[None], dtype=float64),
-                              tf.TensorSpec(shape=[], dtype=int64),
-                              tf.TensorSpec(shape=[], dtype=float64),
-                              tf.TensorSpec(shape=[], dtype=float64),
-                              tf.TensorSpec(shape=[None], dtype=float64),
-                              tf.TensorSpec(shape=[], dtype=int64),
-                              tf.TensorSpec(shape=[None,None],dtype=float64)])
-def interpolate(a_x, a_q2,
-                log_xmin, log_xmax, padded_x, s_x,
-                log_q2min, log_q2max, padded_q2, s_q2,
-                actual_padded):
-    """ 
-    Basic Bicubic Interpolation inside the subgrid
-    Four Neighbour Knots selects grid knots around each query point to
-    make the interpolation: 4 knots on the x axis and 4 knots on the q2
-    axis are needed for each point, plus the pdf fvalues there.
-    Default bicubic interpolation performs the interpolation itself
-    
-    Parameters
-    ----------
-        a_x: tf.tensor of shape [None]
-            query of values of log(x)
-        a_q2: tf.tensor of shape [None]
-            query of values of log(q2)
-        log_xmin: tf.tensor of shape []
-            value for the lowest knot on the x axis
-        log_xmax: tf.tensor of shape []
-            value for the greatest knot on the x axis
-        padded_x: tf.tensor of shape [None]
-            value for all the knots on the x axis
-            padded with one zero at the beginning and one at the end to
-            avoid out of range errors when queryingpoints near boundaries
-        s_x: tf.tensor of shape []
-            size of x knots tensor without padding
-        log_q2min: tf.tensor of shape []
-            value for the lowest knot on the q2 axis
-            (current subgrid)
-        log_q2max: tf.tensor of shape []
-            value for the greatest knot on the q2 axis
-            (current subgrid)
-        padded_q2: tf.tensor of shape [None]
-            value for all the knots on the q2 axis
-            padded with one zero at the beginning and one at the end to
-            avoid out of range errors when querying points near boundaries
-        s_q2: tf.tensor of shape []
-            size of q2 knots tensor without padding
-        actual_padded: tf.tensor of shape [None,None]
-            pdf values: first axis is the flattened padded (q2,x) grid,
-            second axis is needed pid column (dimension depends on the query)
-    """
-    a0, a1, a2, a3, a4 = four_neighbour_knots(a_x, a_q2,
-                                              padded_x, padded_q2,
-                                              actual_padded)
-    
-    return default_bicubic_interpolation(a_x, a_q2,
-                                        a0, a1, a2, a3, a4,
-                                        s_x, s_q2)
-
-@tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=float64),
-                              tf.TensorSpec(shape=[None], dtype=float64),
-                              tf.TensorSpec(shape=[], dtype=float64),
-                              tf.TensorSpec(shape=[], dtype=float64),
-                              tf.TensorSpec(shape=[None], dtype=float64),
-                              tf.TensorSpec(shape=[], dtype=int64),
-                              tf.TensorSpec(shape=[], dtype=float64),
-                              tf.TensorSpec(shape=[], dtype=float64),
-                              tf.TensorSpec(shape=[None], dtype=float64),
-                              tf.TensorSpec(shape=[], dtype=int64),
-                              tf.TensorSpec(shape=[None,None], dtype=float64)])
-def lowx_extrapolation(a_x, a_q2,
-                       log_xmin, log_xmax, padded_x, s_x,
-                       log_q2min, log_q2max, padded_q2, s_q2,
-                       actual_padded):
-    """ 
-    Extrapolation in low x regime 
+    Note:
+        the x and q2 arrays are padded with an extra value next to the boundaries
+        to avoid out of bound errors driven by numerical precision
+        The size we save for the arrays correspond to the size of the arrays before padding
 
     Parameters
     ----------
-        a_x: tf.tensor of shape [None]
-            query of values of log(x)
-        a_q2: tf.tensor of shape [None]
-            query of values of log(q2)
-        log_xmin: tf.tensor of shape []
-            value for the lowest knot on the x axis
-        log_xmax: tf.tensor of shape []
-            value for the greatest knot on the x axis
-        padded_x: tf.tensor of shape [None]
-            value for all the knots on the x axis
-            padded with one zero at the beginning and one at the end to
-            avoid out of range errors when queryingpoints near boundaries
-        s_x: tf.tensor of shape []
-            size of x knots tensor without padding
-        log_q2min: tf.tensor of shape []
-            value for the lowest knot on the q2 axis
-            (current subgrid)
-        log_q2max: tf.tensor of shape []
-            value for the greatest knot on the q2 axis
-            (current subgrid)
-        padded_q2: tf.tensor of shape [None]
-            value for all the knots on the q2 axis
-            padded with one zero at the beginning and one at the end to
-            avoid out of range errors when querying points near boundaries
-        s_q2: tf.tensor of shape []
-            size of q2 knots tensor without padding
-        actual_padded: tf.tensor of shape [None,None]
-            pdf values: first axis is the flattened padded(q2,x) grid,
-            second axis is needed pid column (dimension depends on the query)
-    """
-    corn_x = padded_x[1:3]
-    s = tf.size(a_x, out_type=int64)
+        grid: collections.namedtuple
+            tuple containing (x, q2, flav, grid)
+            which correspond to the x and q2 arrays
+            the flavour scheme and the pdf grid values respectively
+        i: int
+            index of the subgrid
+        total: int
+            total number of subgrids of the family
+        compile_functions: bool
+            whether to tf-compile the interpolation function(default True)
 
-    x, q2 = tf.meshgrid(corn_x, a_q2, indexing="ij")
-
-    y = interpolate(tf.reshape(x, [-1]), tf.reshape(q2, [-1]),
-                     log_xmin, log_xmax, padded_x, s_x,
-                     log_q2min, log_q2max, padded_q2, s_q2,
-                     actual_padded)
-
-    return extrapolate_linear(a_x, corn_x[0], corn_x[1], y[:s], y[s:])
-
-@tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=float64),
-                              tf.TensorSpec(shape=[None], dtype=float64),
-                              tf.TensorSpec(shape=[], dtype=float64),
-                              tf.TensorSpec(shape=[], dtype=float64),
-                              tf.TensorSpec(shape=[None], dtype=float64),
-                              tf.TensorSpec(shape=[], dtype=int64),
-                              tf.TensorSpec(shape=[], dtype=float64),
-                              tf.TensorSpec(shape=[], dtype=float64),
-                              tf.TensorSpec(shape=[None], dtype=float64),
-                              tf.TensorSpec(shape=[], dtype=int64),
-                              tf.TensorSpec(shape=[None,None],dtype=float64)])
-def lowq2_extrapolation(a_x, a_q2,
-                        log_xmin, log_xmax, padded_x, s_x,
-                        log_q2min, log_q2max, padded_q2, s_q2,
-                        actual_padded):
-    """ 
-    Extrapolation in low q2 regime 
-
-    Parameters
+    Attributes
     ----------
-        a_x: tf.tensor of shape [None]
-            query of values of log(x)
-        a_q2: tf.tensor of shape [None]
-            query of values of log(q2)
-        log_xmin: tf.tensor of shape []
-            value for the lowest knot on the x axis
-        log_xmax: tf.tensor of shape []
-            value for the greatest knot on the x axis
-        padded_x: tf.tensor of shape [None]
-            value for all the knots on the x axis
-            padded with one zero at the beginning and one at the end to
-            avoid out of range errors when queryingpoints near boundaries
-        s_x: tf.tensor of shape []
-            size of x knots tensor without padding
-        log_q2min: tf.tensor of shape []
-            value for the lowest knot on the q2 axis
-            (current subgrid)
-        log_q2max: tf.tensor of shape []
-            value for the greatest knot on the q2 axis
-            (current subgrid)
-        padded_q2: tf.tensor of shape [None]
-            value for all the knots on the q2 axis
-            padded with one zero at the beginning and one at the end to
-            avoid out of range errors when querying points near boundaries
-        s_q2: tf.tensor of shape []
-            size of q2 knots tensor without padding
-        actual_padded: tf.tensor of shape [None,None]
-            pdf values: first axis is the flattened padded (q2,x) grid,
-            second axis is needed pid column (dimension depends on the query)
+        log(x)
+        log(Q2)
+        Q2
+        values of the pdf grid
     """
 
-    corn_q2 = tf.stack([padded_q2[1], 1.01*padded_q2[1]],0)
+    def __init__(self, grid, i=0, total=0, compile_functions=True):
+        super().__init__()
+        # Save the boundaries of the grid
+        xmin = min(grid.x)
+        xmax = max(grid.x)
+        self.log_xmin = float_me(np.log(xmin))
+        self.log_xmax = float_me(np.log(xmax))
 
-    x, q2 = tf.meshgrid(a_x, corn_q2)
+        q2min = min(grid.q2)
+        q2max = max(grid.q2)
+        self.log_q2min = float_me(np.log(q2min))
+        self.log_q2max = float_me(np.log(q2max))
 
-    s = tf.size(a_x, out_type=int64)
+        # Save grid shape information
+        self.s_x = int_me(grid.x.size)
+        self.s_q2 = int_me(grid.q2.size)
 
-    fq2Min = interpolate(tf.reshape(x,[-1]), tf.reshape(q2, [-1]),
-                         log_xmin, log_xmax, padded_x, s_x,
-                         log_q2min, log_q2max, padded_q2, s_q2,
-                         actual_padded)
-    
-    fq2Min1 = fq2Min[s:]
-    fq2Min = fq2Min[:s]
+        # Insert a padding at the beginning and the end
+        log_xpad = np.pad(np.log(grid.x), 1, mode="edge")
+        log_xpad[0] *= 0.99
+        log_xpad[-1] *= 1.01
 
-    a_q2 = tf.math.exp(a_q2)
-    corn_q2 = tf.math.exp(corn_q2[:1])
+        log_q2pad = np.pad(np.log(grid.q2), 1, mode="edge")
+        log_q2pad[0] *= 0.99
+        log_q2pad[-1] *= 1.01
 
-    mask = tf.math.abs(fq2Min) >= 1e-5
-    anom = tf.where(mask,
-                    tf.maximum(tf.constant(-2.5, dtype=float64),
-                               (fq2Min1 - fq2Min) / fq2Min / 0.01),
-                    tf.constant(1, dtype=float64))
-    corn_q2 = tf.expand_dims(corn_q2,1)
-    a_q2 = tf.expand_dims(a_q2,1)
+        self.padded_x = float_me(log_xpad)
+        self.padded_q2 = float_me(log_q2pad)
 
-    return fq2Min * tf.math.pow(a_q2 / corn_q2,
-                                anom * a_q2 / corn_q2 + 1.0 - a_q2 / corn_q2)
+        # Finally parse the grid
+        # the grid is sized (x.size * q.size, flavours)
+        reshaped_grid = grid.grid.reshape(grid.x.size, grid.q2.size, -1)
+        # and pad it with 0s in x and q
+        padded_grid = np.pad(reshaped_grid, ((1, 1), (1, 1), (0, 0)))
+        # flatten the x and q dimensions again and store it
+        self.padded_grid = float_me(padded_grid.reshape(-1, grid.flav.size))
 
-@tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=float64),
-                              tf.TensorSpec(shape=[None], dtype=float64),
-                              tf.TensorSpec(shape=[], dtype=float64),
-                              tf.TensorSpec(shape=[], dtype=float64),
-                              tf.TensorSpec(shape=[None], dtype=float64),
-                              tf.TensorSpec(shape=[], dtype=int64),
-                              tf.TensorSpec(shape=[], dtype=float64),
-                              tf.TensorSpec(shape=[], dtype=float64),
-                              tf.TensorSpec(shape=[None], dtype=float64),
-                              tf.TensorSpec(shape=[], dtype=int64),
-                              tf.TensorSpec(shape=[None,None],dtype=float64)])
-def highq2_extrapolation(a_x, a_q2,
-                         log_xmin, log_xmax, padded_x, s_x,
-                         log_q2min, log_q2max, padded_q2, s_q2,
-                         actual_padded):
-    """ 
-    Extrapolation in high q2 regime 
+        # Depending on the index of the grid, select with interpolation function should be run
+        if i == 0:
+            self.fn_interpolation = first_subgrid
+        elif i == (total - 1):
+            self.fn_interpolation = last_subgrid
+        else:
+            self.fn_interpolation = inner_subgrid
 
-    Parameters
-    ----------
-        a_x: tf.tensor of shape [None]
-            query of values of log(x)
-        a_q2: tf.tensor of shape [None]
-            query of values of log(q2)
-        log_xmin: tf.tensor of shape []
-            value for the lowest knot on the x axis
-        log_xmax: tf.tensor of shape []
-            value for the greatest knot on the x axis
-        padded_x: tf.tensor of shape [None]
-            value for all the knots on the x axis
-            padded with one zero at the beginning and one at the end to
-            avoid out of range errors when queryingpoints near boundaries
-        s_x: tf.tensor of shape []
-            size of x knots tensor without padding
-        log_q2min: tf.tensor of shape []
-            value for the lowest knot on the q2 axis
-            (current subgrid)
-        log_q2max: tf.tensor of shape []
-            value for the greatest knot on the q2 axis
-            (current subgrid)
-        padded_q2: tf.tensor of shape [None]
-            value for all the knots on the q2 axis
-            padded with one zero at the beginning and one at the end to
-            avoid out of range errors when querying points near boundaries
-        s_q2: tf.tensor of shape []
-            size of q2 knots tensor without padding
-        actual_padded: tf.tensor of shape [None,None]
-            pdf values: first axis is the flattened padded (q2,x) grid,
-            second axis is needed pid column (dimension depends on the query)
-    """
-    corn_q2 = padded_q2[-2:-4:-1]
+        self.name_sg = f"grid_{i}"
 
-    x, q2 = tf.meshgrid(a_x, corn_q2)
-    s = tf.size(a_x,out_type=int64)
+        if compile_functions:
+            self.fn_interpolation = tf.function(self.fn_interpolation, **OPT)
 
-    y = interpolate(tf.reshape(x, [-1]), tf.reshape(q2, [-1]),
-                     log_xmin, log_xmax, padded_x, s_x,
-                     log_q2min, log_q2max, padded_q2, s_q2,
-                     actual_padded)
-
-    return extrapolate_linear(a_q2, corn_q2[0], corn_q2[1], y[:s], y[s:])
-
-@tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=float64),
-                              tf.TensorSpec(shape=[None], dtype=float64),
-                              tf.TensorSpec(shape=[], dtype=float64),
-                              tf.TensorSpec(shape=[], dtype=float64),
-                              tf.TensorSpec(shape=[None], dtype=float64),
-                              tf.TensorSpec(shape=[], dtype=int64),
-                              tf.TensorSpec(shape=[], dtype=float64),
-                              tf.TensorSpec(shape=[], dtype=float64),
-                              tf.TensorSpec(shape=[None], dtype=float64),
-                              tf.TensorSpec(shape=[], dtype=int64),
-                              tf.TensorSpec(shape=[None,None],dtype=float64)])
-def lowx_highq2_extrapolation(a_x, a_q2,
-                              log_xmin, log_xmax, padded_x, s_x,
-                              log_q2min, log_q2max, padded_q2, s_q2,
-                              actual_padded):
-    """ 
-    Extrapolation in high q2, low x regime 
-
-    Parameters
-    ----------
-        a_x: tf.tensor of shape [None]
-            query of values of log(x)
-        a_q2: tf.tensor of shape [None]
-            query of values of log(q2)
-        log_xmin: tf.tensor of shape []
-            value for the lowest knot on the x axis
-        log_xmax: tf.tensor of shape []
-            value for the greatest knot on the x axis
-        padded_x: tf.tensor of shape [None]
-            value for all the knots on the x axis
-            padded with one zero at the beginning and one at the end to
-            avoid out of range errors when queryingpoints near boundaries
-        s_x: tf.tensor of shape []
-            size of x knots tensor without padding
-        log_q2min: tf.tensor of shape []
-            value for the lowest knot on the q2 axis
-            (current subgrid)
-        log_q2max: tf.tensor of shape []
-            value for the greatest knot on the q2 axis
-            (current subgrid)
-        padded_q2: tf.tensor of shape [None]
-            value for all the knots on the q2 axis
-            padded with one zero at the beginning and one at the end to
-            avoid out of range errors when querying points near boundaries
-        s_q2: tf.tensor of shape []
-            size of q2 knots tensor without padding
-        actual_padded: tf.tensor of shape [None,None]
-            pdf values: first axis is the flattened padded (q2,x) grid,
-            second axis is needed pid column (dimension depends on the query)
-    """
-
-    corn_x = padded_x[1:3]
-    corn_q2 = padded_q2[-2:-4:-1]
-
-    x, q2 = tf.meshgrid(corn_x, corn_q2)
-
-    f = interpolate(tf.reshape(x, [-1]), tf.reshape(q2, [-1]),
-                    log_xmin, log_xmax, padded_x, s_x,
-                    log_q2min, log_q2max, padded_q2, s_q2,
-                    actual_padded)
-
-
-    fxMin = extrapolate_linear(a_q2, corn_q2[0], corn_q2[1], f[:1], f[2:3])
-
-    fxMin1 = extrapolate_linear(a_q2, corn_q2[0], corn_q2[1], f[1:2], f[3:])
-
-    return extrapolate_linear(a_x, corn_x[0], corn_x[1], fxMin, fxMin1)
-
-@tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=float64),
-                              tf.TensorSpec(shape=[None], dtype=float64),
-                              tf.TensorSpec(shape=[], dtype=float64),
-                              tf.TensorSpec(shape=[], dtype=float64),
-                              tf.TensorSpec(shape=[None], dtype=float64),
-                              tf.TensorSpec(shape=[], dtype=int64),
-                              tf.TensorSpec(shape=[], dtype=float64),
-                              tf.TensorSpec(shape=[], dtype=float64),
-                              tf.TensorSpec(shape=[None], dtype=float64),
-                              tf.TensorSpec(shape=[], dtype=int64),
-                              tf.TensorSpec(shape=[None,None],dtype=float64)])
-def lowx_lowq2_extrapolation(a_x, a_q2,
-                             log_xmin, log_xmax, padded_x, s_x,
-                             log_q2min, log_q2max, padded_q2, s_q2,
-                             actual_padded):
-    """ 
-    Extrapolation in low q2, low x regime 
-
-    Parameters
-    ----------
-        a_x: tf.tensor of shape [None]
-            query of values of log(x)
-        a_q2: tf.tensor of shape [None]
-            query of values of log(q2)
-        log_xmin: tf.tensor of shape []
-            value for the lowest knot on the x axis
-        log_xmax: tf.tensor of shape []
-            value for the greatest knot on the x axis
-        padded_x: tf.tensor of shape [None]
-            value for all the knots on the x axis
-            padded with one zero at the beginning and one at the end to
-            avoid out of range errors when queryingpoints near boundaries
-        s_x: tf.tensor of shape []
-            size of x knots tensor without padding
-        log_q2min: tf.tensor of shape []
-            value for the lowest knot on the q2 axis
-            (current subgrid)
-        log_q2max: tf.tensor of shape []
-            value for the greatest knot on the q2 axis
-            (current subgrid)
-        padded_q2: tf.tensor of shape [None]
-            value for all the knots on the q2 axis
-            padded with one zero at the beginning and one at the end to
-            avoid out of range errors when querying points near boundaries
-        s_q2: tf.tensor of shape []
-            size of q2 knots tensor without padding
-        actual_padded: tf.tensor of shape [None,None]
-            pdf values: first axis is the flattened padded (q2,x) grid,
-            second axis is needed pid column (dimension depends on the query)
-    """
-    corn_x = padded_x[1:3]
-    corn_q2 = tf.stack([padded_q2[1],padded_q2[1]],0)
-
-    f = interpolate(tf.concat([corn_x, corn_x], 0),
-                    tf.concat([corn_q2, 1.01 * corn_q2], 0),
-                    log_xmin, log_xmax, padded_x, s_x,
-                    log_q2min, log_q2max, padded_q2, s_q2,
-                    actual_padded)
-
-    fq2Min = extrapolate_linear(a_x, corn_x[0], corn_x[1], f[:1], f[1:2])
-
-    fq2Min1 = extrapolate_linear(a_x, corn_x[0], corn_x[1], f[2:3], f[3:])
-
-    a_q2 = tf.expand_dims(tf.math.exp(a_q2),1)
-    corn_q2 = tf.math.exp(corn_q2[0])
-
-    mask = tf.math.abs(fq2Min) >= 1e-5
-    anom = tf.where(mask,
-                    tf.maximum(tf.constant(-2.5, dtype=float64),
-                               (fq2Min1 - fq2Min) / fq2Min / 0.01),
-                    tf.constant(1, dtype=float64))
-
-    return fq2Min * tf.math.pow(a_q2 / corn_q2,
-                                anom * a_q2 / corn_q2 + 1.0 - a_q2 / corn_q2)
+    def __call__(self, pids, shape, arr_x, arr_q2):
+        padded_grid = tf.gather(self.padded_grid, pids, axis=-1, name=self.name_sg)
+        result = self.fn_interpolation(
+            shape,
+            arr_x,
+            arr_q2,
+            self.log_xmin,
+            self.log_xmax,
+            self.padded_x,
+            self.s_x,
+            self.log_q2min,
+            self.log_q2max,
+            self.padded_q2,
+            self.s_q2,
+            padded_grid,
+        )
+        return result

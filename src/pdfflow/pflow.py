@@ -1,141 +1,331 @@
-import tensorflow as tf
-import re
+"""
+    Main pdfflow module
+"""
+import logging
+import collections
+
+import subprocess as sp
 import numpy as np
+
+try:
+    import lhapdf
+except ModuleNotFoundError:
+    lhapdf = None
+
+# import configflow before tf to set some tf options
+from pdfflow.configflow import DTYPE, DTYPEINT, int_me, izero, float_me
+import tensorflow as tf
 from pdfflow.subgrid import Subgrid
-from pdfflow.functions import inner_subgrid
-from pdfflow.functions import first_subgrid
-from pdfflow.functions import last_subgrid
-from pdfflow.interpolations import float64, int64
 
-PID_G = tf.constant(21, dtype=int64)
+# lhapdf gluon code
+PID_G = int_me(21)
+# expected input shapes to be found in this module
+GRID_F = tf.TensorSpec(shape=[None], dtype=DTYPE)
+GRID_I = tf.TensorSpec(shape=[None], dtype=DTYPEINT)
+# instantiate logger
+logger = logging.getLogger(__name__)
+# create the Grid namedtuple
+GridTuple = collections.namedtuple("Grid", ["x", "q2", "flav", "grid"])
 
-def load_Data(fname):
-    # Reads pdf from file and retrieves a list of grids
-    # Each grid is a tuple containing numpy arrays (x,Q2, flavours, pdf)
-    f = open(fname)
 
-    n = []
-    count = 0
-    for line in f:
-        if re.match("---", line):
-            n += [count]
+def _load_data(pdf_file):
+    """
+    Reads pdf from file and retrieves a list of grids
+    Each grid is a tuple containing numpy arrays (x,Q2, flavours, pdf)
 
-        count += 1
-    f.close()
+    Note:
+        the input q array in LHAPDF is just q, this functions
+        squares the result and q^2 is used everwhere in the code
+
+    Parameters
+    ----------
+        pdf_file: str
+            PDF .dat file
+
+    Returns
+    -------
+        grids: list(tuple(np.array))
+            list of tuples of arrays (x, Q2, flavours, pdf values)
+    """
+    with open(pdf_file, "r") as pfile:
+        n = []
+        count = 0
+        for line in pfile:
+            if "---" in line:
+                n += [count]
+            count += 1
 
     grids = []
     for i in range(len(n) - 1):
-        x = np.loadtxt(fname, skiprows=(n[i] + 1), max_rows=1)
-        q2 = np.loadtxt(fname, skiprows=(n[i] + 2), max_rows=1)
-        flav = np.loadtxt(fname, skiprows=(n[i] + 3), max_rows=1)
-        grid = np.loadtxt(fname, skiprows=(n[i] + 4), max_rows=(n[i + 1] - n[i] - 4))
-
-        grids += [(x, q2, flav, grid)]
+        x = np.loadtxt(pdf_file, skiprows=(n[i] + 1), max_rows=1)
+        q2 = pow(np.loadtxt(pdf_file, skiprows=(n[i] + 2), max_rows=1), 2)
+        flav = np.loadtxt(pdf_file, skiprows=(n[i] + 3), max_rows=1)
+        grid = np.loadtxt(pdf_file, skiprows=(n[i] + 4), max_rows=(n[i + 1] - n[i] - 4))
+        grids += [GridTuple(x, q2, flav, grid)]
 
     return grids
 
-class mkPDF:
-    def __init__(self, fname, dirname="./local/share/LHAPDF/"):
-        """
-        fname: string, must be in the format: '<set_name>/<set member number>'
-        """
+
+def mkPDF(fname, dirname=None):
+    """ Wrapper to generate a PDF given a PDF name and a directory
+    where to find the grid files.
+
+    Parameters
+    ----------
+        fname: str
+            PDF name and member in the format '<set_name>/<set member number>'
+        dirname: str
+            LHAPDF datadir, if None will try to guess from LHAPDF
+
+    Returns
+    -------
+        PDF: pdfflow.PDF
+            instantiated member of the PDF class
+    """
+    if dirname is None:
+        if lhapdf is None:
+            raise ValueError("mkPDF needs a PDF name if lhapdf-python is not installed")
+        dirname_raw = sp.run(
+            ["lhapdf-config", "--datadir"], capture_output=True, text=True, check=True
+        )
+        dirname = dirname_raw.stdout.strip()
+    return PDF(fname, dirname)
+
+
+class PDF:
+    """
+    PDF class exposing the high level pdfflow interfaces:
+
+    Contains
+    --------
+         xfxQ2: tf.tensor
+            Returns a grid for the value of the pdf for each value of (pid, x, q2)
+         xfxQ2_allpid: tf.tensor
+            Wrapper to return a grid for the value of the pdf for all pids (pid, x, q2)
+
+    Parameters
+    ----------
+        fname: str
+            PDF name and member, must be in the format: '<set_name>/<set member number>'
+        dirname: str
+            LHAPDF datadir
+    """
+
+    def __init__(self, fname, dirname, compilable=True):
+        if not compilable:
+            logger.warning("Running pdfflow in eager mode")
+            logger.warning("Setting eager mode will affect all of TF")
+            tf.config.experimental_run_functions_eagerly(True)
+
         self.dirname = dirname
-        f = fname.split("/")
+        fname, member = fname.split("/")
+        member = member.zfill(4)
 
-        self.fname = self.dirname + "%s/%s_%s.dat" % (f[0], f[0], f[1].zfill(4))
+        self.fname = f"{self.dirname}/{fname}/{fname}_{member}.dat"
 
-        print("pdfflow loading " + self.fname)
-        grids = load_Data(self.fname)
+        logger.info("loading %s", self.fname)
+        grids = _load_data(self.fname)
         # [(x,Q2,flav,knots), ...]
         flav = list(map(lambda g: g[2], grids))
         for i in range(len(flav) - 1):
             if not np.all(flav[i] == flav[i + 1]):
-                print("Flavor schemes do not match across\
-                      all the subgrids ---> algorithm will break !")
+                # TODO: should this be an error?
+                logger.warning(
+                    "Flavor schemes do not match across all the subgrids --> algorithm will break!"
+                )
 
-        self.subgrids = list(map(Subgrid, grids))
-        self.flavor_scheme = tf.cast(self.subgrids[0].flav, dtype=int64)
-        self.subgrids[-1].flag = tf.constant(-1, dtype=int64)
-        self.subgrids[0].flag = tf.constant(0, dtype=int64)
+        self.subgrids = [Subgrid(grid, i, len(grids)) for i, grid in enumerate(grids)]
 
+        # By default all subgrids are called with the inner subgrid
+
+        # Look at the flavor_scheme and ensure that it is sorted
+        # save the whole thing in case it is not sorted
+        flavor_scheme = grids[0].flav
+        self.flavor_scheme = int_me(flavor_scheme)
+
+        flavor_scheme[flavor_scheme == PID_G.numpy()] = 0
+        if all(np.diff(flavor_scheme) == 1):
+            self.flavors_sorted = True
+            self.flavor_shift = -flavor_scheme[0]
+        else:
+            # TODO can't we rely on the PDF flavours to be sorted?
+            self.flavors_sorted = False
+            self.flavor_shift = 0
+
+    @property
+    def q2max(self):
+        """ Upper boundary in q2 of the grid """
+        q2max = self.subgrids[-1].log_q2max
+        return np.exp(q2max)
+
+    @property
+    def q2min(self):
+        """ Lower boundary in q2 of the grid """
+        q2min = self.subgrids[0].log_q2min
+        return np.exp(q2min)
+
+    @tf.function(input_signature=[GRID_I, GRID_F, GRID_F])
     def _xfxQ2(self, u, aa_x, aa_q2):
         """
         Function to interpolate
         Called by xfxQ2
         It divides the computation on the q2 axis in subgrids and sums up
         all the results
+
+        Parameters
+        ----------
+            u: tf.tensor(int)
+                list of PID to compute
+            aa_x: tf.tensor(float)
+                x-grid for the evaluation of the pdf
+            aa_q2: tf.tensor(float)
+                q2-grid for the evaluiation of the pdf
         """
 
-        a_x = tf.cast(tf.math.log(aa_x, name="logx"), float64)
-        a_q2 = tf.cast(tf.math.log(aa_q2, name="logq2"), float64)
+        a_x = tf.math.log(aa_x, name="logx")
+        a_q2 = tf.math.log(aa_q2, name="logq2")
 
-        size_a = tf.size(a_x, out_type=int64)
-        size_u = tf.size(u, out_type=int64)
+        size_a = tf.size(a_x, out_type=DTYPEINT)
+        size_u = tf.size(u, out_type=DTYPEINT)
         shape = tf.stack([size_a, size_u])
 
-        res = tf.zeros(shape, dtype=float64)
-        
-        res += first_subgrid(u, a_x, a_q2,
-                             self.subgrids[0].log_xmin,
-                             self.subgrids[0].log_xmax,
-                             self.subgrids[0].padded_x,
-                             self.subgrids[0].s_x,
-                             self.subgrids[0].log_q2min,
-                             self.subgrids[0].log_q2max,
-                             self.subgrids[0].padded_q2,
-                             self.subgrids[0].s_q2,
-                             self.subgrids[0].padded_grid,
-                             shape)
-        
-        for s in self.subgrids[1:-1]:
-            res += inner_subgrid(u, a_x, a_q2,
-                                 s.log_xmin, s.log_xmax, s.padded_x,
-                                 s.log_q2min, s.log_q2max, s.padded_q2,
-                                 s.padded_grid,
-                                 shape)
+        res = tf.zeros(shape, dtype=DTYPE)
+        for subgrid in self.subgrids:
+            res += subgrid(u, shape, a_x, a_q2,)
 
-        res += last_subgrid(u, a_x, a_q2,
-                            self.subgrids[-1].log_xmin,
-                            self.subgrids[-1].log_xmax,
-                            self.subgrids[-1].padded_x,
-                            self.subgrids[-1].s_x,
-                            self.subgrids[-1].log_q2min,
-                            self.subgrids[-1].log_q2max,
-                            self.subgrids[-1].padded_q2,
-                            self.subgrids[-1].s_q2,
-                            self.subgrids[-1].padded_grid,
-                            shape)
-        
         return res
 
-    @tf.function
-    def xfxQ2(self, pid, a_x, a_q2):
+    @tf.function(experimental_relax_shapes=True)
+    def xfxQ2(self, pid, arr_x, arr_q2):
         """
-        User interface for pdfflow
+        User interface for pdfflow when called with
+        tensorflow tensors
         It asks pid, x, q2 points
+
+        Parameters
+        ----------
+            pid: tf.tensor, dtype=int
+                list of PID to be computed
+            arr_x: tf.tensor, dtype=float
+                grid on x where to compute the PDF
+            arr_q2: tf.tensor, dtype=float
+                grid on q^2 where to compute the PDF
+        Returns
+        -------
+            pdf: tensor
+                PDF evaluated in each f(x,q2) for each flavour
         """
-
+        # Parse the input
+        arr_x = float_me(arr_x)
+        arr_q2 = float_me(arr_q2)
+        # this function assumes the user is asking for a tensor of pids
+        # TODO if the user is to do non-tf stuff print a warning and direct
+        # them to use the python version of the functions
         # must feed a mask for flavors to _xfxQ2
-        # if pid is None, the mask is set to true everywhere
-        # pid must be a list of pids
-        if type(pid) == int:
-            pid = [pid]
+        # cast down if necessary the type of the pid
+        pid = int_me(pid)
 
-        pid = tf.expand_dims(tf.constant(pid, dtype=int64), -1)
-        pid = tf.where(pid==0, PID_G, pid)
-        idx = tf.where(tf.equal(self.flavor_scheme, pid))[:, 1]
-        u, i = tf.unique(idx, out_idx=int64)
+        # same for the a_x and a_q2 arrays
+        a_x = float_me(arr_x)
+        a_q2 = float_me(arr_q2)
 
-        f_f = self._xfxQ2(u, a_x, a_q2)
-        f_f = tf.gather(f_f, i, axis=1)
+        # And ensure it is unique
+        # TODO maybe error if the user ask for the same pid twice or for a non-registered pid?
+        upid, user_idx = tf.unique(pid, out_idx=DTYPEINT)
 
-        return tf.squeeze(f_f)
+        # And return the positions in the flavor_scheme array
+        # if the flavours are sorted, do it the easy way
+        if self.flavors_sorted:
+            # Change the LHAPDF gluon number to 0
+            upid = tf.where(upid == PID_G, izero, upid)
+            pid_idx = self.flavor_shift + upid
+        else:
+            # Change 0 to the LHAPDF gluon pid: 21
+            upid = tf.where(upid == izero, PID_G, upid)
+            # TODO maybe it is better to digest the flavor_scheme on initialization and avoid this
+            upid = tf.expand_dims(upid, -1)
+            pid_idx = tf.cast(
+                tf.where(tf.equal(self.flavor_scheme, upid))[:, 1], dtype=DTYPEINT
+            )
 
+        # Perform the actual computation
+        f_f = self._xfxQ2(pid_idx, a_x, a_q2)
+
+        # Return the values in the order the user asked
+        f_f = tf.gather(f_f, user_idx, axis=1)
+
+        result = tf.squeeze(f_f)
+        return result
+
+    @tf.function(experimental_relax_shapes=True)
     def xfxQ2_allpid(self, a_x, a_q2):
         """
-        User iterface for pdfflow
-        Ask x, q2 points
-        Return all flavors
+        User interface for pdfflow when called with
+        tensorflow tensors
+        It asks x, q2 points
+        returns all flavours
+
+        Parameters
+        ----------
+            arr_x: tf.tensor, dtype=float
+                grid on x where to compute the PDF
+            arr_q2: tf.tensor, dtype=float
+                grid on q^2 where to compute the PDF
+        Returns
+        -------
+            pdf: tensor
+                PDF evaluated in each f(x,q2) for each flavour
         """
         pid = self.flavor_scheme
         return self.xfxQ2(pid, a_x, a_q2)
+
+    # Python version of the above functions with the correct casting to tf
+    def py_xfxQ2_allpid(self, a_x, a_q2):
+        """
+        Python interface for pdfflow
+        The input gets converted to the right
+        tf type before calling the corresponding functions
+        Returns all flavours
+
+        Parameters
+        ----------
+            arr_x: np.array
+                grid on x where to compute the PDF
+            arr_q2: np.array
+                grid on q^2 where to compute the PDF
+        Returns
+        -------
+            pdf: tensor
+                PDF evaluated in each f(x,q2) for each flavour
+        """
+        a_x = float_me(a_x)
+        a_q2 = float_me(a_q2)
+        return self.xfxQ2_allpid(a_x, a_q2)
+
+    def py_xfxQ2(self, pid, a_x, a_q2):
+        """
+        Python interface for pdfflow
+        The input gets converted to the right
+        tf type before calling the corresponding functions
+
+        Parameters
+        ----------
+            pid: list(int)
+                list of PID to be computed
+            arr_x: np.array
+                grid on x where to compute the PDF
+            arr_q2: np.array
+                grid on q^2 where to compute the PDF
+        Returns
+        -------
+            pdf: tensor
+                PDF evaluated in each f(x,q2) for each flavour
+        """
+        # if pid is None, the mask is set to true everywhere
+        if pid is None:
+            return self.py_xfxQ2_allpid(a_x, a_q2)
+
+        tensor_pid = tf.reshape(int_me(pid), (-1,))
+        a_x = float_me(a_x)
+        a_q2 = float_me(a_q2)
+        return self.xfxQ2(tensor_pid, a_x, a_q2)
