@@ -72,8 +72,8 @@ def vfh_production_leading_order(xarr, **kwargs):
 def vfh_production_real(xarr, **kwargs):
     """ Wrapper for R VFH calculation
 
-    In commit: 5d68c6becb8372b1baaf908222e5d5e6b0a303c4
-    the result was 31.1664 +/- 0.167197 fb (1e6 events, 5 iterations, 7s p/it)
+    commit: e3628061766225ac4d8a62e6aa4393523d6e8b34
+    result: 17.6 +- 0.03 fb (1e7 events, 5 iterations, 4.3s p/it 2 GPU)
 
     """
     # Compute the phase space point
@@ -105,8 +105,8 @@ def vfh_production_real(xarr, **kwargs):
 def vfh_production_nlo(xarr, **kwargs):
     """ Wrapper for R VFH calculation at NLO (2 jets)
 
-    In commit: 5d68c6becb8372b1baaf908222e5d5e6b0a303c4
-    the result was: 17.0886 +/- 0.0854798 fb (1e7 events, 5 iterations, 10 s p/it)
+    commit: e3628061766225ac4d8a62e6aa4393523d6e8b34
+    Result:  20.6 +/- 0.3 (1e7 events, 5 iterations, 6.1s p/it 2 GPU)
 
     """
     # Compute the phase space point
@@ -127,7 +127,6 @@ def vfh_production_nlo(xarr, **kwargs):
         return tf.scatter_nd(idx, wgt, shape=xarr.shape[0:1])
 
     # Compute luminosity
-    lumi = luminosity(x1, x2)
     me_r = me.qq_h_r(pa, pb, p1, p2, p3)
 
     if SUBTRACT:
@@ -148,6 +147,7 @@ def vfh_production_nlo(xarr, **kwargs):
 
         sub_term = (red_1 * dip_1 + red_2 * dip_2) * me.factor_re
 
+    lumi = luminosity(x1, x2)
     res = lumi * (me_r - sub_term) * wgt
     final_result = res * flux / x1 / x2
     return tf.scatter_nd(idx, final_result, shape=xarr.shape[0:1])
@@ -183,20 +183,18 @@ if __name__ == "__main__":
 
     ncalls = args.nevents
     niter = args.iterations
+    print(f"ncalls={ncalls:2.1e}, niter={niter}, device_limit={args.events_limit:2.1e}")
 
     if args.level == "LO":
         print("Running Leading Order")
-        print(f"ncalls={ncalls}, niter={niter}")
         ndim = 6
         integrand = vfh_production_leading_order
     elif args.level == "R":
         print("Running Real Tree level")
-        print(f"ncalls={ncalls}, niter={niter}")
         ndim = 9
         integrand = vfh_production_real
     elif args.level == "NLO":
         print("Running Real NLO")
-        print(f"ncalls={ncalls}, niter={niter}")
         ndim = 9
         integrand = vfh_production_nlo
 
