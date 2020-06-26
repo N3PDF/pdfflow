@@ -5,12 +5,11 @@ using the hep-flow suite: pdfflow and vegasflow
 """
 from argparse import ArgumentParser
 import subprocess as sp
-import numpy as np
 
 from pdfflow.pflow import mkPDF
 from pdfflow.configflow import float_me, fone, fzero, DTYPE
 from pdfflow.functions import _condition_to_idx
-from vegasflow.vflow import vegas_wrapper
+from vegasflow.vflow import VegasFlow
 
 import tensorflow as tf
 
@@ -102,11 +101,6 @@ def vfh_production_real(xarr, **kwargs):
     return tf.scatter_nd(idx, final_result, shape=xarr.shape[0:1])
 
 
-SUBTRACT = (
-    True  # Set to false to check that indeed the ME integration does not converge
-)
-
-
 @tf.function
 def vfh_production_nlo(xarr, **kwargs):
     """ Wrapper for R VFH calculation at NLO (2 jets)
@@ -152,11 +146,21 @@ def vfh_production_nlo(xarr, **kwargs):
         # Reduced ME
         red_2 = me.partial_lo(pa, npb, p1, np2)
 
-        me_r -= (red_1 * dip_1 + red_2 * dip_2) * me.factor_re
+        sub_term = (red_1 * dip_1 + red_2 * dip_2) * me.factor_re
 
-    res = lumi * me_r * wgt
+    res = lumi * (me_r - sub_term) * wgt
     final_result = res * flux / x1 / x2
     return tf.scatter_nd(idx, final_result, shape=xarr.shape[0:1])
+
+
+def vegas_integrate(integrand, ndim, niter, ncalls, events_limit):
+    """ Wrapper for running Vegasflow """
+    # Instantiate vegasflow
+    vflow = VegasFlow(ndim, ncalls, events_limit=events_limit)
+    # Compile the integrand
+    vflow.compile(integrand, compilable=True)
+    # Run and return
+    return vflow.run_integration(niter)
 
 
 if __name__ == "__main__":
@@ -168,6 +172,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "-i", "--iterations", type=int, default=5, help="Number of iterations"
     )
+    parser.add_argument(
+        "-e",
+        "--events_limit",
+        type=int,
+        default=int(1e6),
+        help="Max events to be sent to an accelerator device at once",
+    )
     args = parser.parse_args()
 
     ncalls = args.nevents
@@ -177,16 +188,16 @@ if __name__ == "__main__":
         print("Running Leading Order")
         print(f"ncalls={ncalls}, niter={niter}")
         ndim = 6
-        res = vegas_wrapper(
-            vfh_production_leading_order, ndim, niter, ncalls, compilable=True
-        )
+        integrand = vfh_production_leading_order
     elif args.level == "R":
         print("Running Real Tree level")
         print(f"ncalls={ncalls}, niter={niter}")
         ndim = 9
-        res = vegas_wrapper(vfh_production_real, ndim, niter, ncalls, compilable=True)
+        integrand = vfh_production_real
     elif args.level == "NLO":
         print("Running Real NLO")
         print(f"ncalls={ncalls}, niter={niter}")
         ndim = 9
-        res = vegas_wrapper(vfh_production_nlo, ndim, niter, ncalls, compilable=True)
+        integrand = vfh_production_nlo
+
+    vegas_integrate(integrand, ndim, niter, ncalls, args.events_limit)

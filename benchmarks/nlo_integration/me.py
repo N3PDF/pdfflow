@@ -3,15 +3,18 @@
 """
 
 import numpy as np
-from pdfflow.configflow import fone, fzero, float_me
+from pdfflow.configflow import float_me
 import tensorflow as tf
-from parameters import TFLOAT4, stw, mw, gw, stw, TFLOAT1
+from parameters import TFLOAT4, stw, mw, gw, TFLOAT1
 from phase_space import psgen_2to3, psgen_2to4
 from spinors import dot_product, zA, zB, sprod
 
 
 @tf.function(input_signature=[TFLOAT1])
 def propagator_w(s):
+    """ Compute the propagator of the W boson:
+    (s - w)^2 + (m*Gamma_w)^2
+    """
     t1 = tf.square(s - tf.square(mw))
     t2 = tf.square(mw * gw)
     return t1 + t2

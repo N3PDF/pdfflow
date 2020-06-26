@@ -6,24 +6,21 @@ The wrapper interface functions are
     psgen_2to3
     psgen_2to4
 
-The convention of the 4 momenta is such that 
+The convention of the 4 momenta is such that
     p[0] = E
     p[1:4] = px, py, pz
 """
-from pdfflow.configflow import float_me, fone, fzero, DTYPE
+from pdfflow.configflow import float_me, fone, fzero
 from pdfflow.functions import _condition_to_idx
 import numpy as np
 import tensorflow as tf
 from parameters import (
-    TFLOAT1,
     TFLOAT4,
     TECH_CUT,
-    TECH_S,
     shat_min,
     s_in,
     higgs_mass,
     pt2_cut,
-    mjj_cut,
     rdistance,
 )
 import spinors
@@ -41,6 +38,9 @@ phimax = 2.0 * tfpi
 # Jet separation
 @tf.function
 def rapidity_dif(p1, p2):
+    """ Computes the rapidity difference between p1 and p2
+    y = 1/2*log(E+z / E-z)
+    """
     num = (p1[0, :] + p1[3, :]) * (p2[0, :] - p2[3, :])
     den = (p1[0, :] - p1[3, :]) * (p2[0, :] + p2[3, :])
     return 0.5 * tf.math.log(num / den)
@@ -48,9 +48,12 @@ def rapidity_dif(p1, p2):
 
 @tf.function
 def azimuth_dif(p1, p2):
-    num = p1[2, :] * p2[1, :]
-    den = p1[1, :] * p2[2, :]
-    return tf.math.atan(num / den)
+    """ Compute the difference in the azimuthal angle between p1 and p2
+    theta = atan(y/x)
+    """
+    theta_1 = tf.math.atan2(p1[2, :], p1[1, :])
+    theta_2 = tf.math.atan2(p2[2, :], p2[1, :])
+    return theta_1 - theta_2
 
 
 @tf.function
@@ -87,15 +90,18 @@ def pt_cut_2of2(p1, p2):
 
 @tf.function
 def invariant_cut(pa, pb, p1, p2, p3):
-    sa1 = spinors.dot_product(pa, p1) > TECH_S
-    sa2 = spinors.dot_product(pa, p2) > TECH_S
-    sa3 = spinors.dot_product(pa, p3) > TECH_S
-    sb1 = spinors.dot_product(pb, p1) > TECH_S
-    sb2 = spinors.dot_product(pb, p2) > TECH_S
-    sb3 = spinors.dot_product(pb, p3) > TECH_S
-    s12 = spinors.dot_product(p1, p2) > TECH_S
-    s13 = spinors.dot_product(p1, p3) > TECH_S
-    s23 = spinors.dot_product(p2, p3) > TECH_S
+    """ Ensures that all invariants are above the technical cut
+    in order to avoid instabilities """
+    shat_cut = spinors.dot_product(pa, pb)*TECH_CUT/2.0
+    sa1 = spinors.dot_product(pa, p1) > shat_cut
+    sa2 = spinors.dot_product(pa, p2) > shat_cut
+    sa3 = spinors.dot_product(pa, p3) > shat_cut
+    sb1 = spinors.dot_product(pb, p1) > shat_cut
+    sb2 = spinors.dot_product(pb, p2) > shat_cut
+    sb3 = spinors.dot_product(pb, p3) > shat_cut
+    s12 = spinors.dot_product(p1, p2) > shat_cut
+    s13 = spinors.dot_product(p1, p3) > shat_cut
+    s23 = spinors.dot_product(p2, p3) > shat_cut
     return tf.reduce_all([sa1, sa2, sa3, sb1, sb2, sb3, s12, s13, s23], 0)
 
 
@@ -141,7 +147,7 @@ def pt_cut_3of3(p1, p2, p3, r=False, pa=None, pb=None):
         tech_cut_pass = invariant_cut(pa, pb, p1, p2, p3)
         jetpass = tf.logical_and(rpass, tech_cut_pass)
     else:
-        jetpass = tf.cast(True, dtype=bool)
+        raise ValueError("When asking for 3 jets of 3 a jet radious is needed")
     stripe, idx = _condition_to_idx(ptpass, jetpass)
     return stripe, idx
 
@@ -372,7 +378,7 @@ def pcommon2to2(r, shat, s1, s2):
 @tf.function
 def pcommon1to2(sin, pin, s1, s2, costh, phi):
     """ Generates a 1 -> 2 phase space in the c.o.m. of 1
-      
+
         p_in -> p_1 + p_2
 
     Parameters
