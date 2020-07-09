@@ -109,7 +109,7 @@ def _load_alphaS(info_file):
     return grids
 
 
-def mkPDF(fname, dirname=None):
+def mkPDF(fname, dirname=None, alpha_computation=False):
     """ Wrapper to generate a PDF given a PDF name and a directory
     where to find the grid files.
 
@@ -119,6 +119,8 @@ def mkPDF(fname, dirname=None):
             PDF name and member in the format '<set_name>/<set member number>'
         dirname: str
             LHAPDF datadir, if None will try to guess from LHAPDF
+        alpha_computation: bool
+            if True loads alpha_S grid from metadata
 
     Returns
     -------
@@ -132,7 +134,7 @@ def mkPDF(fname, dirname=None):
             ["lhapdf-config", "--datadir"], capture_output=True, text=True, check=True
         )
         dirname = dirname_raw.stdout.strip()
-    return PDF(fname, dirname)
+    return PDF(fname, dirname, alpha_computation=alpha_computation)
 
 
 class PDF:
@@ -154,7 +156,7 @@ class PDF:
             LHAPDF datadir
     """
 
-    def __init__(self, fname, dirname, compilable=True):
+    def __init__(self, fname, dirname, alpha_computation, compilable=True):
         if not compilable:
             logger.warning("Running pdfflow in eager mode")
             logger.warning("Setting eager mode will affect all of TF")
@@ -196,11 +198,13 @@ class PDF:
             self.flavor_shift = 0
         
         #now load metadata from info file
-        self.fname = f"{self.dirname}/{fname}/{fname}.info"
+        if alpha_computation:
+            print('alpha computation')
+            self.fname = f"{self.dirname}/{fname}/{fname}.info"
 
-        logger.info("loading %s", self.fname)
-        grids = _load_alphaS(self.fname)
-        self.alphaS_subgrids = [AlphaS_Subgrid(grid, i, len(grids)) for i, grid in enumerate(grids)]
+            logger.info("loading %s", self.fname)
+            grids = _load_alphaS(self.fname)
+            self.alphaS_subgrids = [AlphaS_Subgrid(grid, i, len(grids)) for i, grid in enumerate(grids)]
 
     @property
     def q2max(self):
