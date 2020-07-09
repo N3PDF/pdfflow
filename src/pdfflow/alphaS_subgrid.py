@@ -9,13 +9,13 @@
 import numpy as np
 import tensorflow as tf
 from pdfflow.configflow import DTYPE, DTYPEINT, float_me, int_me
-from pdfflow.alphaS_functions import first_alphaS_subgrid
-from pdfflow.alphaS_functions import inner_alphaS_subgrid
-from pdfflow.alphaS_functions import last_alphaS_subgrid
+from pdfflow.alphaS_functions import alphaS_first_subgrid
+from pdfflow.alphaS_functions import alphaS_inner_subgrid
+from pdfflow.alphaS_functions import alphaS_last_subgrid
 
 # Compilation signature and options of the subgrid functions
 ALPHAS_GRID_FUNCTION_SIGNATURE = [
-    tf.TensorSpec(shape=[1], dtype=DTYPEINT),  # shape
+    tf.TensorSpec(shape=[], dtype=DTYPEINT),  # shape
     tf.TensorSpec(shape=[None], dtype=DTYPE),  # a_q2
     tf.TensorSpec(shape=[], dtype=DTYPE),  # q2min
     tf.TensorSpec(shape=[], dtype=DTYPE),  # q2max
@@ -26,7 +26,7 @@ ALPHAS_GRID_FUNCTION_SIGNATURE = [
 AUTOGRAPH_OPT = tf.autograph.experimental.Feature.ALL
 OPT = {
     "experimental_autograph_options": AUTOGRAPH_OPT,
-    "input_signature": GRID_FUNCTION_SIGNATURE,
+    "input_signature": ALPHAS_GRID_FUNCTION_SIGNATURE,
 }
 
 
@@ -84,15 +84,15 @@ class AlphaS_Subgrid(tf.Module):
 
         # Finally parse the grid
         # the grid is sized (q.size), pad it with 0s
-        padded_grid = np.pad(grid.grid, (1, 1))
+        self.padded_grid = float_me(np.pad(grid.grid, (1, 1)))
 
         # Depending on the index of the grid, select which interpolation function should be run
         if i == 0:
-            self.fn_interpolation = first_alphaS_subgrid
+            self.fn_interpolation = alphaS_first_subgrid
         elif i == (total - 1):
-            self.fn_interpolation = last_alphaS_subgrid
+            self.fn_interpolation = alphaS_last_subgrid
         else:
-            self.fn_interpolation = inner_alphaS_subgrid
+            self.fn_interpolation = alphaS_inner_subgrid
 
         self.name_sg = f"grid_{i}"
 

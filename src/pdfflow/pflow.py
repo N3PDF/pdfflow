@@ -3,6 +3,7 @@
 """
 import logging
 import collections
+import yaml
 
 import subprocess as sp
 import numpy as np
@@ -70,8 +71,8 @@ def _load_data(pdf_file):
 
 def _load_alphaS(info_file):
     """
-    Reads metadata from info file and retrieves a list of alphaS grids
-    Each grid is a tuple containing numpy arrays (Q2, alphaS)
+    Reads metadata from info file and retrieves a list of alphaS subgrids
+    Each subgrid is a tuple containing numpy arrays (Q2, alphaS)
 
     Note:
         the input q array in LHAPDF is just q, this functions
@@ -93,11 +94,19 @@ def _load_alphaS(info_file):
     alpha_qs = np.array(idict["AlphaS_Qs"])
     alpha_vals = np.array(idict["AlphaS_Vals"])
 
-    EPS = np.finfo(a.qs.dtype).eps
-    diff = a_qs[1:]-a_qs[:-1]
+    grids = []
+
+    EPS = np.finfo(alpha_qs.dtype).eps
+    diff = alpha_qs[1:] - alpha_qs[:-1]
     t = np.where(diff < EPS)[0] + 1
 
-    return AlphaTuple(np.split(alpha_qs,t)**2, np.split(alpha_vals,t))
+    splits_qs = np.split(alpha_qs**2,t)
+    splits_vals = np.split(alpha_vals,t)
+
+    for q,v in zip(splits_qs, splits_vals):
+        grids.append(AlphaTuple(q,v))
+
+    return grids
 
 
 def mkPDF(fname, dirname=None):
@@ -220,7 +229,7 @@ class PDF:
             aa_x: tf.tensor(float)
                 x-grid for the evaluation of the pdf
             aa_q2: tf.tensor(float)
-                q2-grid for the evaluiation of the pdf
+                q2-grid for the evaluation of the pdf
         """
 
         a_x = tf.math.log(aa_x, name="logx")
@@ -232,7 +241,7 @@ class PDF:
 
         res = tf.zeros(shape, dtype=DTYPE)
         for subgrid in self.subgrids:
-            res += subgrid(u, shape, a_x, a_q2,)
+            res += subgrid(u, shape, a_x, a_q2)
 
         return res
 
@@ -257,8 +266,6 @@ class PDF:
                 PDF evaluated in each f(x,q2) for each flavour
         """
         # Parse the input
-        arr_x = float_me(arr_x)
-        arr_q2 = float_me(arr_q2)
         # this function assumes the user is asking for a tensor of pids
         # TODO if the user is to do non-tf stuff print a warning and direct
         # them to use the python version of the functions
@@ -370,3 +377,71 @@ class PDF:
         a_x = float_me(a_x)
         a_q2 = float_me(a_q2)
         return self.xfxQ2(tensor_pid, a_x, a_q2)
+
+    @tf.function(input_signature=[GRID_F])
+    def _alphaSQ2(self, aa_q2):
+        """
+        Function to interpolate
+        Called by alphaSQ2
+        It divides the computation on the q2 axis in subgrids and sums up
+        all the results
+
+        Parameters
+        ----------
+            aa_q2: tf.tensor(float)
+                q2-grid for the evaluation of alphaS
+        """
+        a_q2 = tf.math.log(aa_q2, name="logq2")
+
+        shape = tf.size(a_q2, out_type=DTYPEINT)
+
+        res = tf.zeros(shape, dtype=DTYPE)
+        for subgrid in self.alphaS_subgrids:
+            res += subgrid(shape, a_q2)
+
+        return res
+
+    @tf.function(experimental_relax_shapes=True)
+    def alphaSQ2(self, arr_q2):
+        """
+        User interface for pdfflow alphaS interpolation when called with
+        tensorflow tensors
+        It asks q2 points
+
+        Parameters
+        ----------
+            arr_q2: tf.tensor, dtype=float
+                grid on q^2 where to compute alphaS
+        Returns
+        -------
+            alphaS: tensor
+                alphaS evaluated in each q2 query point
+        """
+        # Parse the input
+        a_q2 = float_me(arr_q2)
+
+        # Perform the actual computation
+        return self._alphaSQ2(a_q2)
+
+    @tf.function(experimental_relax_shapes=True)
+    def alphaSQ(self, arr_q):
+        """
+        User interface for pdfflow alphaS interpolation when called with
+        tensorflow tensors
+        It asks q points
+
+        Parameters
+        ----------
+            arr_q: tf.tensor, dtype=float
+                grid on q where to compute alphaS
+        Returns
+        -------
+            alphaS: tensor
+                alphaS evaluated in each q query point
+        """
+        # Parse the input
+        a_q = float_me(arr_q)
+        a_q2 = a_q**2
+
+        # Perform the actual computation
+        return self._alphaSQ2(a_q2)
