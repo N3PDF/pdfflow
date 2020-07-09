@@ -4,7 +4,7 @@ Contains the extrapolation and interpolation functions wrappers for the differen
 
 import tensorflow as tf
 from pdfflow.configflow import DTYPE, DTYPEINT, float_me, fone
-from pdfflow.alphaS_neighbour_knots import alphaS_neighbour_knots
+from pdfflow.neighbour_knots import alphaS_neighbour_knots
 from pdfflow.alphaS_interpolations import alphaS_cubic_interpolation
 
 ALPHAS_INTERPOLATE_SIGNATURE = [

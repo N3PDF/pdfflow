@@ -3,7 +3,7 @@
 """
 
 import tensorflow as tf
-from pdfflow.configflow import DTYPE, DTYPEINT
+from pdfflow.configflow import DTYPE, DTYPEINT, FMAX
 
 
 @tf.function(
@@ -40,7 +40,7 @@ def cubic_interpolation(T, VL, VDL, VH, VDH):
         tf.TensorSpec(shape=[4, None], dtype=DTYPE),
     ]
 )
-def alphaS_daS_dq2_func(q2_id, s_q2, corn_q2, A):
+def daS_dq2_func(q2_id, s_q2, corn_q2, A):
     """
     Computes derivatives to make the alphaS cubic interpolation
     When a query point is in the left or rightmost bin of the q2 axis, it
@@ -97,6 +97,7 @@ def alphaS_cubic_interpolation(
     dlogq2 = corn_q2[2] - corn_q2[1]
     tlogq2 = (a_q2 - corn_q2[1])/dlogq2
 
-    daS_dq2 = alphaS_df_dq2_func(q2_id, s_q2, corn_q2, A)
+    daS_dq2 = daS_dq2_func(q2_id, s_q2, corn_q2, A)
 
-    return cubic_interpolation(tlogq2, A[1], daS_dq2[0], A[2], daS_dq2[1])
+    return cubic_interpolation(tlogq2, A[1], daS_dq2[0]*dlogq2,
+                               A[2], daS_dq2[1]*dlogq2)

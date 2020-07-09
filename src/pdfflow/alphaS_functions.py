@@ -25,7 +25,7 @@ import tensorflow as tf
 from pdfflow.configflow import DTYPE, int_me
 from pdfflow.alphaS_region_interpolator import alphaS_interpolate
 
-def inner_alphaS_subgrid(
+def alphaS_inner_subgrid(
     shape,
     a_q2,
     log_q2min,
@@ -64,7 +64,7 @@ def inner_alphaS_subgrid(
     return res
 
 
-def first_alphaS_subgrid(
+def alphaS_first_subgrid(
     shape,
     a_q2,
     log_q2min,
@@ -110,21 +110,19 @@ def first_alphaS_subgrid(
     if tf.size(f_idx) != 0:
         in_q2 = tf.boolean_mask(a_q2, stripe)
         m = tf.math.log(actual_padded[2]/actual_padded[1])\
-            /tf.math.log(padded_q2[2]/padded_q2[1])
-        f_f = actual_padded[1] * tf.math.pow(in_q2/padded_q2[1], m)
+            /(padded_q2[2] - padded_q2[1])
+        
+        ff_f = actual_padded[1] * tf.math.pow(
+                            tf.math.exp(in_q2)/tf.math.exp(padded_q2[1]),
+                            m)
         res = tf.tensor_scatter_nd_update(res, f_idx, ff_f)
 
     return res
 
 
-def last_subgrid(
+def alphaS_last_subgrid(
     shape,
-    a_x,
     a_q2,
-    log_xmin,
-    log_xmax,
-    padded_x,
-    s_x,
     log_q2min,
     log_q2max,
     padded_q2,
@@ -168,7 +166,7 @@ def last_subgrid(
     stripe = a_q2 > log_q2max
     f_idx = int_me(tf.where(stripe))
     if tf.size(f_idx) != 0:
-        ff_f = tf.ones_like(f_idx, dtype=DTYPE)*actual_padded[-2]
+        ff_f = tf.ones_like(f_idx[:,0], dtype=DTYPE)*actual_padded[-2]
         res = tf.tensor_scatter_nd_update(res, f_idx, ff_f)
 
     return res
