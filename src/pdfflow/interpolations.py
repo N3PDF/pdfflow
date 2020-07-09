@@ -51,11 +51,11 @@ def extrapolate_linear(x, xl, xh, yl, yh):
 
 @tf.function(
     input_signature=[
-        tf.TensorSpec(shape=[None, 1], dtype=DTYPE),
-        tf.TensorSpec(shape=[None, 1], dtype=DTYPE),
-        tf.TensorSpec(shape=[None, 1], dtype=DTYPE),
-        tf.TensorSpec(shape=[None, 1], dtype=DTYPE),
-        tf.TensorSpec(shape=[None, 1], dtype=DTYPE),
+        tf.TensorSpec(shape=[None, None], dtype=DTYPE),
+        tf.TensorSpec(shape=[None, None], dtype=DTYPE),
+        tf.TensorSpec(shape=[None, None], dtype=DTYPE),
+        tf.TensorSpec(shape=[None, None], dtype=DTYPE),
+        tf.TensorSpec(shape=[None, None], dtype=DTYPE),
     ]
 )
 def cubic_interpolation(T, VL, VDL, VH, VDH):
@@ -78,7 +78,7 @@ def cubic_interpolation(T, VL, VDL, VH, VDH):
         tf.TensorSpec(shape=[None], dtype=DTYPEINT),
         tf.TensorSpec(shape=[], dtype=DTYPEINT),
         tf.TensorSpec(shape=[4, None], dtype=DTYPE),
-        tf.TensorSpec(shape=[4, 4, None, 1], dtype=DTYPE),
+        tf.TensorSpec(shape=[4, 4, None, None], dtype=DTYPE),
     ]
 )
 def df_dx_func(x_id, s_x, corn_x, A):
@@ -94,7 +94,7 @@ def df_dx_func(x_id, s_x, corn_x, A):
     # if we are interpolating in the [-1,2]x[-1,2] square:
     # four derivatives in x = 0 for all Qs (:,0,:)
     # four derivatives in x = 1 for all Qs (:,1,:)
-    # derivatives are returned in a tensor with shape (#draws,2,4)
+    # derivatives are returned in a tensor with shape (2,4,#draws)
     edge = (A[2] - A[1]) / tf.reshape(corn_x[2] - corn_x[1], (1, -1, 1))
 
     lddx = (A[1] - A[0]) / tf.reshape(corn_x[1] - corn_x[0], (1, -1, 1))
@@ -120,7 +120,7 @@ def df_dx_func(x_id, s_x, corn_x, A):
         tf.TensorSpec(shape=[None], dtype=DTYPEINT),
         tf.TensorSpec(shape=[4, None], dtype=DTYPE),
         tf.TensorSpec(shape=[4, None], dtype=DTYPE),
-        tf.TensorSpec(shape=[4, 4, None, 1], dtype=DTYPE),
+        tf.TensorSpec(shape=[4, 4, None, None], dtype=DTYPE),
         tf.TensorSpec(shape=[], dtype=DTYPEINT),
         tf.TensorSpec(shape=[], dtype=DTYPEINT),
     ]

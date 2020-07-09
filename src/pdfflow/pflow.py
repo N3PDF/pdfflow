@@ -16,6 +16,7 @@ except ModuleNotFoundError:
 from pdfflow.configflow import DTYPE, DTYPEINT, int_me, izero, float_me
 import tensorflow as tf
 from pdfflow.subgrid import Subgrid
+from pdfflow.alphaS_subgrid import AlphaS_Subgrid
 
 # lhapdf gluon code
 PID_G = int_me(21)
@@ -26,6 +27,7 @@ GRID_I = tf.TensorSpec(shape=[None], dtype=DTYPEINT)
 logger = logging.getLogger(__name__)
 # create the Grid namedtuple
 GridTuple = collections.namedtuple("Grid", ["x", "q2", "flav", "grid"])
+AlphaTuple = collections.namedtuple("Alpha", ["q2", "grid"])
 
 
 def _load_data(pdf_file):
@@ -64,6 +66,38 @@ def _load_data(pdf_file):
         grids += [GridTuple(x, q2, flav, grid)]
 
     return grids
+
+
+def _load_alphaS(info_file):
+    """
+    Reads metadata from info file and retrieves a list of alphaS grids
+    Each grid is a tuple containing numpy arrays (Q2, alphaS)
+
+    Note:
+        the input q array in LHAPDF is just q, this functions
+        squares the result and q^2 is used everwhere in the code
+
+    Parameters
+    ----------
+        pdf_file: str
+            Metadata .info file
+
+    Returns
+    -------
+        grids: list(tuple(np.array))
+            list of tuples of arrays (Q2, alphaS values)
+    """
+    with open(info_file, "r") as ifile:
+        idict = yaml.load(ifile, Loader=yaml.FullLoader)
+
+    alpha_qs = np.array(idict["AlphaS_Qs"])
+    alpha_vals = np.array(idict["AlphaS_Vals"])
+
+    EPS = np.finfo(a.qs.dtype).eps
+    diff = a_qs[1:]-a_qs[:-1]
+    t = np.where(diff < EPS)[0] + 1
+
+    return AlphaTuple(np.split(alpha_qs,t)**2, np.split(alpha_vals,t))
 
 
 def mkPDF(fname, dirname=None):
@@ -151,6 +185,13 @@ class PDF:
             # TODO can't we rely on the PDF flavours to be sorted?
             self.flavors_sorted = False
             self.flavor_shift = 0
+        
+        #now load metadata from info file
+        self.fname = f"{self.dirname}/{fname}/{fname}.info"
+
+        logger.info("loading %s", self.fname)
+        grids = _load_alphaS(self.fname)
+        self.alphaS_subgrids = [AlphaS_Subgrid(grid, i, len(grids)) for i, grid in enumerate(grids)]
 
     @property
     def q2max(self):

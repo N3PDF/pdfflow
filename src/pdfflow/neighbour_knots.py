@@ -69,3 +69,44 @@ def four_neighbour_knots(a_x, a_q2, padded_x, padded_q2, actual_values):
     A = tf.gather(actual_values, A_id, name="fnk_3")
 
     return x_id, q2_id, corn_x, corn_q2, A
+
+
+@tf.function(
+    input_signature=[
+        tf.TensorSpec(shape=[None], dtype=DTYPE),
+        tf.TensorSpec(shape=[None], dtype=DTYPE),
+        tf.TensorSpec(shape=[None], dtype=DTYPE),
+    ]
+)
+def alphaS_neighbour_knots(a_q2, padded_q2, actual_values):
+    """
+    Parameters
+    ----------
+        a_q2: tf.tensor
+            tensor of values of q2
+        padded_q2: tf.tensor
+            values of log(q2) of the grid
+        actual_values: tf.tensor
+            values of the grid
+    Returns
+    ----------
+        q2_id: tf.tensor of shape [None]
+            q2 bin for each query point
+        corn_q2: tf.tensor of shape [4,None]
+            q2 values of the 4 knots around the query point
+        A: tf.tensor of shape [4,None]
+            alphaS values of the 4 grid knots around the query point
+    """
+    # print('nk')
+    q2_id = tfp.stats.find_bins(a_q2, padded_q2[1:-1], dtype=DTYPEINT) + 1
+
+    piu = tf.reshape(tf.range(-1, 3, dtype=DTYPEINT), (4, 1))
+    corn_q2_id = tf.repeat(tf.reshape(q2_id, (1, -1)), 4, axis=0) + piu
+
+    corn_q2 = tf.gather(padded_q2, corn_q2_id, name="fnk_2")
+
+    s = tf.size(padded_q2, out_type=DTYPEINT)
+
+    A = tf.gather(actual_values, corn_q2_id, name="fnk_3")
+
+    return q2_id, corn_q2, A
