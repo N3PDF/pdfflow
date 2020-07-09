@@ -4,6 +4,8 @@ Define some constants, header style
 # Most of this can be moved to a yaml file without loss of generality
 import os
 
+import numpy as np
+
 # Set TF to only log errors
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "1"
 import tensorflow as tf
@@ -28,6 +30,7 @@ logger.addHandler(console_handler)
 # Define the tensorflow number types
 DTYPE = tf.float64
 DTYPEINT = tf.int32
+FMAX = tf.constant(np.finfo(np.float64).max, dtype=DTYPE)
 
 # The wrappers below transform tensors and array to the correct type
 def int_me(i):
