@@ -50,6 +50,8 @@ def alphaS_inner_subgrid(
         tf.tensor of shape `shape`
         alphaS interpolated values for each query point
     """
+
+    #print('alphaS inner subgrid')
     res = tf.zeros(shape, dtype=DTYPE)
 
     # --------------------------------------------------------------------
@@ -90,6 +92,7 @@ def alphaS_first_subgrid(
         tf.tensor of shape `shape`
         alphaS interpolated values for each query point
     """
+    #print('alphaS first subgrid')
     res = tf.zeros(shape, dtype=DTYPE)
 
     # --------------------------------------------------------------------
@@ -147,6 +150,7 @@ def alphaS_last_subgrid(
             alphaS interpolated values for each query point
     """
     # Generate all conditions for all stripes
+    #print('alphaS last subgrid')
 
     res = tf.zeros(shape, dtype=DTYPE)
 

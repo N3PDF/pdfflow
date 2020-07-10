@@ -23,9 +23,9 @@ def main(pdfname):
     p = pdf.mkPDF(pdfname, DIRNAME, alpha_computation=True)
     l_pdf = lhapdf.mkPDF(pdfname)
 
-    q2 = [100.]
+    q = [100.]
     s = time.time()
-    p.alphaSQ2(q2)
+    p.py_alphaSQ(q)
     print("\nPDFflow AlphaS\n\tBuilding graph time: %f\n"%(time.time()-s))
 
     plt.figure(figsize=(16.0, 12.0))
@@ -36,8 +36,9 @@ def main(pdfname):
     s_time = time.time()
     vl = np.array([l_pdf.alphasQ(iq) for iq in q])
     l_time = time.time()
-    vp = p.alphaSQ(float_me(q))
+    vp = p.py_alphaSQ(q)
     p_time = time.time()
+
         
     plt.plot(q, np.abs(vp-vl)/(np.abs(vl)+EPS))
     plt.hlines(1e-3, plt.xlim()[0], plt.xlim()[1], linestyles='dotted')

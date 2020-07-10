@@ -39,6 +39,7 @@ def alphaS_interpolate(
         actual_padded: tf.tensor of shape [None]
             alphaS values: contains the padded (q2) grid
     """
+    #print('alphas interpolate')
     q2_bins, corn_q2, alphaS_vals = alphaS_neighbour_knots(
         a_q2, padded_q2, actual_padded
     )
