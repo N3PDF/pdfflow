@@ -78,7 +78,7 @@ def four_neighbour_knots(a_x, a_q2, padded_x, padded_q2, actual_values):
         tf.TensorSpec(shape=[None], dtype=DTYPE),
     ]
 )
-def alphaS_neighbour_knots(a_q2, padded_q2, actual_values):
+def alphas_neighbour_knots(a_q2, padded_q2, actual_values):
     """
     Parameters
     ----------
@@ -95,7 +95,7 @@ def alphaS_neighbour_knots(a_q2, padded_q2, actual_values):
         corn_q2: tf.tensor of shape [4,None]
             q2 values of the 4 knots around the query point
         A: tf.tensor of shape [4,None]
-            alphaS values of the 4 grid knots around the query point
+            alphas values of the 4 grid knots around the query point
     """
     # print('nk')
     q2_id = tfp.stats.find_bins(a_q2, padded_q2[1:-1], dtype=DTYPEINT) + 1
