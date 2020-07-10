@@ -155,7 +155,6 @@ class PDF:
         dirname: str
             LHAPDF datadir
     """
-
     def __init__(self, fname, dirname, alpha_computation, compilable=True):
         if not compilable:
             logger.warning("Running pdfflow in eager mode")
@@ -206,11 +205,13 @@ class PDF:
             grids = _load_alphaS(self.fname)
             self.alphaS_subgrids = [AlphaS_Subgrid(grid, i, len(grids)) for i, grid in enumerate(grids)]
 
+
     @property
     def q2max(self):
         """ Upper boundary in q2 of the grid """
         q2max = self.subgrids[-1].log_q2max
         return np.exp(q2max)
+
 
     @property
     def q2min(self):
@@ -218,8 +219,9 @@ class PDF:
         q2min = self.subgrids[0].log_q2min
         return np.exp(q2min)
 
+
     @tf.function(input_signature=[GRID_I, GRID_F, GRID_F])
-    def _xfxQ2(self, u, aa_x, aa_q2):
+    def _xfxQ2(self, u, arr_x, arr_q2):
         """
         Function to interpolate
         Called by xfxQ2
@@ -230,14 +232,14 @@ class PDF:
         ----------
             u: tf.tensor(int)
                 list of PID to compute
-            aa_x: tf.tensor(float)
+            arr_x: tf.tensor(float)
                 x-grid for the evaluation of the pdf
-            aa_q2: tf.tensor(float)
+            arr_q2: tf.tensor(float)
                 q2-grid for the evaluation of the pdf
         """
 
-        a_x = tf.math.log(aa_x, name="logx")
-        a_q2 = tf.math.log(aa_q2, name="logq2")
+        a_x = tf.math.log(arr_x, name="logx")
+        a_q2 = tf.math.log(arr_q2, name="logq2")
 
         size_a = tf.size(a_x, out_type=DTYPEINT)
         size_u = tf.size(u, out_type=DTYPEINT)
@@ -249,8 +251,9 @@ class PDF:
 
         return res
 
-    @tf.function(experimental_relax_shapes=True)
-    def xfxQ2(self, pid, arr_x, arr_q2):
+
+    @tf.function(input_signature=[GRID_I, GRID_F, GRID_F])
+    def xfxQ2(self, pid, a_x, a_q2):
         """
         User interface for pdfflow when called with
         tensorflow tensors
@@ -260,9 +263,9 @@ class PDF:
         ----------
             pid: tf.tensor, dtype=int
                 list of PID to be computed
-            arr_x: tf.tensor, dtype=float
+            a_x: tf.tensor, dtype=float
                 grid on x where to compute the PDF
-            arr_q2: tf.tensor, dtype=float
+            a_q2: tf.tensor, dtype=float
                 grid on q^2 where to compute the PDF
         Returns
         -------
@@ -275,11 +278,11 @@ class PDF:
         # them to use the python version of the functions
         # must feed a mask for flavors to _xfxQ2
         # cast down if necessary the type of the pid
-        pid = int_me(pid)
+        #pid = int_me(pid)
 
         # same for the a_x and a_q2 arrays
-        a_x = float_me(arr_x)
-        a_q2 = float_me(arr_q2)
+        #a_x = float_me(arr_x)
+        #a_q2 = float_me(arr_q2)
 
         # And ensure it is unique
         # TODO maybe error if the user ask for the same pid twice or for a non-registered pid?
@@ -309,7 +312,8 @@ class PDF:
         result = tf.squeeze(f_f)
         return result
 
-    @tf.function(experimental_relax_shapes=True)
+
+    @tf.function(input_signature=[GRID_F, GRID_F])
     def xfxQ2_allpid(self, a_x, a_q2):
         """
         User interface for pdfflow when called with
@@ -319,9 +323,9 @@ class PDF:
 
         Parameters
         ----------
-            arr_x: tf.tensor, dtype=float
+            a_x: tf.tensor, dtype=float
                 grid on x where to compute the PDF
-            arr_q2: tf.tensor, dtype=float
+            a_q2: tf.tensor, dtype=float
                 grid on q^2 where to compute the PDF
         Returns
         -------
@@ -331,8 +335,9 @@ class PDF:
         pid = self.flavor_scheme
         return self.xfxQ2(pid, a_x, a_q2)
 
+
     # Python version of the above functions with the correct casting to tf
-    def py_xfxQ2_allpid(self, a_x, a_q2):
+    def py_xfxQ2_allpid(self, arr_x, arr_q2):
         """
         Python interface for pdfflow
         The input gets converted to the right
@@ -350,11 +355,12 @@ class PDF:
             pdf: tensor
                 PDF evaluated in each f(x,q2) for each flavour
         """
-        a_x = float_me(a_x)
-        a_q2 = float_me(a_q2)
+        a_x = float_me(arr_x)
+        a_q2 = float_me(arr_q2)
         return self.xfxQ2_allpid(a_x, a_q2)
 
-    def py_xfxQ2(self, pid, a_x, a_q2):
+
+    def py_xfxQ2(self, pid, arr_x, arr_q2):
         """
         Python interface for pdfflow
         The input gets converted to the right
@@ -375,15 +381,16 @@ class PDF:
         """
         # if pid is None, the mask is set to true everywhere
         if pid is None:
-            return self.py_xfxQ2_allpid(a_x, a_q2)
+            return self.py_xfxQ2_allpid(arr_x, arr_q2)
 
         tensor_pid = tf.reshape(int_me(pid), (-1,))
-        a_x = float_me(a_x)
-        a_q2 = float_me(a_q2)
+        a_x = float_me(arr_x)
+        a_q2 = float_me(arr_q2)
         return self.xfxQ2(tensor_pid, a_x, a_q2)
 
+
     @tf.function(input_signature=[GRID_F])
-    def _alphaSQ2(self, aa_q2):
+    def _alphaSQ2(self, arr_q2):
         """
         Function to interpolate
         Called by alphaSQ2
@@ -392,10 +399,10 @@ class PDF:
 
         Parameters
         ----------
-            aa_q2: tf.tensor(float)
+            arr_q2: tf.tensor(float)
                 q2-grid for the evaluation of alphaS
         """
-        a_q2 = tf.math.log(aa_q2, name="logq2")
+        a_q2 = tf.math.log(arr_q2, name="logq2")
 
         shape = tf.size(a_q2, out_type=DTYPEINT)
 
@@ -405,8 +412,9 @@ class PDF:
 
         return res
 
-    @tf.function(experimental_relax_shapes=True)
-    def alphaSQ2(self, arr_q2):
+
+    @tf.function(input_signature=[GRID_F])
+    def alphaSQ2(self, a_q2):
         """
         User interface for pdfflow alphaS interpolation when called with
         tensorflow tensors
@@ -414,12 +422,59 @@ class PDF:
 
         Parameters
         ----------
-            arr_q2: tf.tensor, dtype=float
+            a_q2: tf.tensor, dtype=float
                 grid on q^2 where to compute alphaS
         Returns
         -------
             alphaS: tensor
-                alphaS evaluated in each q2 query point
+                alphaS evaluated in each q^2 query point
+        """
+        # Parse the input
+        #a_q2 = float_me(arr_q2)
+
+        # Perform the actual computation
+        return self._alphaSQ2(a_q2)
+
+
+    @tf.function(input_signature=[GRID_F])
+    def alphaSQ(self, a_q):
+        """
+        User interface for pdfflow alphaS interpolation when called with
+        tensorflow tensors
+        It asks q points
+
+        Parameters
+        ----------
+            a_q: tf.tensor, dtype=float
+                grid on q where to compute alphaS
+        Returns
+        -------
+            alphaS: tensor
+                alphaS evaluated in each q query point
+        """
+        # Parse the input
+        #print('trace')
+        #a_q = float_me(arr_q)
+        a_q2 = a_q**2
+
+        # Perform the actual computation
+        return self._alphaSQ2(a_q2)
+
+
+    def py_alphaSQ2(self, arr_q2):
+        """
+        User interface for pdfflow alphaS interpolation when called with
+        tensorflow tensors
+        It asks q^2 points
+
+        Parameters
+        ----------
+            arr_q: tf.tensor, dtype=float
+                grid on q^2 where to compute alphaS
+        Returns
+        -------
+            alphaS: tensor
+                alphaS evaluated in each q^2 query point
         """
         # Parse the input
         a_q2 = float_me(arr_q2)
@@ -427,8 +482,8 @@ class PDF:
         # Perform the actual computation
         return self._alphaSQ2(a_q2)
 
-    @tf.function(experimental_relax_shapes=True)
-    def alphaSQ(self, arr_q):
+
+    def py_alphaSQ(self, arr_q):
         """
         User interface for pdfflow alphaS interpolation when called with
         tensorflow tensors
@@ -445,7 +500,6 @@ class PDF:
         """
         # Parse the input
         a_q = float_me(arr_q)
-        a_q2 = a_q**2
 
         # Perform the actual computation
-        return self._alphaSQ2(a_q2)
+        return self.alphaSQ(a_q)

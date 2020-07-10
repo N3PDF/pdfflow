@@ -17,7 +17,7 @@ from pdfflow.configflow import DTYPE, DTYPEINT, FMAX
 )
 def cubic_interpolation(T, VL, VDL, VH, VDH):
     """Cubic extrapolation itself"""
-    # print('cubic int')
+    #print('cubic int')
     t2 = T * T
     t3 = t2 * T
 
@@ -56,6 +56,7 @@ def daS_dq2_func(q2_id, s_q2, corn_q2, A):
     # derivatives are returned in a tensor with shape (2,#draws)
     # Note: there shouldn't never be a division by zero
 
+    #print('das dq2')
     diff_A = A[1:]-A[:-1]
     diff_q2 = corn_q2[1:] - corn_q2[:-1]
 
@@ -93,7 +94,7 @@ def alphaS_cubic_interpolation(
         tf.tensor of shape [None]
         LogCubic Interpolated points
     """
-    # print('alphaS bic int')
+    #print('alphaS bic int')
     dlogq2 = corn_q2[2] - corn_q2[1]
     tlogq2 = (a_q2 - corn_q2[1])/dlogq2
 
