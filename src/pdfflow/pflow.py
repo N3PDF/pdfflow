@@ -17,7 +17,7 @@ except ModuleNotFoundError:
 from pdfflow.configflow import DTYPE, DTYPEINT, int_me, izero, float_me
 import tensorflow as tf
 from pdfflow.subgrid import Subgrid
-from pdfflow.alphaS_subgrid import AlphaS_Subgrid
+from pdfflow.alphas_subgrid import Alphas_subgrid
 
 # lhapdf gluon code
 PID_G = int_me(21)
@@ -69,10 +69,10 @@ def _load_data(pdf_file):
     return grids
 
 
-def _load_alphaS(info_file):
+def _load_alphas(info_file):
     """
-    Reads metadata from info file and retrieves a list of alphaS subgrids
-    Each subgrid is a tuple containing numpy arrays (Q2, alphaS)
+    Reads metadata from info file and retrieves a list of alphas subgrids
+    Each subgrid is a tuple containing numpy arrays (Q2, alphas)
 
     Note:
         the input q array in LHAPDF is just q, this functions
@@ -86,7 +86,7 @@ def _load_alphaS(info_file):
     Returns
     -------
         grids: list(tuple(np.array))
-            list of tuples of arrays (Q2, alphaS values)
+            list of tuples of arrays (Q2, alphas values)
     """
     with open(info_file, "r") as ifile:
         idict = yaml.load(ifile, Loader=yaml.FullLoader)
@@ -202,8 +202,8 @@ class PDF:
             self.fname = f"{self.dirname}/{fname}/{fname}.info"
 
             logger.info("loading %s", self.fname)
-            grids = _load_alphaS(self.fname)
-            self.alphaS_subgrids = [AlphaS_Subgrid(grid, i, len(grids)) for i, grid in enumerate(grids)]
+            grids = _load_alphas(self.fname)
+            self.alphas_subgrids = [Alphas_subgrid(grid, i, len(grids)) for i, grid in enumerate(grids)]
 
 
     @property
@@ -390,67 +390,67 @@ class PDF:
 
 
     @tf.function(input_signature=[GRID_F])
-    def _alphaSQ2(self, arr_q2):
+    def _alphasQ2(self, arr_q2):
         """
         Function to interpolate
-        Called by alphaSQ2
+        Called by alphasQ2
         It divides the computation on the q2 axis in subgrids and sums up
         all the results
 
         Parameters
         ----------
             arr_q2: tf.tensor(float)
-                q2-grid for the evaluation of alphaS
+                q2-grid for the evaluation of alphas
         """
         a_q2 = tf.math.log(arr_q2, name="logq2")
 
         shape = tf.size(a_q2, out_type=DTYPEINT)
 
         res = tf.zeros(shape, dtype=DTYPE)
-        for subgrid in self.alphaS_subgrids:
+        for subgrid in self.alphas_subgrids:
             res += subgrid(shape, a_q2)
 
         return res
 
 
     @tf.function(input_signature=[GRID_F])
-    def alphaSQ2(self, a_q2):
+    def alphasQ2(self, a_q2):
         """
-        User interface for pdfflow alphaS interpolation when called with
+        User interface for pdfflow alphas interpolation when called with
         tensorflow tensors
         It asks q2 points
 
         Parameters
         ----------
             a_q2: tf.tensor, dtype=float
-                grid on q^2 where to compute alphaS
+                grid on q^2 where to compute alphas
         Returns
         -------
-            alphaS: tensor
-                alphaS evaluated in each q^2 query point
+            alphas: tensor
+                alphas evaluated in each q^2 query point
         """
         # Parse the input
         #a_q2 = float_me(arr_q2)
 
         # Perform the actual computation
-        return self._alphaSQ2(a_q2)
+        return self._alphasQ2(a_q2)
 
 
     @tf.function(input_signature=[GRID_F])
-    def alphaSQ(self, a_q):
+    def alphasQ(self, a_q):
         """
-        User interface for pdfflow alphaS interpolation when called with
+        User interface for pdfflow alphas interpolation when called with
         tensorflow tensors
         It asks q points
 
         Parameters
         ----------
             a_q: tf.tensor, dtype=float
-                grid on q where to compute alphaS
+                grid on q where to compute alphas
         Returns
         -------
-            alphaS: tensor
-                alphaS evaluated in each q query point
+            alphas: tensor
+                alphas evaluated in each q query point
         """
         # Parse the input
         #print('trace')
@@ -458,48 +458,48 @@ class PDF:
         a_q2 = a_q**2
 
         # Perform the actual computation
-        return self._alphaSQ2(a_q2)
+        return self._alphasQ2(a_q2)
 
 
-    def py_alphaSQ2(self, arr_q2):
+    def py_alphasQ2(self, arr_q2):
         """
-        User interface for pdfflow alphaS interpolation when called with
+        User interface for pdfflow alphas interpolation when called with
         tensorflow tensors
         It asks q^2 points
 
         Parameters
         ----------
             arr_q: tf.tensor, dtype=float
-                grid on q^2 where to compute alphaS
+                grid on q^2 where to compute alphas
         Returns
         -------
-            alphaS: tensor
-                alphaS evaluated in each q^2 query point
+            alphas: tensor
+                alphas evaluated in each q^2 query point
         """
         # Parse the input
         a_q2 = float_me(arr_q2)
 
         # Perform the actual computation
-        return self._alphaSQ2(a_q2)
+        return self._alphasQ2(a_q2)
 
 
-    def py_alphaSQ(self, arr_q):
+    def py_alphasQ(self, arr_q):
         """
-        User interface for pdfflow alphaS interpolation when called with
+        User interface for pdfflow alphas interpolation when called with
         tensorflow tensors
         It asks q points
 
         Parameters
         ----------
             arr_q: tf.tensor, dtype=float
-                grid on q where to compute alphaS
+                grid on q where to compute alphas
         Returns
         -------
-            alphaS: tensor
-                alphaS evaluated in each q query point
+            alphas: tensor
+                alphas evaluated in each q query point
         """
         # Parse the input
         a_q = float_me(arr_q)
 
         # Perform the actual computation
-        return self.alphaSQ(a_q)
+        return self.alphasQ(a_q)
