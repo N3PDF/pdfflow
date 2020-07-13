@@ -66,7 +66,7 @@ def test_accuracy_alphas(atol=1e-6):
         for member in range(MEMBERS):
             pdfset = f"{setname}/{member}"
             logger.info(" > Checking %s", pdfset)
-            pdfflow = pdf.mkPDF(pdfset, f"{DIRNAME}/", alpha_computation=True)
+            pdfflow = pdf.mkPDF(pdfset, f"{DIRNAME}/")
             for qi, qf in QS:
                 qi = max(qi, pdfflow.q2min)
                 qf = min(qf, pdfflow.q2max)
@@ -87,7 +87,7 @@ def test_alphas_q2(atol=1e-6):
         for member in range(MEMBERS):
             pdfset = f"{setname}/{member}"
             logger.info(" > Checking %s", pdfset)
-            pdfflow = pdf.mkPDF(pdfset, f"{DIRNAME}/", alpha_computation=True)
+            pdfflow = pdf.mkPDF(pdfset, f"{DIRNAME}/")
             for qi, qf in QS:
                 qi = max(qi, pdfflow.q2min)
                 qf = min(qf, pdfflow.q2max)
