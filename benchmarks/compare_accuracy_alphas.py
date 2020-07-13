@@ -20,7 +20,7 @@ def main(pdfname):
     import pdfflow.pflow as pdf
     alpha = '\u03B1'
 
-    p = pdf.mkPDF(pdfname, DIRNAME, alpha_computation=True)
+    p = pdf.mkPDF(pdfname, DIRNAME)
     l_pdf = lhapdf.mkPDF(pdfname)
 
     q = [100.]
