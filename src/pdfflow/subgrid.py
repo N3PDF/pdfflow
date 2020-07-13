@@ -87,7 +87,12 @@ class Subgrid(tf.Module):
     """
 
     def __init__(self, grid, i=0, total=0, compile_functions=True, alpha_s=False):
-        super().__init__()
+        name_sg = f"grid_{i}"
+        self.alpha_s = alpha_s
+        if alpha_s:
+            name_sg += "_alpha"
+        self.name_sg = name_sg
+        super().__init__(name=f"Parent_{name_sg}")
         q2min = min(grid.q2)
         q2max = max(grid.q2)
         self.log_q2min = float_me(np.log(q2min))
@@ -106,6 +111,8 @@ class Subgrid(tf.Module):
         # Depending on whether it is an alphs_s grid or a pdf grid
         # we might need to change some options
 
+        compilation_options = OPT.copy()
+
         if alpha_s:
             # the grid is sized (q.size), pad it with 0s
             self.padded_grid = float_me(np.pad(grid.grid, (1, 1)))
@@ -118,7 +125,7 @@ class Subgrid(tf.Module):
                 self.fn_interpolation = alphas_inner_subgrid
 
             # Change the function signature to that of alpha_s
-            OPT["input_signature"] = ALPHAS_GRID_FUNCTION_SIGNATURE
+            compilation_options["input_signature"] = ALPHAS_GRID_FUNCTION_SIGNATURE
         else:
             # If this is a pdf grid, save also the x information
             xmin = min(grid.x)
@@ -151,11 +158,9 @@ class Subgrid(tf.Module):
             else:
                 self.fn_interpolation = inner_subgrid
 
-        self.name_sg = f"grid_{i}"
-        self.alpha_s = alpha_s
 
         if compile_functions:
-            self.fn_interpolation = tf.function(self.fn_interpolation, **OPT)
+            self.fn_interpolation = tf.function(self.fn_interpolation, **compilation_options)
 
     def __call__(self, shape, arr_q2, pids=None, arr_x=None):
         if self.alpha_s:
