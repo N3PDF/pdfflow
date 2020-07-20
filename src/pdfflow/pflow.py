@@ -17,7 +17,6 @@ except ModuleNotFoundError:
 from pdfflow.configflow import DTYPE, DTYPEINT, int_me, izero, float_me
 import tensorflow as tf
 from pdfflow.subgrid import Subgrid
-from pdfflow.alphas_subgrid import Alphas_subgrid
 
 # lhapdf gluon code
 PID_G = int_me(21)
@@ -100,16 +99,16 @@ def _load_alphas(info_file):
     diff = alpha_qs[1:] - alpha_qs[:-1]
     t = np.where(diff < EPS)[0] + 1
 
-    splits_qs = np.split(alpha_qs**2,t)
-    splits_vals = np.split(alpha_vals,t)
+    splits_qs = np.split(alpha_qs ** 2, t)
+    splits_vals = np.split(alpha_vals, t)
 
-    for q,v in zip(splits_qs, splits_vals):
-        grids.append(AlphaTuple(q,v))
+    for q, v in zip(splits_qs, splits_vals):
+        grids.append(AlphaTuple(q, v))
 
     return grids
 
 
-def mkPDF(fname, dirname=None, alpha_computation=False):
+def mkPDF(fname, dirname=None):
     """ Wrapper to generate a PDF given a PDF name and a directory
     where to find the grid files.
 
@@ -119,8 +118,6 @@ def mkPDF(fname, dirname=None, alpha_computation=False):
             PDF name and member in the format '<set_name>/<set member number>'
         dirname: str
             LHAPDF datadir, if None will try to guess from LHAPDF
-        alpha_computation: bool
-            if True loads alpha_S grid from metadata
 
     Returns
     -------
@@ -134,7 +131,7 @@ def mkPDF(fname, dirname=None, alpha_computation=False):
             ["lhapdf-config", "--datadir"], capture_output=True, text=True, check=True
         )
         dirname = dirname_raw.stdout.strip()
-    return PDF(fname, dirname, alpha_computation=alpha_computation)
+    return PDF(fname, dirname)
 
 
 class PDF:
@@ -155,7 +152,8 @@ class PDF:
         dirname: str
             LHAPDF datadir
     """
-    def __init__(self, fname, dirname, alpha_computation, compilable=True):
+
+    def __init__(self, fname, dirname, compilable=True):
         if not compilable:
             logger.warning("Running pdfflow in eager mode")
             logger.warning("Setting eager mode will affect all of TF")
@@ -195,16 +193,16 @@ class PDF:
             # TODO can't we rely on the PDF flavours to be sorted?
             self.flavors_sorted = False
             self.flavor_shift = 0
-        
-        #now load metadata from info file
-        if alpha_computation:
-            print('alpha computation')
-            self.fname = f"{self.dirname}/{fname}/{fname}.info"
 
-            logger.info("loading %s", self.fname)
-            grids = _load_alphas(self.fname)
-            self.alphas_subgrids = [Alphas_subgrid(grid, i, len(grids)) for i, grid in enumerate(grids)]
+        # now load metadata from info file
+        logger.info("Enabling computation of alpha")
+        self.fname = f"{self.dirname}/{fname}/{fname}.info"
 
+        logger.info("loading %s", self.fname)
+        alpha_grids = _load_alphas(self.fname)
+        self.alphas_subgrids = [
+            Subgrid(grid, i, len(grids), alpha_s=True) for i, grid in enumerate(alpha_grids)
+        ]
 
     @property
     def q2max(self):
@@ -212,13 +210,11 @@ class PDF:
         q2max = self.subgrids[-1].log_q2max
         return np.exp(q2max)
 
-
     @property
     def q2min(self):
         """ Lower boundary in q2 of the grid """
         q2min = self.subgrids[0].log_q2min
         return np.exp(q2min)
-
 
     @tf.function(input_signature=[GRID_I, GRID_F, GRID_F])
     def _xfxQ2(self, u, arr_x, arr_q2):
@@ -247,10 +243,9 @@ class PDF:
 
         res = tf.zeros(shape, dtype=DTYPE)
         for subgrid in self.subgrids:
-            res += subgrid(u, shape, a_x, a_q2)
+            res += subgrid(shape, a_q2, pids=u, arr_x=a_x)
 
         return res
-
 
     @tf.function(input_signature=[GRID_I, GRID_F, GRID_F])
     def xfxQ2(self, pid, a_x, a_q2):
@@ -278,11 +273,11 @@ class PDF:
         # them to use the python version of the functions
         # must feed a mask for flavors to _xfxQ2
         # cast down if necessary the type of the pid
-        #pid = int_me(pid)
+        # pid = int_me(pid)
 
         # same for the a_x and a_q2 arrays
-        #a_x = float_me(arr_x)
-        #a_q2 = float_me(arr_q2)
+        # a_x = float_me(arr_x)
+        # a_q2 = float_me(arr_q2)
 
         # And ensure it is unique
         # TODO maybe error if the user ask for the same pid twice or for a non-registered pid?
@@ -299,9 +294,7 @@ class PDF:
             upid = tf.where(upid == izero, PID_G, upid)
             # TODO maybe it is better to digest the flavor_scheme on initialization and avoid this
             upid = tf.expand_dims(upid, -1)
-            pid_idx = tf.cast(
-                tf.where(tf.equal(self.flavor_scheme, upid))[:, 1], dtype=DTYPEINT
-            )
+            pid_idx = tf.cast(tf.where(tf.equal(self.flavor_scheme, upid))[:, 1], dtype=DTYPEINT)
 
         # Perform the actual computation
         f_f = self._xfxQ2(pid_idx, a_x, a_q2)
@@ -311,7 +304,6 @@ class PDF:
 
         result = tf.squeeze(f_f)
         return result
-
 
     @tf.function(input_signature=[GRID_F, GRID_F])
     def xfxQ2_allpid(self, a_x, a_q2):
@@ -335,7 +327,6 @@ class PDF:
         pid = self.flavor_scheme
         return self.xfxQ2(pid, a_x, a_q2)
 
-
     # Python version of the above functions with the correct casting to tf
     def py_xfxQ2_allpid(self, arr_x, arr_q2):
         """
@@ -358,7 +349,6 @@ class PDF:
         a_x = float_me(arr_x)
         a_q2 = float_me(arr_q2)
         return self.xfxQ2_allpid(a_x, a_q2)
-
 
     def py_xfxQ2(self, pid, arr_x, arr_q2):
         """
@@ -388,7 +378,6 @@ class PDF:
         a_q2 = float_me(arr_q2)
         return self.xfxQ2(tensor_pid, a_x, a_q2)
 
-
     @tf.function(input_signature=[GRID_F])
     def _alphasQ2(self, arr_q2):
         """
@@ -412,7 +401,6 @@ class PDF:
 
         return res
 
-
     @tf.function(input_signature=[GRID_F])
     def alphasQ2(self, a_q2):
         """
@@ -430,11 +418,10 @@ class PDF:
                 alphas evaluated in each q^2 query point
         """
         # Parse the input
-        #a_q2 = float_me(arr_q2)
+        # a_q2 = float_me(arr_q2)
 
         # Perform the actual computation
         return self._alphasQ2(a_q2)
-
 
     @tf.function(input_signature=[GRID_F])
     def alphasQ(self, a_q):
@@ -453,13 +440,12 @@ class PDF:
                 alphas evaluated in each q query point
         """
         # Parse the input
-        #print('trace')
-        #a_q = float_me(arr_q)
-        a_q2 = a_q**2
+        # print('trace')
+        # a_q = float_me(arr_q)
+        a_q2 = a_q ** 2
 
         # Perform the actual computation
         return self._alphasQ2(a_q2)
-
 
     def py_alphasQ2(self, arr_q2):
         """
@@ -481,7 +467,6 @@ class PDF:
 
         # Perform the actual computation
         return self._alphasQ2(a_q2)
-
 
     def py_alphasQ(self, arr_q):
         """
