@@ -159,10 +159,11 @@ class Subgrid(tf.Module):
                 self.fn_interpolation = inner_subgrid
 
 
-        if compile_functions:
-            self.fn_interpolation = tf.function(self.fn_interpolation, **compilation_options)
+        #if compile_functions:
+        #    self.fn_interpolation = tf.function(self.fn_interpolation, **compilation_options)
 
     def __call__(self, shape, arr_q2, pids=None, arr_x=None):
+        print('retracing __call__ the Subgrid')
         if self.alpha_s:
             if pids is not None or arr_x is not None:
                 raise ValueError("alpha_s interpolation does not accept x-input or flavours")

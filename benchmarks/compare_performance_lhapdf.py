@@ -37,6 +37,17 @@ def main(pdfname=None, n_draws=10, pid=21, no_lhapdf=False, tensorboard=False):
 
     p = pdf.mkPDF(pdfname, DIRNAME)
 
+    p.py_xfxQ2_allpid([0.5],[100.])
+    print('---------')
+    p.py_xfxQ2_allpid([0.5],[100.])
+    print('..........')
+    p = pdf.mkPDF("NNPDF31_nlo_as_0118/1", DIRNAME)
+    print('new object instantiated')
+    p.py_xfxQ2_allpid([0.5],[100.])
+    print('---------')
+    p.py_xfxQ2_allpid([0.5],[100.])
+    exit()
+
     xmin = np.exp(p.subgrids[0].log_xmin)
     xmax = np.exp(p.subgrids[0].log_xmax)
     Q2min = np.sqrt(np.exp(p.subgrids[0].log_q2min))

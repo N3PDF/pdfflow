@@ -28,13 +28,28 @@
 
 """
 import tensorflow as tf
-from pdfflow.configflow import DTYPE, int_me
+from pdfflow.configflow import DTYPE, DTYPEINT, int_me
 from pdfflow.region_interpolator import interpolate
 from pdfflow.region_interpolator import lowx_extrapolation
 from pdfflow.region_interpolator import lowq2_extrapolation
 from pdfflow.region_interpolator import lowx_lowq2_extrapolation
 from pdfflow.region_interpolator import highq2_extrapolation
 from pdfflow.region_interpolator import lowx_highq2_extrapolation
+
+GRID_FUNCTION_SIGNATURE = [
+    tf.TensorSpec(shape=[2], dtype=DTYPEINT),  # shape
+    tf.TensorSpec(shape=[None], dtype=DTYPE),  # a_x
+    tf.TensorSpec(shape=[None], dtype=DTYPE),  # a_q2
+    tf.TensorSpec(shape=[], dtype=DTYPE),  # xmin
+    tf.TensorSpec(shape=[], dtype=DTYPE),  # xmax
+    tf.TensorSpec(shape=[None], dtype=DTYPE),  # padded_x
+    tf.TensorSpec(shape=[], dtype=DTYPEINT),  # s_x
+    tf.TensorSpec(shape=[], dtype=DTYPE),  # q2min
+    tf.TensorSpec(shape=[], dtype=DTYPE),  # q2max
+    tf.TensorSpec(shape=[None], dtype=DTYPE),  # padded_q2
+    tf.TensorSpec(shape=[], dtype=DTYPEINT),  # s_q2
+    tf.TensorSpec(shape=[None, None], dtype=DTYPE),  # grid
+]
 
 # Auxiliary functions
 @tf.function(
@@ -49,6 +64,7 @@ def _condition_to_idx(cond1, cond2):
     return full_condition, int_me(tf.where(full_condition))
 
 
+@tf.function(input_signature=GRID_FUNCTION_SIGNATURE)
 def inner_subgrid(
     shape,
     a_x,
@@ -111,6 +127,7 @@ def inner_subgrid(
     return res
 
 
+@tf.function(input_signature=GRID_FUNCTION_SIGNATURE)
 def first_subgrid(
     shape,
     a_x,
@@ -148,6 +165,7 @@ def first_subgrid(
         tf.tensor of shape `shape`
         pdf interpolated values for each query point and quey pids
     """
+    print('ratracing first subgrid')
     stripe_0 = tf.math.logical_and(a_x >= log_xmin, a_x <= log_xmax)
     stripe_1 = tf.math.logical_and(a_q2 >= log_q2min, a_q2 < log_q2max)
     stripe_2 = a_x < log_xmin
@@ -200,6 +218,7 @@ def first_subgrid(
     return res
 
 
+@tf.function(input_signature=GRID_FUNCTION_SIGNATURE)
 def last_subgrid(
     shape,
     a_x,
@@ -236,6 +255,7 @@ def last_subgrid(
             pdf interpolated values for each query point and quey pids
     """
     # Generate all conditions for all stripes
+    print('retracing last subgrid')
     stripe_0 = tf.math.logical_and(a_x >= log_xmin, a_x <= log_xmax)
     stripe_1 = tf.math.logical_and(a_q2 >= log_q2min, a_q2 <= log_q2max)
     stripe_2 = a_x < log_xmin
