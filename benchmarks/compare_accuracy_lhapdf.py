@@ -37,7 +37,6 @@ def main(pdfname, pid):
     for iq2 in q2:
         vl = np.array([l_pdf.xfxQ2(pid, ix, iq2) for ix in x])
         vp = p.py_xfxQ2(pid, float_me(x), float_me([iq2]*len(x)))
-        #print('%e'%np.sqrt(iq2), vl,vp,'\n')
 
         plt.plot(x, np.abs(vp-vl)/(np.abs(vl)+EPS), label='$Q=%.2e$' % iq2**0.5)
     plt.hlines(1e-3, plt.xlim()[0], plt.xlim()[1], linestyles='dotted')

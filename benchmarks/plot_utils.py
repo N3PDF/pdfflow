@@ -69,8 +69,7 @@ def test(n_draws, p, l_pdf, xmin, xmax, Q2min, Q2max):
     t = time()- start
 
     start = time()
-    print(l_pdf)
-    exit()
+
     if l_pdf is not None:
         f_lha = []
         for i in range(a_x.shape[0]):
