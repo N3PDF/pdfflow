@@ -30,10 +30,13 @@ pdf = mkPDF(pdfset, DIRNAME)
 # TODO: get alpha val
 
 ##### PDF calculation
-@tf.function(input_signature=[TFLOAT1, TFLOAT1])
-def luminosity(x1, x2):
+@tf.function(input_signature=[TFLOAT1, TFLOAT1, TFLOAT1])
+def luminosity(x1, x2, q2 = None):
     """ Returns f(x1)*f(x2) """
-    q2array = muR2 * tf.ones_like(x1)
+    if q2 is None:
+        q2array = muR2 * tf.ones_like(x1)
+    else:
+        q2array = q2
     utype = pdf.xfxQ2([2, 4], x1, q2array)
     dtype = pdf.xfxQ2([1, 3], x2, q2array)
     lumi = tf.reduce_sum(utype * dtype, axis=-1)
@@ -126,7 +129,6 @@ def vfh_production_nlo(xarr, **kwargs):
     if phase_space.UNIT_PHASE:
         return tf.scatter_nd(idx, wgt, shape=xarr.shape[0:1])
 
-    # Compute luminosity
     me_r = me.qq_h_r(pa, pb, p1, p2, p3)
 
     if SUBTRACT:
@@ -147,7 +149,11 @@ def vfh_production_nlo(xarr, **kwargs):
 
         sub_term = (red_1 * dip_1 + red_2 * dip_2) * me.factor_re
 
-    lumi = luminosity(x1, x2)
+    # Compute luminosity
+    pt2s = phase_space.pt2many(tf.stack([p1, p2, p3]))
+    max_pt2 = tf.reduce_max(pt2s, axis=0) 
+    lumi = luminosity(x1, x2, q2 = max_pt2)
+
     res = lumi * (me_r - sub_term) * wgt
     final_result = res * flux / x1 / x2
     return tf.scatter_nd(idx, final_result, shape=xarr.shape[0:1])

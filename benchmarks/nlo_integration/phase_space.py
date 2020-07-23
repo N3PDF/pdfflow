@@ -76,6 +76,10 @@ def pt2(fourp):
     """ Returns px^2 + py^2 """
     return tf.square(fourp[1, :]) + tf.square(fourp[2, :])
 
+@tf.function
+def pt2many(allpt):
+    return tf.square(allpt[:, 1, :]) + tf.square(allpt[:, 2, :])
+
 
 @tf.function
 def pt_cut_2of2(p1, p2):
