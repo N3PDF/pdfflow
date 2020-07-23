@@ -21,9 +21,9 @@ import me
 pdfset = "NNPDF31_nnlo_as_0118/0"
 # Instantiate the PDF
 DIRNAME = (
-    sp.run(
-        ["lhapdf-config", "--datadir"], stdout=sp.PIPE, universal_newlines=True
-    ).stdout.strip("\n")
+    sp.run(["lhapdf-config", "--datadir"], stdout=sp.PIPE, universal_newlines=True).stdout.strip(
+        "\n"
+    )
     + "/"
 )
 pdf = mkPDF(pdfset, DIRNAME)
@@ -31,12 +31,9 @@ pdf = mkPDF(pdfset, DIRNAME)
 
 ##### PDF calculation
 @tf.function(input_signature=[TFLOAT1, TFLOAT1, TFLOAT1])
-def luminosity(x1, x2, q2 = None):
+def luminosity(x1, x2, q2):
     """ Returns f(x1)*f(x2) """
-    if q2 is None:
-        q2array = muR2 * tf.ones_like(x1)
-    else:
-        q2array = q2
+    q2array = q2
     utype = pdf.xfxQ2([2, 4], x1, q2array)
     dtype = pdf.xfxQ2([1, 3], x2, q2array)
     lumi = tf.reduce_sum(utype * dtype, axis=-1)
@@ -63,8 +60,12 @@ def vfh_production_leading_order(xarr, **kwargs):
     wgt = tf.boolean_mask(wgt, stripe, axis=0)
     x1 = tf.boolean_mask(x1, stripe, axis=0)
     x2 = tf.boolean_mask(x2, stripe, axis=0)
+
     # Compute luminosity
-    lumi = luminosity(x1, x2)
+    pt2s = phase_space.pt2many(tf.stack([p1, p2]))
+    max_pt2 = tf.reduce_max(pt2s, axis=0)
+    lumi = luminosity(x1, x2, q2=max_pt2)
+
     me_lo = me.qq_h_lo(pa, pb, p1, p2)
     res = lumi * me_lo * wgt
     final_result = res * flux / x1 / x2
@@ -97,7 +98,10 @@ def vfh_production_real(xarr, **kwargs):
         return tf.scatter_nd(idx, wgt, shape=xarr.shape[0:1])
 
     # Compute luminosity
-    lumi = luminosity(x1, x2)
+    pt2s = phase_space.pt2many(tf.stack([p1, p2, p3]))
+    max_pt2 = tf.reduce_max(pt2s, axis=0)
+    lumi = luminosity(x1, x2, q2=max_pt2)
+
     me_r = me.qq_h_r(pa, pb, p1, p2, p3)
     res = lumi * me_r * wgt
     final_result = res * flux / x1 / x2
@@ -131,6 +135,12 @@ def vfh_production_nlo(xarr, **kwargs):
 
     me_r = me.qq_h_r(pa, pb, p1, p2, p3)
 
+    # Compute luminosity
+    pt2s = phase_space.pt2many(tf.stack([p1, p2, p3]))
+    max_pt2 = tf.reduce_max(pt2s, axis=0)
+    lumi = luminosity(x1, x2, q2=max_pt2)
+    phys_me = lumi*me_r
+
     if SUBTRACT:
         # Now we need the subtraction terms for leg 1 and leg 2
         # leg 1, p3 is radiated from pa-p1
@@ -140,6 +150,12 @@ def vfh_production_nlo(xarr, **kwargs):
         # Reduced ME
         red_1 = me.partial_lo(npa, pb, np1, p2)
 
+        # Compute luminosity of the subtraction
+        pt2s_1 = phase_space.pt2many(tf.stack([p1, p2, p3]))
+        max_pt2_1 = tf.reduce_max(pt2s_1, axis=0)
+        lumi_1 = luminosity(x1, x2, q2=max_pt2_1)
+        sub_1 = lumi_1*dip_1*red_1
+
         # leg 2, p3 is radiated from pb-p2
         npb, np2 = phase_space.map_3to2(pb, p2, p3)
         # Compute the dipole
@@ -147,14 +163,15 @@ def vfh_production_nlo(xarr, **kwargs):
         # Reduced ME
         red_2 = me.partial_lo(pa, npb, p1, np2)
 
-        sub_term = (red_1 * dip_1 + red_2 * dip_2) * me.factor_re
+        # Compute luminosity of the subtraction
+        pt2s_2 = phase_space.pt2many(tf.stack([p1, p2, p3]))
+        max_pt2_2 = tf.reduce_max(pt2s_2, axis=0)
+        lumi_2 = luminosity(x1, x2, q2=max_pt2_2)
+        sub_2 = lumi_2*dip_2*red_2
 
-    # Compute luminosity
-    pt2s = phase_space.pt2many(tf.stack([p1, p2, p3]))
-    max_pt2 = tf.reduce_max(pt2s, axis=0) 
-    lumi = luminosity(x1, x2, q2 = max_pt2)
+        sub_term = (sub_1 + sub_2)*me.factor_re
 
-    res = lumi * (me_r - sub_term) * wgt
+    res = (phys_me - sub_term)*wgt
     final_result = res * flux / x1 / x2
     return tf.scatter_nd(idx, final_result, shape=xarr.shape[0:1])
 
@@ -172,12 +189,8 @@ def vegas_integrate(integrand, ndim, niter, ncalls, events_limit):
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("-l", "--level", default="LO", help="Integration level")
-    parser.add_argument(
-        "-n", "--nevents", type=int, default=int(1e6), help="Number of events"
-    )
-    parser.add_argument(
-        "-i", "--iterations", type=int, default=5, help="Number of iterations"
-    )
+    parser.add_argument("-n", "--nevents", type=int, default=int(1e6), help="Number of events")
+    parser.add_argument("-i", "--iterations", type=int, default=5, help="Number of iterations")
     parser.add_argument(
         "-e",
         "--events_limit",
