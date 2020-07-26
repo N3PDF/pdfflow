@@ -14,9 +14,10 @@ stw = float_me(0.22264585341299603)
 muR2 = float_me(pow(higgs_mass, 2))
 
 # Cuts
-pt2_cut = float_me(50 ** 2)
+pt2_cut = float_me(30 ** 2)
 rdistance = float_me(0.1 ** 2)
 deltaycut = float_me(4.5)
+m2jj_cut = float_me(600**2)
 
 # Collision parameters
 s_in = float_me(pow(13 * 1000, 2))

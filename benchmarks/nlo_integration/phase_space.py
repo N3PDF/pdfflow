@@ -23,6 +23,7 @@ from parameters import (
     pt2_cut,
     rdistance,
     deltaycut,
+    m2jj_cut
 )
 import spinors
 
@@ -80,6 +81,15 @@ def pt2(fourp):
 def pt2many(allpt):
     return tf.square(allpt[:, 1, :]) + tf.square(allpt[:, 2, :])
 
+@tf.function
+def deltay_cut(p1, p2):
+    deltay = tf.abs(rapidity_dif(p1, p2))
+    return deltay > deltaycut
+
+@tf.function
+def mjj_cut(p1, p2):
+    val = abs_dot(p1, p2)*2.0
+    return val > m2jj_cut
 
 @tf.function
 def pt_cut_2of2(p1, p2):
@@ -88,7 +98,11 @@ def pt_cut_2of2(p1, p2):
     """
     p1pass = pt2(p1) > pt2_cut
     p2pass = pt2(p2) > pt2_cut
-    stripe, idx = _condition_to_idx(p1pass, p2pass)
+    deltaypass = deltay_cut(p1, p2)
+    mjjpass = mjj_cut(p1, p2)
+    jetpass = tf.reduce_all([p1pass, p2pass, deltaypass], axis=0)
+    
+    stripe, idx = _condition_to_idx(jetpass, mjjpass)
     return stripe, idx
 
 @tf.function

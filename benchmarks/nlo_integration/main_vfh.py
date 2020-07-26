@@ -64,7 +64,7 @@ def vfh_production_leading_order(xarr, **kwargs):
     # Compute luminosity
     pt2s = phase_space.pt2many(tf.stack([p1, p2]))
     max_pt2 = tf.reduce_max(pt2s, axis=0)
-    lumi = luminosity(x1, x2, q2=max_pt2)
+    lumi = luminosity(x1, x2, max_pt2)
 
     me_lo = me.qq_h_lo(pa, pb, p1, p2)
     res = lumi * me_lo * wgt
