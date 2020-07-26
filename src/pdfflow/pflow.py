@@ -233,7 +233,6 @@ class PDF:
             arr_q2: tf.tensor(float)
                 q2-grid for the evaluation of the pdf
         """
-        print('retracing _xfxQ2')
         a_x = tf.math.log(arr_x, name="logx")
         a_q2 = tf.math.log(arr_q2, name="logq2")
 
@@ -281,7 +280,6 @@ class PDF:
 
         # And ensure it is unique
         # TODO maybe error if the user ask for the same pid twice or for a non-registered pid?
-        print('retracing xfxQ2')
         upid, user_idx = tf.unique(pid, out_idx=DTYPEINT)
 
         # And return the positions in the flavor_scheme array
@@ -325,7 +323,6 @@ class PDF:
             pdf: tensor
                 PDF evaluated in each f(x,q2) for each flavour
         """
-        print('retracing xfxQ2 all pid')
         pid = self.flavor_scheme
         return self.xfxQ2(pid, a_x, a_q2)
 

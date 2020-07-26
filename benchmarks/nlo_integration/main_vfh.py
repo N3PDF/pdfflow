@@ -31,9 +31,9 @@ pdf = mkPDF(pdfset, DIRNAME)
 
 ##### PDF calculation
 @tf.function(input_signature=[TFLOAT1, TFLOAT1, TFLOAT1])
-def luminosity(x1, x2, q2):
+def luminosity(x1, x2, q2array):
     """ Returns f(x1)*f(x2) """
-    q2array = q2
+    q2array = muR2 * tf.ones_like(x1)
     utype = pdf.xfxQ2([2, 4], x1, q2array)
     dtype = pdf.xfxQ2([1, 3], x2, q2array)
     lumi = tf.reduce_sum(utype * dtype, axis=-1)
@@ -84,7 +84,7 @@ def vfh_production_real(xarr, **kwargs):
     pa, pb, p1, p2, p3, x1, x2, wgt = phase_space.psgen_2to4(xarr)
 
     # Apply cuts
-    stripe, idx = phase_space.pt_cut_3of3(p1, p2, p3, True, pa, pb)
+    stripe, idx, max_pt2 = phase_space.pt_cut_3of3(pa, pb, p1, p2, p3)
 
     pa = tf.boolean_mask(pa, stripe, axis=1)
     pb = tf.boolean_mask(pb, stripe, axis=1)
@@ -94,16 +94,16 @@ def vfh_production_real(xarr, **kwargs):
     wgt = tf.boolean_mask(wgt, stripe, axis=0)
     x1 = tf.boolean_mask(x1, stripe, axis=0)
     x2 = tf.boolean_mask(x2, stripe, axis=0)
+    max_pt2 = tf.boolean_mask(max_pt2, stripe, axis=0)
     if phase_space.UNIT_PHASE:
         return tf.scatter_nd(idx, wgt, shape=xarr.shape[0:1])
 
     # Compute luminosity
-    pt2s = phase_space.pt2many(tf.stack([p1, p2, p3]))
-    max_pt2 = tf.reduce_max(pt2s, axis=0)
-    lumi = luminosity(x1, x2, q2=max_pt2)
+    lumi = luminosity(x1, x2, max_pt2)
 
     me_r = me.qq_h_r(pa, pb, p1, p2, p3)
     res = lumi * me_r * wgt
+#     res = lumi * wgt
     final_result = res * flux / x1 / x2
     return tf.scatter_nd(idx, final_result, shape=xarr.shape[0:1])
 
@@ -120,7 +120,7 @@ def vfh_production_nlo(xarr, **kwargs):
     pa, pb, p1, p2, p3, x1, x2, wgt = phase_space.psgen_2to4(xarr)
 
     # Apply cuts
-    stripe, idx = phase_space.pt_cut_2of3(pa, pb, p1, p2, p3)
+    stripe, idx, max_pt2 = phase_space.pt_cut_2of3(pa, pb, p1, p2, p3)
 
     pa = tf.boolean_mask(pa, stripe, axis=1)
     pb = tf.boolean_mask(pb, stripe, axis=1)
@@ -136,9 +136,7 @@ def vfh_production_nlo(xarr, **kwargs):
     me_r = me.qq_h_r(pa, pb, p1, p2, p3)
 
     # Compute luminosity
-    pt2s = phase_space.pt2many(tf.stack([p1, p2, p3]))
-    max_pt2 = tf.reduce_max(pt2s, axis=0)
-    lumi = luminosity(x1, x2, q2=max_pt2)
+    lumi = luminosity(x1, x2, max_pt2)
     phys_me = lumi*me_r
 
     if SUBTRACT:
@@ -153,7 +151,7 @@ def vfh_production_nlo(xarr, **kwargs):
         # Compute luminosity of the subtraction
         pt2s_1 = phase_space.pt2many(tf.stack([p1, p2, p3]))
         max_pt2_1 = tf.reduce_max(pt2s_1, axis=0)
-        lumi_1 = luminosity(x1, x2, q2=max_pt2_1)
+        lumi_1 = luminosity(x1, x2, max_pt2_1)
         sub_1 = lumi_1*dip_1*red_1
 
         # leg 2, p3 is radiated from pb-p2
@@ -166,7 +164,7 @@ def vfh_production_nlo(xarr, **kwargs):
         # Compute luminosity of the subtraction
         pt2s_2 = phase_space.pt2many(tf.stack([p1, p2, p3]))
         max_pt2_2 = tf.reduce_max(pt2s_2, axis=0)
-        lumi_2 = luminosity(x1, x2, q2=max_pt2_2)
+        lumi_2 = luminosity(x1, x2, max_pt2_2)
         sub_2 = lumi_2*dip_2*red_2
 
         sub_term = (sub_1 + sub_2)*me.factor_re

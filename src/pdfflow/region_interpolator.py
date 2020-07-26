@@ -52,7 +52,6 @@ def interpolate(
             pdf values: first axis is the flattened padded (q2,x) grid,
             second axis is needed pid column (dimension depends on the query)
     """
-    print('retracing interpolate')
     x_bins, q2_bins, corn_x, corn_q2, pdf_vals = four_neighbour_knots(
         a_x, a_q2, padded_x, padded_q2, actual_padded
     )

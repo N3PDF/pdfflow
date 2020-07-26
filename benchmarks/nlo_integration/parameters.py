@@ -4,7 +4,7 @@ import tensorflow as tf
 # Settings
 TFLOAT1 = tf.TensorSpec(shape=[None], dtype=DTYPE)
 TFLOAT4 = tf.TensorSpec(shape=[4, None], dtype=DTYPE)
-TECH_CUT = 1e-7
+TECH_CUT = 1e-5
 
 # Physical parameters
 higgs_mass = float_me(125.0)
@@ -14,12 +14,12 @@ stw = float_me(0.22264585341299603)
 muR2 = float_me(pow(higgs_mass, 2))
 
 # Cuts
-mjj_cut = float_me(600 ** 2) # not implemented
-pt2_cut = float_me(30 ** 2)
-rdistance = tf.square(float_me(0.3))
+pt2_cut = float_me(50 ** 2)
+rdistance = float_me(0.1 ** 2)
+deltaycut = float_me(4.5)
 
 # Collision parameters
-s_in = float_me(pow(8 * 1000, 2))
+s_in = float_me(pow(13 * 1000, 2))
 # Flux factor
 fbGeV2 = float_me(389379365600)
 flux = fbGeV2 / 2.0 / s_in

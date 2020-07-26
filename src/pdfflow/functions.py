@@ -165,7 +165,6 @@ def first_subgrid(
         tf.tensor of shape `shape`
         pdf interpolated values for each query point and quey pids
     """
-    print('ratracing first subgrid')
     stripe_0 = tf.math.logical_and(a_x >= log_xmin, a_x <= log_xmax)
     stripe_1 = tf.math.logical_and(a_q2 >= log_q2min, a_q2 < log_q2max)
     stripe_2 = a_x < log_xmin
@@ -255,7 +254,6 @@ def last_subgrid(
             pdf interpolated values for each query point and quey pids
     """
     # Generate all conditions for all stripes
-    print('retracing last subgrid')
     stripe_0 = tf.math.logical_and(a_x >= log_xmin, a_x <= log_xmax)
     stripe_1 = tf.math.logical_and(a_q2 >= log_q2min, a_q2 <= log_q2max)
     stripe_2 = a_x < log_xmin
