@@ -41,9 +41,7 @@ def partial_lo(pa, pb, p1, p2):
 
 
 # Leading Order matrix element
-factor_lo = float_me(
-    1.0702411577062499e-4
-)  # there is no alpha_s, alpha_ew computed at Mz val
+factor_lo = float_me(1.0702411577062499e-4)  # there is no alpha_s, alpha_ew computed at Mz val
 
 
 @tf.function(input_signature=4 * [TFLOAT4])
