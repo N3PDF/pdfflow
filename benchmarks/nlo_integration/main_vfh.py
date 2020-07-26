@@ -33,12 +33,11 @@ pdf = mkPDF(pdfset, DIRNAME)
 @tf.function(input_signature=[TFLOAT1, TFLOAT1, TFLOAT1])
 def luminosity(x1, x2, q2array):
     """ Returns f(x1)*f(x2) """
-    q2array = muR2 * tf.ones_like(x1)
+#     q2array = muR2 * tf.ones_like(x1)
     utype = pdf.xfxQ2([2, 4], x1, q2array)
     dtype = pdf.xfxQ2([1, 3], x2, q2array)
     lumi = tf.reduce_sum(utype * dtype, axis=-1)
     return lumi / x1 / x2
-
 
 ### Main functions
 @tf.function
@@ -121,57 +120,88 @@ def vfh_production_nlo(xarr, **kwargs):
 
     # Apply cuts
     stripe, idx, max_pt2 = phase_space.pt_cut_2of3(pa, pb, p1, p2, p3)
+#     stripe, idx, max_pt2 = phase_space.pt_cut_3of3(pa, pb, p1, p2, p3)
 
-    pa = tf.boolean_mask(pa, stripe, axis=1)
-    pb = tf.boolean_mask(pb, stripe, axis=1)
-    p1 = tf.boolean_mask(p1, stripe, axis=1)
-    p2 = tf.boolean_mask(p2, stripe, axis=1)
-    p3 = tf.boolean_mask(p3, stripe, axis=1)
-    wgt = tf.boolean_mask(wgt, stripe, axis=0)
-    x1 = tf.boolean_mask(x1, stripe, axis=0)
-    x2 = tf.boolean_mask(x2, stripe, axis=0)
-    if phase_space.UNIT_PHASE:
-        return tf.scatter_nd(idx, wgt, shape=xarr.shape[0:1])
+    pa_0 = tf.boolean_mask(pa, stripe, axis=1)
+    pb_0 = tf.boolean_mask(pb, stripe, axis=1)
+    p1_0 = tf.boolean_mask(p1, stripe, axis=1)
+    p2_0 = tf.boolean_mask(p2, stripe, axis=1)
+    p3_0 = tf.boolean_mask(p3, stripe, axis=1)
+    wgt_0 = tf.boolean_mask(wgt, stripe, axis=0)
+    x1_0 = tf.boolean_mask(x1, stripe, axis=0)
+    x2_0 = tf.boolean_mask(x2, stripe, axis=0)
+    max_pt2 = tf.boolean_mask(max_pt2, stripe, axis=0)
 
-    me_r = me.qq_h_r(pa, pb, p1, p2, p3)
+    me_r = me.qq_h_r(pa_0, pb_0, p1_0, p2_0, p3_0)
 
     # Compute luminosity
-    lumi = luminosity(x1, x2, max_pt2)
-    phys_me = lumi*me_r
+    lumi = luminosity(x1_0, x2_0, max_pt2)
+    phys_me = lumi*me_r*wgt_0/x1_0/x2_0
+    phys_res = tf.scatter_nd(idx, phys_me, shape=xarr.shape[0:1])
 
     if SUBTRACT:
         # Now we need the subtraction terms for leg 1 and leg 2
         # leg 1, p3 is radiated from pa-p1
         npa, np1 = phase_space.map_3to2(pa, p1, p3)
+        # apply cuts on this sbt
+        stripe_1, x = phase_space.pt_cut_2of2(np1, p2)
+
+        wgt_1 = tf.where(stripe_1, wgt, fzero)
+
+        pa_1 = tf.boolean_mask(pa, stripe, axis=1)
+        npa_1 = tf.boolean_mask(npa, stripe, axis=1)
+        pb_1 = tf.boolean_mask(pb, stripe, axis=1)
+        p1_1 = tf.boolean_mask(p1, stripe, axis=1)
+        np1_1 = tf.boolean_mask(np1, stripe, axis=1)
+        p2_1 = tf.boolean_mask(p2, stripe, axis=1)
+        p3_1 = tf.boolean_mask(p3, stripe, axis=1)
+        wgt_1 = tf.boolean_mask(wgt_1, stripe, axis=0)
+        x1_1 = tf.boolean_mask(x1, stripe, axis=0)
+        x2_1 = tf.boolean_mask(x2, stripe, axis=0)
+
         # Compute the dipole
-        dip_1 = me.antenna_qgq(pa, p3, p1)
+        dip_1 = me.antenna_qgq(pa_1, p3_1, p1_1)
         # Reduced ME
-        red_1 = me.partial_lo(npa, pb, np1, p2)
+        red_1 = me.partial_lo(npa_1, pb_1, np1_1, p2_1)
 
         # Compute luminosity of the subtraction
-        pt2s_1 = phase_space.pt2many(tf.stack([p1, p2, p3]))
-        max_pt2_1 = tf.reduce_max(pt2s_1, axis=0)
-        lumi_1 = luminosity(x1, x2, max_pt2_1)
-        sub_1 = lumi_1*dip_1*red_1
+        lumi_1 = luminosity(x1_1, x2_1, max_pt2)
+        sub_1 = lumi_1*dip_1*red_1*me.factor_re*wgt_1/x1_1/x2_1
+
+        # Add this to the result
+        phys_res -= tf.scatter_nd(idx, sub_1, shape=xarr.shape[0:1])
 
         # leg 2, p3 is radiated from pb-p2
         npb, np2 = phase_space.map_3to2(pb, p2, p3)
+        # apply cuts on this sbt
+        stripe_2, x = phase_space.pt_cut_2of2(p1, np2)
+
+        wgt_2 = tf.where(stripe_2, wgt, fzero)
+
+        pa_2 = tf.boolean_mask(pa, stripe, axis=1)
+        pb_2 = tf.boolean_mask(pb, stripe, axis=1)
+        npb_2 = tf.boolean_mask(npb, stripe, axis=1)
+        p1_2 = tf.boolean_mask(p1, stripe, axis=1)
+        p2_2 = tf.boolean_mask(p2, stripe, axis=1)
+        np2_2 = tf.boolean_mask(np2, stripe, axis=1)
+        p3_2 = tf.boolean_mask(p3, stripe, axis=1)
+        wgt_2 = tf.boolean_mask(wgt_2, stripe, axis=0)
+        x1_2 = tf.boolean_mask(x1, stripe, axis=0)
+        x2_2 = tf.boolean_mask(x2, stripe, axis=0)
+
         # Compute the dipole
-        dip_2 = me.antenna_qgq(pb, p3, p2)
+        dip_2 = me.antenna_qgq(pb_2, p3_2, p2_2)
         # Reduced ME
-        red_2 = me.partial_lo(pa, npb, p1, np2)
+        red_2 = me.partial_lo(pa_2, npb_2, p1_2, np2_2)
 
         # Compute luminosity of the subtraction
-        pt2s_2 = phase_space.pt2many(tf.stack([p1, p2, p3]))
-        max_pt2_2 = tf.reduce_max(pt2s_2, axis=0)
-        lumi_2 = luminosity(x1, x2, max_pt2_2)
-        sub_2 = lumi_2*dip_2*red_2
+        lumi_2 = luminosity(x1_2, x2_2, max_pt2)
+        sub_2 = lumi_2*dip_2*red_2*me.factor_re*wgt_2/x1_2/x2_2
+        # Add this to the result
+        phys_res -= tf.scatter_nd(idx, sub_2, shape=xarr.shape[0:1])
 
-        sub_term = (sub_1 + sub_2)*me.factor_re
-
-    res = (phys_me - sub_term)*wgt
-    final_result = res * flux / x1 / x2
-    return tf.scatter_nd(idx, final_result, shape=xarr.shape[0:1])
+    final_result = phys_res * flux
+    return final_result
 
 
 def vegas_integrate(integrand, ndim, niter, ncalls, events_limit):

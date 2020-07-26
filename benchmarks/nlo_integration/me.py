@@ -90,10 +90,8 @@ def qq_h_r(pa, pb, p1, p2, p3):
     q = p2
     g = p3
     """
-
     r1 = partial_qq_h_qQg(pa, pb, p1, p2, p3)
     r2 = partial_qq_h_qQg(pb, pa, p2, p1, p3)
-
     return (r1 + r2) * factor_re
 
 
