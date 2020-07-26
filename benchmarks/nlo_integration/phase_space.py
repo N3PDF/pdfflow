@@ -68,7 +68,7 @@ def jet_separation(pg, pj, pgt2, pjt2):
     ydif = tf.square(rapidity_dif(pg, pj))
     adif = tf.square(azimuth_dif(pg, pj))
     delta_ij2 = ydif + adif
-    kmin = 1.0/tf.reduce_max([pgt2, pjt2], axis=0)
+    kmin = fone#/tf.reduce_max([pgt2, pjt2], axis=0)
     res = kmin*delta_ij2/rdistance
     return res
 
@@ -92,6 +92,27 @@ def mjj_cut(p1, p2):
     return val > m2jj_cut
 
 @tf.function
+def rcone_cut(p1, p2, p3=None):
+    """ Check that the jets 1, 2 (and 3) are separated at least sqrt(rdistance) using the Cambridge-Aachen algorithm
+    """
+    pt2_1 = pt2(p1)
+    pt2_2 = pt2(p2)
+    if p3 is not None:
+        pt2_3 = pt2(p3)
+    pt2_1, pt2_2, pt2_3 = 3*[None]
+    r12 = jet_separation(p1, p2, pt2_1, pt2_2)
+    if p3 is not None:
+        r13 = jet_separation(p1, p3, pt2_1, pt2_3)
+        r23 = jet_separation(p2, p3, pt2_2, pt2_3)
+        dij = tf.reduce_min([r12, r13, r23], axis=0)
+        dib = fone#tf.reduce_max([pt2_1, pt2_2, pt2_3], axis=0)
+    else:
+        dij = r12
+        dib = fone#tf.reduce_max([pt2_1, pt2_2], axis=0)
+    return dij > dib
+
+
+@tf.function
 def pt_cut_2of2(p1, p2):
     """ Ensures that both p1 and p2 pass the pt_cut
     returns a boolean mask and the list of true indices
@@ -101,7 +122,6 @@ def pt_cut_2of2(p1, p2):
     deltaypass = deltay_cut(p1, p2)
     mjjpass = mjj_cut(p1, p2)
     jetpass = tf.reduce_all([p1pass, p2pass, deltaypass], axis=0)
-    
     stripe, idx = _condition_to_idx(jetpass, mjjpass)
     return stripe, idx
 
@@ -131,26 +151,29 @@ def pt_cut_2of3(pa, pb, p1, p2, p3):
     """ Ensures that at least two of the three jets
     pass the pt cut
     """
+    # Put all pt on a stack
     all_p = tf.stack([p1, p2, p3])
+    # First check that all 3 pass the pt cut
     all_pt2 = pt2many(all_p)
-    # Produce all checks with the 2 hardest jets (in terms of pt)
-    # Check that the two hardest jets are above the cut
+    # Now select the two hardest jets and apply the rest of the cuts on those two
     pts, idx = tf.math.top_k(tf.transpose(all_pt2), k = 2, sorted=True)
-    ptpass = tf.reduce_all(pts > 0, axis=1)
-    # Check that all jets are at least rdistance separated of all other jets
-    deltay = tf.abs(rapidity_dif(pjs[0], pjs[1]))
-    ypass = deltay > deltaycut
-    # Check that the two hardest jet are jets by distance
+    ptpass = pts[:,1] > pt2_cut
     pjsT = tf.gather(tf.transpose(all_p, perm=[2,0,1]), idx, batch_dims=1)
     pjs = tf.transpose(pjsT, perm=[1, 2, 0])
-    dij = jet_separation(pjs[0], pjs[1], pts[:, 0], pts[:, 1])
-    dib = 1.0/pts[:, 0]
-    rpass = dij > dib
-    # Technical cut
+
+    # Check that the two hardest jets pass the rapidity delta cut
+    ypass = deltay_cut(pjs[0], pjs[1])
+    # and the mjj cut
+    mjjpass = mjj_cut(pjs[0], pjs[1])
+
+    # Check that all two jets pass the rdistance check
+    rpass = rcone_cut(pjs[0], pjs[1])
+
+    # Ensure that all invariants are above some threshold
     tech_cut_pass = invariant_cut(pa, pb, p1, p2, p3)
-    jetpass = tf.reduce_all([rpass, tech_cut_pass, ypass], axis=0)
+    jetpass = tf.reduce_all([rpass, tech_cut_pass, ypass, mjjpass], axis=0)
     stripe, idx = _condition_to_idx(ptpass, jetpass)
-    return stripe, idx, pts[:, 0]
+    return stripe, idx, pts[:,0]
 
 
 @tf.function
@@ -158,29 +181,27 @@ def pt_cut_3of3(pa, pb, p1, p2, p3):
     """ Ensures that both p1 and p2 pass the pt_cut
     returns a boolean mask and the list of true indices
     """
+    # Put all pt on a stack
     all_p = tf.stack([p1, p2, p3])
+    # First check that all 3 pass the pt cut
     all_pt2 = pt2many(all_p)
-    # Check that all jets pass the pt cut
     ptpass = tf.reduce_all(all_pt2 > pt2_cut, axis=0)
-    # Check that the two hardest jets pass the rapidity delta cut
-    pts, idx = tf.math.top_k(tf.transpose(all_pt2), k = 2, sorted=True)
+    # Now select the two hardest jets and apply the rest of the cuts on those two
+    pts, idx = tf.math.top_k(tf.transpose(all_pt2), k = 2, sorted=False)
     pjsT = tf.gather(tf.transpose(all_p, perm=[2,0,1]), idx, batch_dims=1)
     pjs = tf.transpose(pjsT, perm=[1, 2, 0])
-    # Check that all jets are at least rdistance separated of all other jets
-    deltay = tf.abs(rapidity_dif(pjs[0], pjs[1]))
-    ypass = deltay > deltaycut
-    # Get all jet_separations
-    r31 = jet_separation(p3, p1, all_pt2[2], all_pt2[0])
-    r32 = jet_separation(p3, p2, all_pt2[2], all_pt2[1])
-    r12 = jet_separation(p1, p2, all_pt2[0], all_pt2[1])
-    # Get the mimimal
-    dij = tf.reduce_min([r12, r31, r32], axis=0)
-    # Get the jet beam distances
-    dib = float_me(1.0)/pts[:,0]
-    rpass = dij > dib
+
+    # Check that the two hardest jets pass the rapidity delta cut
+    ypass = deltay_cut(pjs[0], pjs[1])
+    # and the mjj cut
+    mjjpass = mjj_cut(pjs[0], pjs[1])
+
+    # Check that all jets pass the rdistance check
+    rpass = rcone_cut(p1, p2, p3)
+
     # Ensure that all invariants are above some threshold
     tech_cut_pass = invariant_cut(pa, pb, p1, p2, p3)
-    jetpass = tf.reduce_all([rpass, tech_cut_pass, ypass], axis=0)
+    jetpass = tf.reduce_all([rpass, tech_cut_pass, ypass, mjjpass], axis=0)
     stripe, idx = _condition_to_idx(ptpass, jetpass)
     return stripe, idx, pts[:,0]
 

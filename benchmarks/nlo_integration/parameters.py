@@ -15,7 +15,7 @@ muR2 = float_me(pow(higgs_mass, 2))
 
 # Cuts
 pt2_cut = float_me(30 ** 2)
-rdistance = float_me(0.1 ** 2)
+rdistance = float_me(0.3 ** 2)
 deltaycut = float_me(4.5)
 m2jj_cut = float_me(600**2)
 
