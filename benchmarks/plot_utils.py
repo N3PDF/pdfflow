@@ -69,8 +69,6 @@ def test(n_draws, p, l_pdf, xmin, xmax, Q2min, Q2max):
     t = time()- start
 
     start = time()
-    print(l_pdf)
-    exit()
     if l_pdf is not None:
         f_lha = []
         for i in range(a_x.shape[0]):
@@ -81,6 +79,11 @@ def test(n_draws, p, l_pdf, xmin, xmax, Q2min, Q2max):
 
 
 def test_time(p, l_pdf, xmin, xmax, Q2min, Q2max):
+    #building graph for py_xfxQ2_allpid
+    s = time()
+    p.py_xfxQ2_allpid([0.5],[4.])
+    print('Graph building time: ', (time()-s))
+
     t_pdf = []
     t_lha = []
     n = np.logspace(5,5.8,10)
@@ -121,7 +124,7 @@ def test_time(p, l_pdf, xmin, xmax, Q2min, Q2max):
     ax.errorbar(n,np.abs(avg_l-avg_p),yerr=np.sqrt(std_l**2+std_p**2))
     ax.title.set_text('Absolute improvements of pdfflow')
     ax.set_xlabel('# points drawn')
-    ax.set_ylabel('t [s]')
+    ax.set_ylabel(r'$t_{lhapdf}-t_{pdfflow}$ [s]')
     ax.set_xscale('log')
 
     ax = fig.add_subplot(224)
@@ -129,7 +132,7 @@ def test_time(p, l_pdf, xmin, xmax, Q2min, Q2max):
     ax.errorbar(n,np.abs((1-avg_p)/avg_l)*100,yerr=std_ratio*100)
     ax.title.set_text('Improvements of pdfflow in percentage')
     ax.set_xlabel('# points drawn')
-    ax.set_ylabel('%')
+    ax.set_ylabel(r'$(t_{lhapdf}-t_{pdfflow})/t_{lhapdf}$ %')
     ax.set_xscale('log')
 
     plt.savefig('time.png')
