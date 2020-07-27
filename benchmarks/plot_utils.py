@@ -65,14 +65,14 @@ def test(n_draws, p, l_pdf, xmin, xmax, Q2min, Q2max):
     a_Q2 = np.exp(np.random.uniform(np.log(Q2min), np.log(Q2max),[n_draws,]))
 
     start = time()
-    p.py_xfxQ2_allpid(tf.constant(a_x, dtype=float64), tf.constant(a_Q2,dtype=float64))
+    p.py_xfxQ2_allpid(a_x, a_Q2)
     t = time()- start
 
     start = time()
     if l_pdf is not None:
         f_lha = []
         for i in range(a_x.shape[0]):
-            l_pdf.xfxQ2(float(a_x[i]), float(a_Q2[i]))
+            l_pdf.xfxQ2(a_x[i], a_Q2[i])
     tt = time()- start
 
     return t, tt
@@ -86,7 +86,7 @@ def test_time(p, l_pdf, xmin, xmax, Q2min, Q2max):
 
     t_pdf = []
     t_lha = []
-    n = np.logspace(5,5.8,10)
+    n = np.logspace(5,6,10)
     for j in tqdm.tqdm(range(10)):
         t = []
         tt = []
@@ -106,6 +106,11 @@ def test_time(p, l_pdf, xmin, xmax, Q2min, Q2max):
     std_p = t_pdf.std(0)
     std_ratio = np.sqrt((std_p/avg_l)**2 + (avg_p*std_l/(avg_l)**2)**2)
 
+    print('n', n)
+    print('avg_l', avg_l)
+    print('avg_p', avg_p)
+    print('rel diff', 1-avg_p/avg_l)
+
 
     fig = plt.figure(figsize=(15,10.5))
     ax = fig.add_subplot(121)
@@ -121,7 +126,7 @@ def test_time(p, l_pdf, xmin, xmax, Q2min, Q2max):
 
     ax = fig.add_subplot(222)
 
-    ax.errorbar(n,np.abs(avg_l-avg_p),yerr=np.sqrt(std_l**2+std_p**2))
+    ax.errorbar(n,avg_l-avg_p,yerr=np.sqrt(std_l**2+std_p**2))
     ax.title.set_text('Absolute improvements of pdfflow')
     ax.set_xlabel('# points drawn')
     ax.set_ylabel(r'$t_{lhapdf}-t_{pdfflow}$ [s]')
@@ -129,11 +134,11 @@ def test_time(p, l_pdf, xmin, xmax, Q2min, Q2max):
 
     ax = fig.add_subplot(224)
 
-    ax.errorbar(n,np.abs((1-avg_p)/avg_l)*100,yerr=std_ratio*100)
+    ax.errorbar(n, (1-avg_p/avg_l)*100,yerr=std_ratio*100)
     ax.title.set_text('Improvements of pdfflow in percentage')
     ax.set_xlabel('# points drawn')
     ax.set_ylabel(r'$(t_{lhapdf}-t_{pdfflow})/t_{lhapdf}$ %')
     ax.set_xscale('log')
 
-    plt.savefig('time.png')
+    plt.savefig('time.png', bbox_inches='tight')
     plt.close()
