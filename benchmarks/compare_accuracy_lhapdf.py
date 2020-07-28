@@ -10,33 +10,6 @@ import matplotlib.pyplot as plt
 import tensorflow as tf
 import time
 
-# def sort_arrays_Qx(a,b,f):
-#     a = np.array(a)
-#     b = np.array(b)
-#     f = np.array(f)
-#     
-#     ind = np.argsort(a)
-# 
-#     aa = np.take_along_axis(a,ind,0)
-#     bb = np.take_along_axis(b,ind,0)
-#     ff = np.take_along_axis(f,ind,0)
-# 
-#     ind = np.argsort(bb)
-#     return np.take_along_axis(aa,ind,0), np.take_along_axis(bb,ind,0), np.take_along_axis(ff,ind,0)
-# 
-# 
-# def sort_arrays_xQ(a,b,f):
-#     a = np.array(a)
-#     b = np.array(b)
-#     f = np.array(f)
-#     ind = np.argsort(b)
-# 
-#     aa = np.take_along_axis(a,ind,0)
-#     bb = np.take_along_axis(b,ind,0)
-#     ff = np.take_along_axis(f,ind,0)
-# 
-#     ind = np.argsort(aa)
-#     return np.take_along_axis(aa,ind,0), np.take_along_axis(bb,ind,0), np.take_along_axis(ff,ind,0)
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--pdfname", "-p", default="NNPDF31_nlo_as_0118/0", type=str, help='The PDF set name/replica number.')

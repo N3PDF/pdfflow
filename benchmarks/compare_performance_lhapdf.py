@@ -18,7 +18,7 @@ parser.add_argument(
 parser.add_argument("--n-draws", default=100000, type=int, help="Number of trials.")
 parser.add_argument("--pid", default=21, type=int, help="The flavour PID.")
 parser.add_argument(
-    "--no_lhapdf", action="store_true", help="Don't run lhapdf, only pdfflow"
+    "--no_lhapdf", action="store_false", help="Don't run lhapdf, only pdfflow"
 )
 parser.add_argument("-t", "--tensorboard", action="store_true", help="Enable tensorboard profile logging")
 DIRNAME = (
@@ -37,19 +37,12 @@ def main(pdfname=None, n_draws=10, pid=21, no_lhapdf=False, tensorboard=False):
 
     p = pdf.mkPDF(pdfname, DIRNAME)
 
-    # for pp in p.subgrids:
-    #    pp.print_summary()
-
     xmin = np.exp(p.subgrids[0].log_xmin)
     xmax = np.exp(p.subgrids[0].log_xmax)
     Q2min = np.sqrt(np.exp(p.subgrids[0].log_q2min))
     Q2max = np.sqrt(np.exp(p.subgrids[-1].log_q2max))
-    # a_x = np.logspace(xmin,xmax,n_draws)
-    # a_Q2 = np.logspace(Q2min,Q2max,n_draws)
 
     a_x = np.exp(np.random.uniform(np.log(xmin), np.log(xmax), [n_draws,]))
-    print(a_x.min())
-    print(a_x.max())
     a_Q2 = np.exp(np.random.uniform(np.log(Q2min), np.log(Q2max), [n_draws,]))
 
     if no_lhapdf:
