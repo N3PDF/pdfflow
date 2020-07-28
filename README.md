@@ -1,3 +1,5 @@
+![pytest](https://github.com/N3PDF/pdfflow/workflows/pytest/badge.svg)[![DOI](https://zenodo.org/badge/238731330.svg)](https://zenodo.org/badge/latestdoi/238731330)
+
 # PDFflow
 
 PDFflow is parton distribution function interpolation library written in Python and based on the TensorFlow framework. It is developed with a focus on speed and efficiency, enabling researchers to perform very expensive calculation as quick and easy as possible.
