@@ -170,16 +170,6 @@ def vfh_production_nlo(xarr, **kwargs):
     return final_result
 
 
-def vegas_integrate(integrand, ndim, niter, ncalls, events_limit):
-    """ Wrapper for running Vegasflow """
-    # Instantiate vegasflow
-    vflow = VegasFlow(ndim, ncalls, events_limit=events_limit)
-    # Compile the integrand
-    vflow.compile(integrand, compilable=True)
-    # Run and return
-    return vflow.run_integration(niter)
-
-
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("-l", "--level", default="LO", help="Integration level")
@@ -189,7 +179,7 @@ if __name__ == "__main__":
         "-e",
         "--events_limit",
         type=int,
-        default=int(1e6),
+        default=int(5e5),
         help="Max events to be sent to an accelerator device at once",
     )
     args = parser.parse_args()
@@ -211,4 +201,13 @@ if __name__ == "__main__":
         ndim = 9
         integrand = vfh_production_nlo
 
-    vegas_integrate(integrand, ndim, niter, ncalls, args.events_limit)
+    # First prepare the grid
+    integrator = VegasFlow(ndim, ncalls, events_limit=args.events_limit)
+    integrator.compile(integrand)
+    integrator.run_integration(niter)
+
+    # Now freeze and integrate
+    print(" > Freezing the grid")
+    integrator.events_per_run = args.events_limit
+    integrator.freeze_grid()
+    integrator.run_integration(niter)
