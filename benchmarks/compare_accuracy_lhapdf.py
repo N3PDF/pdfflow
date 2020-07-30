@@ -24,10 +24,8 @@ def main(pdfname, pid):
     p = pdf.mkPDF(pdfname, DIRNAME)
     l_pdf = lhapdf.mkPDF(pdfname)
 
-    x = [0.5]
-    q2 = [100.]
     s = time.time()
-    p.py_xfxQ2(21, x,q2)
+    p.trace()
     print("\nPDFflow\n\tBuilding graph time: %f\n"%(time.time()-s))
 
     plt.figure(figsize=(16.0, 12.0))

@@ -80,9 +80,6 @@ def test(n_draws, p, l_pdf, xmin, xmax, Q2min, Q2max):
 
 def test_time(p, l_pdf, xmin, xmax, Q2min, Q2max):
     #building graph for py_xfxQ2_allpid
-    s = time()
-    p.py_xfxQ2_allpid([0.5],[4.])
-    print('Graph building time: ', (time()-s))
 
     t_pdf = []
     t_lha = []

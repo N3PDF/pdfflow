@@ -5,7 +5,7 @@ import lhapdf
 import argparse
 import subprocess as sp
 import numpy as np
-import time
+from time import time
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -37,6 +37,11 @@ def main(pdfname=None, n_draws=10, pid=21, no_lhapdf=False, tensorboard=False):
 
     p = pdf.mkPDF(pdfname, DIRNAME)
 
+    s = time()
+    p.trace()
+    print('Graph building time: ', (time()-s))
+
+
     xmin = np.exp(p.subgrids[0].log_xmin)
     xmax = np.exp(p.subgrids[0].log_xmax)
     Q2min = np.sqrt(np.exp(p.subgrids[0].log_q2min))
@@ -64,6 +69,6 @@ def main(pdfname=None, n_draws=10, pid=21, no_lhapdf=False, tensorboard=False):
 
 if __name__ == "__main__":
     args = vars(parser.parse_args())
-    start = time.time()
+    start = time()
     main(**args)
-    print(time.time() - start)
+    print(time() - start)

@@ -23,9 +23,8 @@ def main(pdfname):
     p = pdf.mkPDF(pdfname, DIRNAME)
     l_pdf = lhapdf.mkPDF(pdfname)
 
-    q = [100.]
     s = time.time()
-    p.py_alphasQ(q)
+    p.alphas_trace()
     print("\nPDFflow alphas\n\tBuilding graph time: %f\n"%(time.time()-s))
 
     plt.figure(figsize=(16.0, 12.0))
