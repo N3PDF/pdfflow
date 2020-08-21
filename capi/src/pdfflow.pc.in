@@ -3,12 +3,11 @@ exec_prefix=@exec_prefix@
 includedir=@includedir@
 extraincludirs=@extraincludirs@
 libdir=@libdir@
-fastjetlibs=@fastjetlibs@
 pythonlibs=@pythonlibs@
 
-Name: groomrl
-Description: The groomrl C-API library
+Name: pdfflow
+Description: The PDFFlow C-API library
 Version: @VERSION@
 Cflags: -I@includedir@ @extraincludirs@
-Libs: -L@libdir@ -lgroomrl @fastjetlibs@ @pythonlibs@
+Libs: -L@libdir@ -lpdfflow @pythonlibs@
 
