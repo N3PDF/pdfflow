@@ -23,7 +23,7 @@ endif()
 
 include_directories(${PYTHON_INCLUDE_DIRS})
 include_directories(src)
-add_library(pdfflow SHARED ${PROJECT_SOURCE_DIR}/src/cpdfflow.cc)
+add_library(pdfflow SHARED ${PROJECT_SOURCE_DIR}/src/cpdfflow.c)
 
 # pkg-config
 set(prefix ${CMAKE_INSTALL_PREFIX})

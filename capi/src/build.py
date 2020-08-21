@@ -12,4 +12,4 @@ ffibuilder.set_source('cpdfflow', r'''
 with open('wrapper.py') as f:
     ffibuilder.embedding_init_code(f.read())
 
-ffibuilder.emit_c_code('cpdfflow.cc')
+ffibuilder.emit_c_code('cpdfflow.c')
