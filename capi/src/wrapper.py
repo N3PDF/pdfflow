@@ -4,7 +4,7 @@ from pdfflow import pflow
 
 
 @ffi.def_extern()
-def mkPDF(fname, dirname):
+def mkpdf(fname, dirname):
     """Generate a PDF givena PDF name and a directory."""
     pdfset = ffi.string(fname).decode('utf-8')
     path = ffi.string(dirname).decode('utf-8')
