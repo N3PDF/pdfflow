@@ -2,4 +2,4 @@
  * PDFFlow C API
  */
 
-extern void hello();
+extern void mkPDF(const char *fname, const char * dirname);
