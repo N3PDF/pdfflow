@@ -80,11 +80,12 @@ def test(n_draws, p, l_pdf, xmin, xmax, Q2min, Q2max):
 
 def test_time(p, l_pdf, xmin, xmax, Q2min, Q2max):
     #building graph for py_xfxQ2_allpid
-
+    import matplotlib as mpl
+    mpl.rcParams['text.usetex'] = True
     t_pdf = []
     t_lha = []
-    n = np.logspace(5,6,10)
-    for j in tqdm.tqdm(range(10)):
+    n = np.linspace(1e5,1e6,10)
+    for j in tqdm.tqdm(range(2)):
         t = []
         tt = []
         for i in tqdm.tqdm(n):
@@ -103,39 +104,69 @@ def test_time(p, l_pdf, xmin, xmax, Q2min, Q2max):
     std_p = t_pdf.std(0)
     std_ratio = np.sqrt((std_p/avg_l)**2 + (avg_p*std_l/(avg_l)**2)**2)
 
-    print('n', n)
-    print('avg_l', avg_l)
-    print('avg_p', avg_p)
-    print('rel diff', 1-avg_p/avg_l)
+    #print('n', n)
+    #print('avg_l', avg_l)
+    ##print('avg_p', avg_p)
+    #print('rel diff', 1-avg_p/avg_l)
 
 
-    fig = plt.figure(figsize=(15,10.5))
-    ax = fig.add_subplot(121)
+    fig = plt.figure(tight_layout=True)
+    ax = fig.add_subplot(111)
+    ax.errorbar(n,avg_p,yerr=std_p,label=r'\texttt{pdfflow}')
 
-    ax.errorbar(n,avg_p,yerr=std_p,label='pdfflow')
+    ax.errorbar(n,avg_l,yerr=std_l,label=r'\texttt{lhapdf}')
 
-    ax.errorbar(n,avg_l,yerr=std_l,label='lhapdf')
+    ax.title.set_text(r'Algorithms working times')
+    ax.set_xlabel(r'\# points drawn $[\times 10^{5}]$')
+    ax.set_ylabel(r'$t [s]$')
 
-    ax.title.set_text('Algorithms working times')
-    ax.set_xlabel('# points drawn')
-    ax.set_ylabel('t [s]')
-    ax.legend()
+    #ax.set_xlim([1e5,1e6])
+    ticks = list(np.linspace(1e5,1e6,10))
+    labels = [r'%d'%i for i in range(1,11)]
+    ax.xaxis.set_major_locator(mpl.ticker.FixedLocator(ticks))
+    ax.xaxis.set_major_formatter(mpl.ticker.FixedFormatter(labels))
 
-    ax = fig.add_subplot(222)
+    ax.legend(frameon=False)
 
-    ax.errorbar(n,avg_l-avg_p,yerr=np.sqrt(std_l**2+std_p**2))
-    ax.title.set_text('Absolute improvements of pdfflow')
-    ax.set_xlabel('# points drawn')
-    ax.set_ylabel(r'$t_{lhapdf}-t_{pdfflow}$ [s]')
-    ax.set_xscale('log')
+    ax.tick_params(axis='x', direction='in',
+                   bottom=True, labelbottom=True,
+                   top=True, labeltop=False)
+    ax.tick_params(axis='y', direction='in',
+                   left=True, labelleft=True,
+                   right=True, labelright=False)
 
-    ax = fig.add_subplot(224)
+    plt.savefig('time.png', bbox_inches='tight', dpi=200)
+    plt.close()
+
+    #ax = fig.add_subplot(222)
+    #ax.errorbar(n,avg_l-avg_p,yerr=np.sqrt(std_l**2+std_p**2))
+    #ax.title.set_text('Absolute improvements of pdfflow')
+    #ax.set_xlabel('# points drawn')
+    #ax.set_ylabel(r'$t_{lhapdf}-t_{pdfflow}$ [s]')
+    #ax.set_xscale('log')
+
+    #ax = fig.add_subplot(224)
+
+    fig = plt.figure(tight_layout=True)
+    ax = fig.add_subplot(111)
 
     ax.errorbar(n, (1-avg_p/avg_l)*100,yerr=std_ratio*100)
-    ax.title.set_text('Improvements of pdfflow in percentage')
-    ax.set_xlabel('# points drawn')
-    ax.set_ylabel(r'$(t_{lhapdf}-t_{pdfflow})/t_{lhapdf}$ %')
-    ax.set_xscale('log')
+    ax.title.set_text(r'Improvements of pdfflow in percentage')
+    ax.set_xlabel(r'\# points drawn  $[\times 10^{5}]$')
+    ax.set_ylabel(r'$\displaystyle{\frac{t_{l}-t_{p}}{t_{l}}} \, \%$')
 
-    plt.savefig('time.png', bbox_inches='tight')
+    #ax.set_xlim([1e5,1e6])
+    ticks = list(np.linspace(1e5,1e6,10))
+    labels = [r'%d'%i for i in range(1,11)]
+    ax.xaxis.set_major_locator(mpl.ticker.FixedLocator(ticks))
+    ax.xaxis.set_major_formatter(mpl.ticker.FixedFormatter(labels))
+
+    ax.tick_params(axis='x', direction='in',
+                   bottom=True, labelbottom=True,
+                   top=True, labeltop=False)
+    ax.tick_params(axis='y', direction='in',
+                   left=True, labelleft=True,
+                   right=True, labelright=False)
+
+    plt.savefig('time_relative.png', bbox_inches='tight', dpi=200)
     plt.close()
