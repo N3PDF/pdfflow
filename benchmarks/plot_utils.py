@@ -85,7 +85,7 @@ def test_time(p, l_pdf, xmin, xmax, Q2min, Q2max):
     t_pdf = []
     t_lha = []
     n = np.linspace(1e5,1e6,10)
-    for j in tqdm.tqdm(range(2)):
+    for j in tqdm.tqdm(range(10)):
         t = []
         tt = []
         for i in tqdm.tqdm(n):
