@@ -83,10 +83,10 @@ def test_time(p, l_pdf, xmin, xmax, Q2min, Q2max):
     import matplotlib as mpl
     mpl.rcParams['text.usetex'] = True
     mpl.rcParams['savefig.format'] = 'pdf'
-    mpl.rcParams['figure.figsize'] = [4.8,4.8]
+    mpl.rcParams['figure.figsize'] = [4.8,4.8*3]
     t_pdf = []
     t_lha = []
-    n = np.linspace(1e5,1e6,10)
+    n = np.linspace(1e5,1e6,2)
     for j in tqdm.tqdm(range(10)):
         t = []
         tt = []
@@ -106,14 +106,8 @@ def test_time(p, l_pdf, xmin, xmax, Q2min, Q2max):
     std_p = t_pdf.std(0)
     std_ratio = np.sqrt((std_p/avg_l)**2 + (avg_p*std_l/(avg_l)**2)**2)
 
-    #print('n', n)
-    #print('avg_l', avg_l)
-    ##print('avg_p', avg_p)
-    #print('rel diff', 1-avg_p/avg_l)
-
-
     fig = plt.figure(tight_layout=True)
-    ax = fig.add_subplot(111)
+    ax = plt.subplot2grid((3,1),(0,0),rowspan=2)
     ax.errorbar(n,avg_p,yerr=std_p,label=r'\texttt{pdfflow}')
 
     ax.errorbar(n,avg_l,yerr=std_l,label=r'\texttt{lhapdf}')
@@ -137,21 +131,8 @@ def test_time(p, l_pdf, xmin, xmax, Q2min, Q2max):
                    left=True, labelleft=True,
                    right=True, labelright=False)
 
-    plt.savefig('time.pdf', bbox_inches='tight', dpi=200)
-    plt.close()
 
-    #ax = fig.add_subplot(222)
-    #ax.errorbar(n,avg_l-avg_p,yerr=np.sqrt(std_l**2+std_p**2))
-    #ax.title.set_text('Absolute improvements of pdfflow')
-    #ax.set_xlabel('# points drawn')
-    #ax.set_ylabel(r'$t_{lhapdf}-t_{pdfflow}$ [s]')
-    #ax.set_xscale('log')
-
-    #ax = fig.add_subplot(224)
-
-    fig = plt.figure(tight_layout=True)
-    ax = fig.add_subplot(111)
-
+    ax = plt.subplot2grid((3,1),(2,0))
     ax.errorbar(n, (1-avg_p/avg_l)*100,yerr=std_ratio*100)
     ax.title.set_text(r'Improvements of pdfflow in percentage')
     ax.set_xlabel(r'\# points drawn  $[\times 10^{5}]$')
@@ -170,5 +151,5 @@ def test_time(p, l_pdf, xmin, xmax, Q2min, Q2max):
                    left=True, labelleft=True,
                    right=True, labelright=False)
 
-    plt.savefig('time_relative.pdf', bbox_inches='tight', dpi=200)
+    plt.savefig('time.pdf', bbox_inches='tight', dpi=200)
     plt.close()
