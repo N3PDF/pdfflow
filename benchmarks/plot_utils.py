@@ -83,10 +83,10 @@ def test_time(p, l_pdf, xmin, xmax, Q2min, Q2max):
     import matplotlib as mpl
     mpl.rcParams['text.usetex'] = True
     mpl.rcParams['savefig.format'] = 'pdf'
-    mpl.rcParams['figure.figsize'] = [4.8,4.8*3]
+    mpl.rcParams['figure.figsize'] = [7,8]
     t_pdf = []
     t_lha = []
-    n = np.linspace(1e5,1e6,2)
+    n = np.linspace(1e5,1e6,10)
     for j in tqdm.tqdm(range(10)):
         t = []
         tt = []
@@ -106,14 +106,15 @@ def test_time(p, l_pdf, xmin, xmax, Q2min, Q2max):
     std_p = t_pdf.std(0)
     std_ratio = np.sqrt((std_p/avg_l)**2 + (avg_p*std_l/(avg_l)**2)**2)
 
-    fig = plt.figure(tight_layout=True)
-    ax = plt.subplot2grid((3,1),(0,0),rowspan=2)
+    fig = plt.figure()
+    gs = fig.add_gridspec(nrows=3, ncols=1, hspace=0.1)
+    ax = fig.add_subplot(gs[:-1,:])
     ax.errorbar(n,avg_p,yerr=std_p,label=r'\texttt{pdfflow}')
 
     ax.errorbar(n,avg_l,yerr=std_l,label=r'\texttt{lhapdf}')
 
-    ax.title.set_text(r'Algorithms working times')
-    ax.set_xlabel(r'\# points drawn $[\times 10^{5}]$')
+    ax.title.set_text(r'\texttt{PDFflow} - LHAPDF6 perfomances')
+    #ax.set_xlabel(r'\# points drawn $[\times 10^{5}]$')
     ax.set_ylabel(r'$t [s]$')
 
     #ax.set_xlim([1e5,1e6])
@@ -125,16 +126,16 @@ def test_time(p, l_pdf, xmin, xmax, Q2min, Q2max):
     ax.legend(frameon=False)
 
     ax.tick_params(axis='x', direction='in',
-                   bottom=True, labelbottom=True,
+                   bottom=True, labelbottom=False,
                    top=True, labeltop=False)
     ax.tick_params(axis='y', direction='in',
                    left=True, labelleft=True,
                    right=True, labelright=False)
 
 
-    ax = plt.subplot2grid((3,1),(2,0))
+    ax = fig.add_subplot(gs[-1,:])
     ax.errorbar(n, (1-avg_p/avg_l)*100,yerr=std_ratio*100)
-    ax.title.set_text(r'Improvements of pdfflow in percentage')
+    #ax.title.set_text(r'Improvements of pdfflow in percentage')
     ax.set_xlabel(r'\# points drawn  $[\times 10^{5}]$')
     ax.set_ylabel(r'$\displaystyle{\frac{t_{l}-t_{p}}{t_{l}}} \, \%$')
 
