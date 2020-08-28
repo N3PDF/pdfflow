@@ -109,7 +109,7 @@ def test_time(p, l_pdf, xmin, xmax, Q2min, Q2max):
     fig = plt.figure()
     gs = fig.add_gridspec(nrows=3, ncols=1, hspace=0.1)
     ax = fig.add_subplot(gs[:-1,:])
-    ax.errorbar(n,avg_p,yerr=std_p,label=r'\texttt{pdfflow}')
+    ax.errorbar(n,avg_p,yerr=std_p,label=r'\texttt{PDFFlow}')
 
     ax.errorbar(n,avg_l,yerr=std_l,label=r'\texttt{lhapdf}')
 
