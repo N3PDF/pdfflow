@@ -37,6 +37,36 @@ def sci_notation(num, decimal_digits=1, precision=None, exponent=None):
     coeff = round(num / float(10**exponent), decimal_digits)
     return r"%.2f \times 10^{%d}"%(coeff, exponent)
 
+def set_ticks(ax, start, end, numticks, axis):
+    """
+    Set both major and minor axes ticks in the logarithmical scale
+    Parameters:
+        ax: matplotlib.axes.Axes object
+        start: int, leftmost tick
+        end: int, rightmost tick
+        numticks
+        axis: 1 y axis, 0 x axis
+    """
+
+    ticks = list(np.logspace(start,end,end-start+1))
+    labels = [r'$10^{%d}$'%start]
+    for i in [i for i in range(start+2,end+1,2)]:
+        labels.extend(['',r'$10^{%d}$'%i])
+    locmin = mpl.ticker.LogLocator(base=10.0,subs=[i/10 for i in range(1,10)],numticks=numticks)
+    if axis == 'x':
+        ax.xaxis.set_major_locator(mpl.ticker.FixedLocator(ticks))
+        ax.xaxis.set_major_formatter(mpl.ticker.FixedFormatter(labels))
+        ax.xaxis.set_minor_locator(locmin)
+        ax.xaxis.set_minor_formatter(mpl.ticker.NullFormatter())
+    if axis == 'y':
+        ax.yaxis.set_major_locator(mpl.ticker.FixedLocator(ticks))
+        ax.yaxis.set_major_formatter(mpl.ticker.FixedFormatter(labels))
+        ax.yaxis.set_minor_locator(locmin)
+        ax.yaxis.set_minor_formatter(mpl.ticker.NullFormatter())
+    return ax    
+    
+
+    
 
 def main(pdfname, pid):
     """Testing PDFflow vs LHAPDF performance."""
@@ -53,57 +83,42 @@ def main(pdfname, pid):
 
     plt.figure(tight_layout=True)
     ax = plt.subplot(1, 1, 1)
-    x = np.logspace(-12,0,1000000, dtype=float)
-    q2 = np.array([0.1,1.65,1.7,4.92,1e2,1e3,1e4,1e5,1e6,2e6], dtype=float)**2
+    x = np.logspace(-12,0,10000, dtype=float)
+    q2 = np.array([1.65,1.7,4.92,1e2,1e3,1e4,1e5,1e6,2e6], dtype=float)**2
     for iq2 in q2:
         vl = np.array([l_pdf.xfxQ2(pid, ix, iq2) for ix in x])
         vp = p.py_xfxQ2(pid, float_me(x), float_me([iq2]*len(x)))
 
-        #print(r'%s'% sci_notation(iq2**0.5,3))
 
-        ax.plot(x, np.abs(vp-vl)/(np.abs(vl)+EPS), label=r'$Q=%s$' % sci_notation(iq2**0.5,3))
-    #exit()
+        ax.plot(x, np.abs(vp-vl)/(np.abs(vl)+EPS),
+                label=r'$Q=%s$' % sci_notation(iq2**0.5,3))
+
     ax.hlines(1e-3, plt.xlim()[0], plt.xlim()[1], linestyles='dotted', color='red')
     ax.set_xscale('log')
     ax.set_yscale('log')
-    ticks = list(np.logspace(-12,0,13))
-    labels = [r'$10^{-12}$']
-    for i in range(-10,1,2):
-        labels.extend(['',r'$10^{%d}$'%i])
-    ax.xaxis.set_major_locator(mpl.ticker.FixedLocator(ticks))
-    ax.xaxis.set_major_formatter(mpl.ticker.FixedFormatter(labels))
-    locmin = mpl.ticker.LogLocator(base=10.0,subs=[i/10 for i in range(1,10)],numticks=13)
-    ax.xaxis.set_minor_locator(locmin)
-    ax.xaxis.set_minor_formatter(mpl.ticker.NullFormatter())
     ax.set_xlim([1e-12,1.])
-    ax.set_ylim([1e-5, 10])
-    ax.tick_params(axis='x', which='both', direction='in',top=True, labeltop=False)
-    ax.tick_params(axis='y', which='both', direction='in',right=True, labelright=False)
+    ax.set_ylim([EPS, 1])
+    
+    ax = set_ticks(ax, -12, 0, 13, 'x')
+    ax.tick_params(axis='x', which='both', direction='in',
+                   bottom=True, labelbottom=True,
+                   top=True, labeltop=False)
+
+    ax = set_ticks(ax, -15, -1, 18, 'y')
+    ax.tick_params(axis='y', which='both', direction='in',
+                   left=True, labelleft=True,
+                   right=True, labelright=False)
+
     ax.title.set_text(r'%s, flav = %d' % (name, pid))
     ax.set_ylabel(r'$\displaystyle{\frac{|f_{p} - f_{l}|}{|f_{l}|+\epsilon}}$')
     ax.set_xlabel(r'$x$')
-    ax.legend(frameon=False, ncol=2)
-    plt.savefig('diff_%s_flav%d_fixedQ.png' % (pdfname.replace('/','-'), pid), bbox_inches='tight', dpi=200)
+    ax.legend(frameon=False, ncol=2, fontsize='small')
+    plt.savefig('diff_%s_flav%d_fixedQ.png' % (pdfname.replace('/','-'), pid),
+                bbox_inches='tight', dpi=200)
     plt.close()
 
-    '''
-    plt.subplot(2, 2, 3)
-    for iq2 in q2:
-        vl = np.array([l_pdf.xfxQ2(pid, ix, iq2) for ix in x])
-        vp = p.py_xfxQ2(pid, float_me(x), float_me([iq2]*len(x)))
-        
-        plt.plot(x, np.abs(vp-vl), label='$Q=%.2e$' % iq2**0.5)
-    plt.xscale('log')
-    plt.yscale('log')
-    plt.ylim([1e-5, 10])
-    #plt.title('%s, flav = %d' % (pdfname, pid))
-    plt.ylabel(r'$|f_{pdfflow} - f_{lhapdf}|$')
-    plt.xlabel(r'\textbf{x}')
-    plt.legend()
-    '''
-
     x = np.array([1e-10,1e-9,1.1e-9,5e-7,1e-6,1e-4,1e-2,0.5,0.99], dtype=float)
-    q2 = np.logspace(-3, 7, 100000, dtype=float)**2
+    q2 = np.logspace(1, 7, 10000, dtype=float)**2
     plt.figure(tight_layout=True)
     ax = plt.subplot(1, 1, 1)
     for ix in x:
@@ -112,57 +127,35 @@ def main(pdfname, pid):
         l_time = time.time()
         vp = p.py_xfxQ2(pid, float_me([ix]*len(q2)), float_me(q2))
         p_time = time.time()
-        
 
-        ax.plot(q2**0.5, np.abs(vp-vl)/(np.abs(vl)+EPS), label=r'$x=%s$' % sci_notation(ix,3))
+        ax.plot(q2**0.5, np.abs(vp-vl)/(np.abs(vl)+EPS),
+                label=r'$x=%s$' % sci_notation(ix,3))
+
     ax.hlines(1e-3, plt.xlim()[0], plt.xlim()[1], linestyles='dotted', color='red')
     ax.set_xscale('log')
     ax.set_yscale('log')
-    ax.set_xlim([1e-3,1e7])
-    ax.set_ylim([1e-5, 10])
+    ax.set_xlim([1,1e7])
+    ax.set_ylim([EPS, 1])
+    
+    ax = set_ticks(ax, 1, 7, 9, 'x')
+    ax.tick_params(axis='x', which='both', direction='in',
+                   top=True, labeltop=False,
+                   bottom=True, labelbottom=True)
+
+    ax = set_ticks(ax, -15, -1, 18, 'y')
+    ax.tick_params(axis='y', which='both', direction='in',
+                   right=True, labelright=False,
+                   left=True, labelleft=True)
+
     ax.title.set_text(r'%s, flav = %d' % (name, pid))
     ax.set_ylabel(r'$\displaystyle{\frac{|f_{p} - f_{l}|}{|f_{l}|+\epsilon}}$')
     ax.set_xlabel(r'$Q$')
-
-    ticks = list(np.logspace(-3,7,11))
-    labels = [r'$10^{-3}$']
-    for i in [i for i in range(-1,8,2)]:
-        labels.extend(['',r'$10^{%d}$'%i])
-    ax.xaxis.set_major_locator(mpl.ticker.FixedLocator(ticks))
-    ax.xaxis.set_major_formatter(mpl.ticker.FixedFormatter(labels))
-    locmin = mpl.ticker.LogLocator(base=10.0,subs=[i/10 for i in range(1,10)],numticks=11)
-    ax.xaxis.set_minor_locator(locmin)
-    ax.xaxis.set_minor_formatter(mpl.ticker.NullFormatter())
-    ax.tick_params(axis='x', which='both', direction='in',top=True, labeltop=False)
-    ax.tick_params(axis='y', which='both', direction='in',right=True, labelright=False)
-
-
-    ax.legend(frameon=False, ncol=2)
-
-    '''
-    plt.subplot(2, 2, 4)
-    for ix in x:
-        s_time = time.time()
-        vl = np.array([l_pdf.xfxQ2(pid, ix, iq2) for iq2 in q2])
-        l_time = time.time()
-        vp = p.py_xfxQ2(pid, float_me([ix]*len(q2)), float_me(q2))
-        p_time = time.time()
-        
-        plt.plot(q2**0.5, np.abs(vp-vl), label='$x=%.2e$' % ix)
-    plt.xscale('log')
-    plt.yscale('log')
-    plt.ylim([1e-5, 10])
-    #plt.title('%s, flav = %d' % (pdfname, pid))
-    plt.ylabel(r'$|f_{pdfflow} - f_{lhapdf}|$')
-    plt.xlabel(r'\textbf{Q}')
-    plt.legend()
-    '''
-
-    plt.savefig('diff_%s_flav%d_fixedx.png' % (pdfname.replace('/','-'), pid), bbox_inches='tight', dpi=200)
+    ax.legend(frameon=False, ncol=2, fontsize='small')
+    plt.savefig('diff_%s_flav%d_fixedx.png' % (pdfname.replace('/','-'), pid),
+                bbox_inches='tight', dpi=200)
     plt.close()
 
     print("\nDry run time comparison:")
-    #print("\tlhapdf: %f"%(l_time - s_time))
     print("{:>10}:{:>15.8f}".format("lhapdf", l_time - s_time))
     print("{:>10}:{:>15.8f}".format("pdfflow", p_time - l_time))
 
