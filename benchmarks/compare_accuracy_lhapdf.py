@@ -23,7 +23,7 @@ def sci_notation(num, decimal_digits=1, precision=None, exponent=None):
     """
     Returns a string representation of the scientific
     notation of the given number formatted for use with
-    LaTeX or Mathtext, with specified number of significant
+    LaTeX, with specified number of significant
     decimal digits and precision (number of decimal digits
     to show). The exponent to be used can also be specified
     explicitly.
@@ -35,9 +35,9 @@ def sci_notation(num, decimal_digits=1, precision=None, exponent=None):
     if precision is None:
         precision = decimal_digits
     coeff = round(num / float(10**exponent), decimal_digits)
-    return r"%.2f \times 10^{%d}"%(coeff, exponent)
+    return r'%s'%format(coeff, f'.{decimal_digits}f') + r"\times 10^{%d}"%exponent
 
-def set_ticks(ax, start, end, numticks, axis):
+def set_ticks(ax, start, end, numticks, axis, nskip=2):
     """
     Set both major and minor axes ticks in the logarithmical scale
     Parameters:
@@ -46,12 +46,13 @@ def set_ticks(ax, start, end, numticks, axis):
         end: int, rightmost tick
         numticks
         axis: 1 y axis, 0 x axis
+        nskip: int, major ticks to leave without label
     """
 
     ticks = list(np.logspace(start,end,end-start+1))
     labels = [r'$10^{%d}$'%start]
-    for i in [i for i in range(start+2,end+1,2)]:
-        labels.extend(['',r'$10^{%d}$'%i])
+    for i in [i for i in range(start+2,end+1,nskip)]:
+        labels.extend(['' for i in range(nskip-1)]+[r'$10^{%d}$'%i])
     locmin = mpl.ticker.LogLocator(base=10.0,subs=[i/10 for i in range(1,10)],numticks=numticks)
     if axis == 'x':
         ax.xaxis.set_major_locator(mpl.ticker.FixedLocator(ticks))
@@ -72,7 +73,14 @@ def main(pdfname, pid):
     """Testing PDFflow vs LHAPDF performance."""
     mpl.rcParams['text.usetex'] = True
     mpl.rcParams['savefig.format'] = 'pdf'
-    mpl.rcParams['figure.figsize'] = [4.8,4.8]
+    mpl.rcParams['figure.figsize'] = [5.5,5.5]
+    mpl.rcParams['axes.titlesize'] = 18
+    mpl.rcParams['ytick.labelsize'] = 17
+    mpl.rcParams['xtick.labelsize'] = 17
+    mpl.rcParams['legend.fontsize'] = 12.5
+
+
+
     import pdfflow.pflow as pdf
 
     p = pdf.mkPDF(pdfname, DIRNAME)
@@ -83,8 +91,8 @@ def main(pdfname, pid):
     p.trace()
     print("\nPDFflow\n\tBuilding graph time: %f\n"%(time.time()-s))
 
-    plt.figure(tight_layout=True)
-    ax = plt.subplot(1, 1, 1)
+    fig = plt.figure(tight_layout=True)
+    ax = fig.add_subplot(1, 1, 1)
     x = np.logspace(-12,0,10000, dtype=float)
     q2 = np.array([1.65,1.7,4.92,1e2,1e3,1e4,1e5,1e6,2e6], dtype=float)**2
     for iq2 in q2:
@@ -93,36 +101,38 @@ def main(pdfname, pid):
 
 
         ax.plot(x, np.abs(vp-vl)/(np.abs(vl)+EPS),
-                label=r'$Q=%s$' % sci_notation(iq2**0.5,3))
+                label=r'$Q=%s$' % sci_notation(iq2**0.5,2))
 
     ax.hlines(1e-3, plt.xlim()[0], plt.xlim()[1], linestyles='dotted', color='red')
     ax.set_xscale('log')
     ax.set_yscale('log')
     ax.set_xlim([1e-12,1.])
-    ax.set_ylim([EPS, 10])
+    ax.set_ylim([EPS, .01])
     
-    ax = set_ticks(ax, -12, 0, 13, 'x')
+    ax = set_ticks(ax, -12, 0, 13, 'x', 4)
     ax.tick_params(axis='x', which='both', direction='in',
                    bottom=True, labelbottom=True,
                    top=True, labeltop=False)
 
-    ax = set_ticks(ax, -15, 1, 19, 'y')
+    ax = set_ticks(ax, -15, -3, 16, 'y')
     ax.tick_params(axis='y', which='both', direction='in',
                    left=True, labelleft=True,
                    right=True, labelright=False)
 
-    ax.title.set_text(r'%s, flav = %d' % (name, pid))
-    ax.set_ylabel(r'$\displaystyle{\frac{|f_{p} - f_{l}|}{|f_{l}|+\epsilon}}$')
-    ax.set_xlabel(r'$x$')
-    ax.legend(frameon=False, ncol=2, fontsize='small')
+    ax.set_title(r'%s, flav = %d' % (name, pid))
+    ax.set_ylabel(r'$\displaystyle{\frac{|f_{p} - f_{l}|}{|f_{l}|+\epsilon}}$',
+                  fontsize=21)
+    ax.set_xlabel(r'$x$', fontsize=16)
+    ax.legend(frameon=False, ncol=2,
+              loc='upper right', bbox_to_anchor=(1.02,0.9))
     plt.savefig('diff_%s_flav%d_fixedQ.pdf' % (pdfname.replace('/','-'), pid),
                 bbox_inches='tight', dpi=200)
     plt.close()
 
     x = np.array([1e-10,1e-9,1.1e-9,5e-7,1e-6,1e-4,1e-2,0.5,0.99], dtype=float)
     q2 = np.logspace(1, 7, 10000, dtype=float)**2
-    plt.figure(tight_layout=True)
-    ax = plt.subplot(1, 1, 1)
+    fig = plt.figure(tight_layout=True)
+    ax = fig.add_subplot(1, 1, 1)
     for ix in x:
         s_time = time.time()
         vl = np.array([l_pdf.xfxQ2(pid, ix, iq2) for iq2 in q2])
@@ -131,30 +141,32 @@ def main(pdfname, pid):
         p_time = time.time()
 
         ax.plot(q2**0.5, np.abs(vp-vl)/(np.abs(vl)+EPS),
-                label=r'$x=%s$' % sci_notation(ix,3))
+                label=r'$x=%s$' % sci_notation(ix,1))
 
     ax.hlines(1e-3, plt.xlim()[0], plt.xlim()[1], linestyles='dotted', color='red')
     ax.set_xscale('log')
     ax.set_yscale('log')
     ax.set_xlim([1,1e7])
-    ax.set_ylim([EPS, 10])
+    ax.set_ylim([EPS, .01])
     
     ax = set_ticks(ax, 1, 7, 9, 'x')
     ax.tick_params(axis='x', which='both', direction='in',
                    top=True, labeltop=False,
                    bottom=True, labelbottom=True)
 
-    ax = set_ticks(ax, -15, 1, 19, 'y')
+    ax = set_ticks(ax, -15, -3, 16, 'y')
     ax.tick_params(axis='y', which='both', direction='in',
                    right=True, labelright=False,
                    left=True, labelleft=True)
 
-    ax.title.set_text(r'%s, flav = %d' % (name, pid))
-    ax.set_ylabel(r'$\displaystyle{\frac{|f_{p} - f_{l}|}{|f_{l}|+\epsilon}}$')
-    ax.set_xlabel(r'$Q$')
-    ax.legend(frameon=False, ncol=2, fontsize='small')
+    ax.set_title(r'%s, flav = %d' % (name, pid))
+    ax.set_ylabel(r'$\displaystyle{\frac{|f_{p} - f_{l}|}{|f_{l}|+\epsilon}}$',
+                  fontsize=21)
+    ax.set_xlabel(r'$Q$', fontsize=16)
+    ax.legend(frameon=False, ncol=2,
+              loc='upper right', bbox_to_anchor=(1.02,0.9))
     plt.savefig('diff_%s_flav%d_fixedx.pdf' % (pdfname.replace('/','-'), pid),
-                bbox_inches='tight', dpi=200)
+                bbox_inches='tight', dpi=250)
     plt.close()
 
     print("\nDry run time comparison:")
