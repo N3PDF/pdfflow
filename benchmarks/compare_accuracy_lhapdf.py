@@ -71,6 +71,8 @@ def set_ticks(ax, start, end, numticks, axis):
 def main(pdfname, pid):
     """Testing PDFflow vs LHAPDF performance."""
     mpl.rcParams['text.usetex'] = True
+    mpl.rcParams['savefig.format'] = 'pdf'
+    mpl.rcParams['figure.figsize'] = [4.8,4.8]
     import pdfflow.pflow as pdf
 
     p = pdf.mkPDF(pdfname, DIRNAME)
@@ -97,14 +99,14 @@ def main(pdfname, pid):
     ax.set_xscale('log')
     ax.set_yscale('log')
     ax.set_xlim([1e-12,1.])
-    ax.set_ylim([EPS, 1])
+    ax.set_ylim([EPS, 10])
     
     ax = set_ticks(ax, -12, 0, 13, 'x')
     ax.tick_params(axis='x', which='both', direction='in',
                    bottom=True, labelbottom=True,
                    top=True, labeltop=False)
 
-    ax = set_ticks(ax, -15, -1, 18, 'y')
+    ax = set_ticks(ax, -15, 1, 19, 'y')
     ax.tick_params(axis='y', which='both', direction='in',
                    left=True, labelleft=True,
                    right=True, labelright=False)
@@ -113,7 +115,7 @@ def main(pdfname, pid):
     ax.set_ylabel(r'$\displaystyle{\frac{|f_{p} - f_{l}|}{|f_{l}|+\epsilon}}$')
     ax.set_xlabel(r'$x$')
     ax.legend(frameon=False, ncol=2, fontsize='small')
-    plt.savefig('diff_%s_flav%d_fixedQ.png' % (pdfname.replace('/','-'), pid),
+    plt.savefig('diff_%s_flav%d_fixedQ.pdf' % (pdfname.replace('/','-'), pid),
                 bbox_inches='tight', dpi=200)
     plt.close()
 
@@ -135,14 +137,14 @@ def main(pdfname, pid):
     ax.set_xscale('log')
     ax.set_yscale('log')
     ax.set_xlim([1,1e7])
-    ax.set_ylim([EPS, 1])
+    ax.set_ylim([EPS, 10])
     
     ax = set_ticks(ax, 1, 7, 9, 'x')
     ax.tick_params(axis='x', which='both', direction='in',
                    top=True, labeltop=False,
                    bottom=True, labelbottom=True)
 
-    ax = set_ticks(ax, -15, -1, 18, 'y')
+    ax = set_ticks(ax, -15, 1, 19, 'y')
     ax.tick_params(axis='y', which='both', direction='in',
                    right=True, labelright=False,
                    left=True, labelleft=True)
@@ -151,7 +153,7 @@ def main(pdfname, pid):
     ax.set_ylabel(r'$\displaystyle{\frac{|f_{p} - f_{l}|}{|f_{l}|+\epsilon}}$')
     ax.set_xlabel(r'$Q$')
     ax.legend(frameon=False, ncol=2, fontsize='small')
-    plt.savefig('diff_%s_flav%d_fixedx.png' % (pdfname.replace('/','-'), pid),
+    plt.savefig('diff_%s_flav%d_fixedx.pdf' % (pdfname.replace('/','-'), pid),
                 bbox_inches='tight', dpi=200)
     plt.close()
 

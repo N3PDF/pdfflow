@@ -82,6 +82,8 @@ def test_time(p, l_pdf, xmin, xmax, Q2min, Q2max):
     #building graph for py_xfxQ2_allpid
     import matplotlib as mpl
     mpl.rcParams['text.usetex'] = True
+    mpl.rcParams['savefig.format'] = 'pdf'
+    mpl.rcParams['figure.figsize'] = [4.8,4.8]
     t_pdf = []
     t_lha = []
     n = np.linspace(1e5,1e6,10)
@@ -135,7 +137,7 @@ def test_time(p, l_pdf, xmin, xmax, Q2min, Q2max):
                    left=True, labelleft=True,
                    right=True, labelright=False)
 
-    plt.savefig('time.png', bbox_inches='tight', dpi=200)
+    plt.savefig('time.pdf', bbox_inches='tight', dpi=200)
     plt.close()
 
     #ax = fig.add_subplot(222)
@@ -168,5 +170,5 @@ def test_time(p, l_pdf, xmin, xmax, Q2min, Q2max):
                    left=True, labelleft=True,
                    right=True, labelright=False)
 
-    plt.savefig('time_relative.png', bbox_inches='tight', dpi=200)
+    plt.savefig('time_relative.pdf', bbox_inches='tight', dpi=200)
     plt.close()
