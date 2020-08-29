@@ -84,10 +84,15 @@ def test_time(p, l_pdf, xmin, xmax, Q2min, Q2max):
     mpl.rcParams['text.usetex'] = True
     mpl.rcParams['savefig.format'] = 'pdf'
     mpl.rcParams['figure.figsize'] = [7,8]
+    mpl.rcParams['axes.titlesize'] = 20
+    mpl.rcParams['ytick.labelsize'] = 17
+    mpl.rcParams['xtick.labelsize'] = 17
+    mpl.rcParams['legend.fontsize'] = 18
+
     t_pdf = []
     t_lha = []
-    n = np.linspace(1e5,1e6,10)
-    for j in tqdm.tqdm(range(10)):
+    n = np.linspace(1e5,1e6,2)
+    for j in tqdm.tqdm(range(2)):
         t = []
         tt = []
         for i in tqdm.tqdm(n):
@@ -111,11 +116,11 @@ def test_time(p, l_pdf, xmin, xmax, Q2min, Q2max):
     ax = fig.add_subplot(gs[:-1,:])
     ax.errorbar(n,avg_p,yerr=std_p,label=r'\texttt{PDFFlow}')
 
-    ax.errorbar(n,avg_l,yerr=std_l,label=r'\texttt{lhapdf}')
+    ax.errorbar(n,avg_l,yerr=std_l,label=r'LHAPDF')
 
-    ax.title.set_text(r'\texttt{PDFflow} - LHAPDF6 perfomances')
+    ax.title.set_text(r'\texttt{PDFflow} - LHAPDF perfomances')
     #ax.set_xlabel(r'\# points drawn $[\times 10^{5}]$')
-    ax.set_ylabel(r'$t [s]$')
+    ax.set_ylabel(r'$t [s]$', fontsize=20)
 
     #ax.set_xlim([1e5,1e6])
     ticks = list(np.linspace(1e5,1e6,10))
@@ -136,8 +141,10 @@ def test_time(p, l_pdf, xmin, xmax, Q2min, Q2max):
     ax = fig.add_subplot(gs[-1,:])
     ax.errorbar(n, (1-avg_p/avg_l)*100,yerr=std_ratio*100)
     #ax.title.set_text(r'Improvements of pdfflow in percentage')
-    ax.set_xlabel(r'\# points drawn  $[\times 10^{5}]$')
-    ax.set_ylabel(r'$\displaystyle{\frac{t_{l}-t_{p}}{t_{l}}} \, \%$')
+    ax.set_xlabel(r'\# points drawn  $[\times 10^{5}]$',
+                  fontsize=20)
+    ax.set_ylabel(r'$\displaystyle{\frac{t_{l}-t_{p}}{t_{l}}} \, \%$',
+                  fontsize=20)
 
     #ax.set_xlim([1e5,1e6])
     ticks = list(np.linspace(1e5,1e6,10))

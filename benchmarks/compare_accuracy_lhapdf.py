@@ -73,11 +73,11 @@ def main(pdfname, pid):
     """Testing PDFflow vs LHAPDF performance."""
     mpl.rcParams['text.usetex'] = True
     mpl.rcParams['savefig.format'] = 'pdf'
-    mpl.rcParams['figure.figsize'] = [5.5,5.5]
-    mpl.rcParams['axes.titlesize'] = 18
+    mpl.rcParams['figure.figsize'] = [11,5.5]
+    mpl.rcParams['axes.titlesize'] = 20
     mpl.rcParams['ytick.labelsize'] = 17
     mpl.rcParams['xtick.labelsize'] = 17
-    mpl.rcParams['legend.fontsize'] = 12.5
+    mpl.rcParams['legend.fontsize'] = 14
 
 
 
@@ -91,8 +91,9 @@ def main(pdfname, pid):
     p.trace()
     print("\nPDFflow\n\tBuilding graph time: %f\n"%(time.time()-s))
 
-    fig = plt.figure(tight_layout=True)
-    ax = fig.add_subplot(1, 1, 1)
+    fig = plt.figure()
+    gs = fig.add_gridspec(nrows=1, ncols=2, wspace=0.05)
+    ax = fig.add_subplot(gs[0])
     x = np.logspace(-12,0,10000, dtype=float)
     q2 = np.array([1.65,1.7,4.92,1e2,1e3,1e4,1e5,1e6,2e6], dtype=float)**2
     for iq2 in q2:
@@ -121,18 +122,18 @@ def main(pdfname, pid):
 
     ax.set_title(r'%s, flav = %d' % (name, pid))
     ax.set_ylabel(r'$\displaystyle{\frac{|f_{p} - f_{l}|}{|f_{l}|+\epsilon}}$',
-                  fontsize=21)
-    ax.set_xlabel(r'$x$', fontsize=16)
+                  fontsize=22)
+    ax.set_xlabel(r'$x$', fontsize=17)
     ax.legend(frameon=False, ncol=2,
               loc='upper right', bbox_to_anchor=(1.02,0.9))
-    plt.savefig('diff_%s_flav%d_fixedQ.pdf' % (pdfname.replace('/','-'), pid),
-                bbox_inches='tight', dpi=200)
-    plt.close()
+    #plt.savefig('diff_%s_flav%d_fixedQ.pdf' % (pdfname.replace('/','-'), pid),
+    #            bbox_inches='tight', dpi=200)
+    #plt.close()
 
     x = np.array([1e-10,1e-9,1.1e-9,5e-7,1e-6,1e-4,1e-2,0.5,0.99], dtype=float)
     q2 = np.logspace(1, 7, 10000, dtype=float)**2
-    fig = plt.figure(tight_layout=True)
-    ax = fig.add_subplot(1, 1, 1)
+    #fig = plt.figure(tight_layout=True)
+    ax = fig.add_subplot(gs[1])
     for ix in x:
         s_time = time.time()
         vl = np.array([l_pdf.xfxQ2(pid, ix, iq2) for iq2 in q2])
@@ -157,15 +158,15 @@ def main(pdfname, pid):
     ax = set_ticks(ax, -15, -3, 16, 'y')
     ax.tick_params(axis='y', which='both', direction='in',
                    right=True, labelright=False,
-                   left=True, labelleft=True)
+                   left=True, labelleft=False)
 
     ax.set_title(r'%s, flav = %d' % (name, pid))
-    ax.set_ylabel(r'$\displaystyle{\frac{|f_{p} - f_{l}|}{|f_{l}|+\epsilon}}$',
-                  fontsize=21)
-    ax.set_xlabel(r'$Q$', fontsize=16)
+    #ax.set_ylabel(r'$\displaystyle{\frac{|f_{p} - f_{l}|}{|f_{l}|+\epsilon}}$',
+    #              fontsize=21)
+    ax.set_xlabel(r'$Q$', fontsize=17)
     ax.legend(frameon=False, ncol=2,
               loc='upper right', bbox_to_anchor=(1.02,0.9))
-    plt.savefig('diff_%s_flav%d_fixedx.pdf' % (pdfname.replace('/','-'), pid),
+    plt.savefig('diff_%s_flav%d.pdf' % (pdfname.replace('/','-'), pid),
                 bbox_inches='tight', dpi=250)
     plt.close()
 
