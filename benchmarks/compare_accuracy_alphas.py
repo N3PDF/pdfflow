@@ -14,21 +14,30 @@ import pdfflow.pflow as pdf
 from compare_accuracy_lhapdf import set_ticks
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--pdfname", "-p", default="NNPDF31_nlo_as_0118/0", type=str, help='The PDF set name/replica number.')
-DIRNAME = sp.run(['lhapdf-config','--datadir'], stdout=sp.PIPE, universal_newlines=True).stdout.strip('\n') + '/'
+parser.add_argument("--pdfname", "-p", default="NNPDF31_nlo_as_0118/0",
+                    type=str, help='The PDF set name/replica number.')
+DIRNAME = sp.run(['lhapdf-config','--datadir'], stdout=sp.PIPE,
+                 universal_newlines=True).stdout.strip('\n') + '/'
 EPS = np.finfo(float).eps
 
-def compare_alphas(pdfname, ax, p=None):
+def compare_alphas(pdfname, ax):
     """
     Computes the alphas difference pdfflow vs lhapdf and returns
     axes for plots
     Parameters:
         pdfname: string
         ax: matplotlib.axes.Axes object
-        p: pdf object
     Return:
         matplotlib.axes.Axes object
     """
+    p = pdf.mkPDF(pdfname, DIRNAME)
+    name = '\_'.join(pdfname.split('_'))
+
+    s = time.time()
+    p.alphas_trace()
+    print("".join([f"\nPDFflow alphas, pdf set:{pdfname}",
+                      f"\n\tBuilding graph time: {time.time()-s}\n"]))
+
     if p is None:
         p = pdf.mkPDF(pdfname, DIRNAME)
     l_pdf = lhapdf.mkPDF(pdfname)
@@ -76,23 +85,16 @@ def main(pdfname):
     mpl.rcParams['ytick.labelsize'] = 17
     mpl.rcParams['xtick.labelsize'] = 17
 
-    p = pdf.mkPDF(pdfname, DIRNAME)
-    name = '\_'.join(pdfname.split('_'))
-
-    s = time.time()
-    p.alphas_trace()
-    print("\nPDFflow alphas\n\tBuilding graph time: %f\n"%(time.time()-s))
-
     fig = plt.figure()
     gs = fig.add_gridspec(nrows=1, ncols=2, wspace=0.1)
 
     ax = fig.add_subplot(gs[0])
-    ax = compare_alphas(pdfname, ax, p)
+    ax = compare_alphas(pdfname, ax)
     ax.tick_params(axis='y', which='both', direction='in',
                    left=True, labelleft=True,
                    right=True, labelright=False)
-    ax.set_ylabel(r'$\displaystyle{\frac{|\alpha_{s,p} - \alpha_{s,l}|}{|\alpha_{s,l}|+\epsilon}}$',
-                  fontsize=22)
+    ax.set_ylabel(r'$\displaystyle{r_{\alpha_s}(Q)}$',
+                  fontsize=20)
 
     ax = fig.add_subplot(gs[1])
     pdfname = 'MMHT2014nlo68cl/0'

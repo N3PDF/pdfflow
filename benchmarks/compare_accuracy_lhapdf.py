@@ -14,9 +14,11 @@ from math import floor, log10
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--pdfname", "-p", default="NNPDF31_nlo_as_0118/0", type=str, help='The PDF set name/replica number.')
+parser.add_argument("--pdfname", "-p", default="NNPDF31_nlo_as_0118/0",
+                    type=str, help='The PDF set name/replica number.')
 parser.add_argument("--pid", default=21, type=int, help='The flavour PID.')
-DIRNAME = sp.run(['lhapdf-config','--datadir'], stdout=sp.PIPE, universal_newlines=True).stdout.strip('\n') + '/'
+DIRNAME = sp.run(['lhapdf-config','--datadir'], stdout=sp.PIPE,
+                 universal_newlines=True).stdout.strip('\n') + '/'
 EPS = np.finfo(float).eps
 
 def sci_notation(num, decimal_digits=1, precision=None, exponent=None):
@@ -53,7 +55,9 @@ def set_ticks(ax, start, end, numticks, axis, nskip=2):
     labels = [r'$10^{%d}$'%start]
     for i in [i for i in range(start+2,end+1,nskip)]:
         labels.extend(['' for i in range(nskip-1)]+[r'$10^{%d}$'%i])
-    locmin = mpl.ticker.LogLocator(base=10.0,subs=[i/10 for i in range(1,10)],numticks=numticks)
+    locmin = mpl.ticker.LogLocator(base=10.0,
+                                   subs=[i/10 for i in range(1,10)],
+                                   numticks=numticks)
     if axis == 'x':
         ax.xaxis.set_major_locator(mpl.ticker.FixedLocator(ticks))
         ax.xaxis.set_major_formatter(mpl.ticker.FixedFormatter(labels))
@@ -121,8 +125,8 @@ def main(pdfname, pid):
                    right=True, labelright=False)
 
     ax.set_title(r'%s, flav = %d' % (name, pid))
-    ax.set_ylabel(r'$\displaystyle{\frac{|f_{p} - f_{l}|}{|f_{l}|+\epsilon}}$',
-                  fontsize=22)
+    ax.set_ylabel(r'$\displaystyle{r_{i}(x,Q)}$',
+                  fontsize=20)
     ax.set_xlabel(r'$x$', fontsize=17)
     ax.legend(frameon=False, ncol=2,
               loc='upper right', bbox_to_anchor=(1.02,0.9))
