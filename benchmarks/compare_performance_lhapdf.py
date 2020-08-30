@@ -25,6 +25,13 @@ parser.add_argument("--dev0", default=None, type=str,
                     help="First pdfflow running device")
 parser.add_argument("--dev1", default=None, type=str,
                     help="Second pdfflow running device")
+parser.add_argument("--label0", default=None, type=str,
+                    help=" ".join(["Legend label of first pdfflow running device,",
+                                    "defaults to tf device auto selection"]))
+parser.add_argument("--label1", default=None, type=str,
+                    help=" ".join(["Legend label of second pdfflow running device,",
+                                    "defaults to tf device auto selection"]))
+
 
 DIRNAME = (sp.run(["lhapdf-config", "--datadir"], stdout=sp.PIPE,
            universal_newlines=True).stdout.strip("\n") + "/")
@@ -73,8 +80,8 @@ def accumulate_times(pdfname, dev0, dev1, no_lhapdf):
     t_pdf1 = []
     t_lha = []
     
-    n = np.linspace(1e5,5e5,2)
-    for j in range(2):
+    n = np.linspace(1e5,1e6,20)
+    for j in range(10):
         t0 = []
         t1 = []
         t2 = []
@@ -105,10 +112,18 @@ def accumulate_times(pdfname, dev0, dev1, no_lhapdf):
 
 
 def main(pdfname=None, n_draws=10, pid=21, no_lhapdf=False,
-        tensorboard=False, dev0=None, dev1=None):
+         tensorboard=False, dev0=None, dev1=None,
+         label0=None, label1=None):
     """Testing PDFflow vs LHAPDF performance."""
     if tensorboard:
         tf.profiler.experimental.start('logdir')
+    
+    #check legend labels
+    if label0 is None:
+        label0 = dev0
+    
+    if label1 is None:
+        label1 = dev1
 
     n, t_pdf0, t_pdf1, t_lha = accumulate_times(pdfname, dev0, dev1, no_lhapdf)
 
@@ -123,7 +138,7 @@ def main(pdfname=None, n_draws=10, pid=21, no_lhapdf=False,
     mpl.rcParams['axes.titlesize'] = 20
     mpl.rcParams['ytick.labelsize'] = 17
     mpl.rcParams['xtick.labelsize'] = 17
-    mpl.rcParams['legend.fontsize'] = 18    
+    mpl.rcParams['legend.fontsize'] = 18
 
     avg_l = t_lha.mean(0)
     avg_p0 = t_pdf0.mean(0)
@@ -139,9 +154,12 @@ def main(pdfname=None, n_draws=10, pid=21, no_lhapdf=False,
     gs = fig.add_gridspec(nrows=3, ncols=1, hspace=0.1)
 
     ax = fig.add_subplot(gs[:-1,:])
-    ax.errorbar(n,avg_p0,yerr=std_p0,label=r'\texttt{PDFFlow}: %s'%dev0)
-    ax.errorbar(n,avg_p1,yerr=std_p1,label=r'\texttt{PDFFlow}: %s'%dev1)
-    ax.errorbar(n,avg_l,yerr=std_l,label=r'LHAPDF')
+    ax.errorbar(n,avg_p0,yerr=std_p0,label=r'\texttt{PDFFlow}: %s'%dev0,
+                linestyle='--', color='b', marker='^')
+    ax.errorbar(n,avg_p1,yerr=std_p1,label=r'\texttt{PDFFlow}: %s'%dev1,
+                linestyle='--', color='#ff7f0e', marker='s')
+    ax.errorbar(n,avg_l,yerr=std_l,label=r'LHAPDF',
+                linestyle='--', color='g', marker='o')
     ax.title.set_text(r'\texttt{PDFflow} - LHAPDF perfomances')
     ax.set_ylabel(r'$t [s]$', fontsize=20)
     ticks = list(np.linspace(1e5,1e6,10))
@@ -158,12 +176,14 @@ def main(pdfname=None, n_draws=10, pid=21, no_lhapdf=False,
 
 
     ax = fig.add_subplot(gs[-1,:])
-    ax.errorbar(n, (avg_l/avg_p0),yerr=std_ratio0, label=r'%s'%dev0)
-    ax.errorbar(n, (avg_l/avg_p1),yerr=std_ratio1, label=r'%s'%dev1)
-    ax.set_xlabel(r'\# points drawn  $[\times 10^{5}]$',
-                  fontsize=20)
-    ax.set_ylabel(r'$\displaystyle{t_{l}/t_{p}}$',
-                  fontsize=20)
+    ax.errorbar(n, (avg_l/avg_p0),yerr=std_ratio0, label=r'%s'%label0,
+                linestyle='--', color='b', marker='^')
+    ax.errorbar(n, (avg_l/avg_p1),yerr=std_ratio1, label=r'%s'%label1,
+                linestyle='--', color='#ff7f0e', marker='s')
+    ax.set_xlabel(r'Number of $(x,Q)$ points drawn $[\times 10^{5}]$',
+                  fontsize=18)
+    ax.set_ylabel(r'Ratio to LHAPDF',
+                  fontsize=18)
     ticks = list(np.linspace(1e5,1e6,10))
     labels = [r'%d'%i for i in range(1,11)]
     ax.xaxis.set_major_locator(mpl.ticker.FixedLocator(ticks))
@@ -174,7 +194,7 @@ def main(pdfname=None, n_draws=10, pid=21, no_lhapdf=False,
     ax.tick_params(axis='y', direction='in',
                    left=True, labelleft=True,
                    right=True, labelright=False)
-    ax.legend(frameon=False)
+    #ax.legend(frameon=False)
 
     plt.savefig('time.pdf', bbox_inches='tight', dpi=200)
     plt.close()
