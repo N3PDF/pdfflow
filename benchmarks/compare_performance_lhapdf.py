@@ -154,11 +154,11 @@ def main(pdfname=None, n_draws=10, pid=21, no_lhapdf=False,
     gs = fig.add_gridspec(nrows=3, ncols=1, hspace=0.1)
 
     ax = fig.add_subplot(gs[:-1,:])
-    ax.errorbar(n,avg_p0,yerr=std_p0,label=r'\texttt{PDFFlow}: %s'%dev0,
+    ax.errorbar(n,avg_p0,yerr=std_p0,label=r'\texttt{PDFFlow}: %s'%label0,
                 linestyle='--', color='b', marker='^')
-    ax.errorbar(n,avg_p1,yerr=std_p1,label=r'\texttt{PDFFlow}: %s'%dev1,
+    ax.errorbar(n,avg_p1,yerr=std_p1,label=r'\texttt{PDFFlow}: %s'%label1,
                 linestyle='--', color='#ff7f0e', marker='s')
-    ax.errorbar(n,avg_l,yerr=std_l,label=r'LHAPDF',
+    ax.errorbar(n,avg_l,yerr=std_l,label=r'LHAPDF (CPU)',
                 linestyle='--', color='g', marker='o')
     ax.title.set_text(r'\texttt{PDFflow} - LHAPDF perfomances')
     ax.set_ylabel(r'$t [s]$', fontsize=20)
@@ -184,6 +184,7 @@ def main(pdfname=None, n_draws=10, pid=21, no_lhapdf=False,
                   fontsize=18)
     ax.set_ylabel(r'Ratio to LHAPDF',
                   fontsize=18)
+    ax.set_yscale('log')
     ticks = list(np.linspace(1e5,1e6,10))
     labels = [r'%d'%i for i in range(1,11)]
     ax.xaxis.set_major_locator(mpl.ticker.FixedLocator(ticks))
