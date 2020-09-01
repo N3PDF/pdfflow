@@ -92,7 +92,7 @@ def make_event(xarr):
     cos = 1 - 2 * xarr[:, 2]
     sinxi = cc * tf.sqrt(1 - cos * cos)
     cosxi = cc * cos
-    zeros = tf.zeros(ecmo2.shape, dtype=DTYPE)
+    zeros = tf.zeros_like(ecmo2, dtype=DTYPE)
 
     p0 = tf.stack([ecmo2, zeros, zeros, ecmo2])
     p1 = tf.stack([ecmo2, zeros, zeros, -ecmo2])
@@ -120,9 +120,9 @@ def dot(p1, p2):
 def u0(p, i):
     """Compute the dirac spinor u0"""
 
-    zeros = tf.zeros(p[0].shape, dtype=DTYPE)
+    zeros = tf.zeros_like(p[0], dtype=DTYPE)
     czeros = tf.complex(zeros, zeros)
-    ones = tf.ones(p[0].shape, dtype=DTYPE)
+    ones = tf.ones_like(p[0], dtype=DTYPE)
 
     # case 1) py == 0
     rz = p[3] / (p[0] + epsilon)
@@ -166,9 +166,9 @@ def u0(p, i):
 def ubar0(p, i):
     """Compute the dirac spinor ubar0"""
 
-    zeros = tf.zeros(p[0].shape, dtype=DTYPE)
+    zeros = tf.zeros_like(p[0], dtype=DTYPE)
     czeros = tf.complex(zeros, zeros)
-    ones = tf.ones(p[0].shape, dtype=DTYPE)
+    ones = tf.ones_like(p[0], dtype=DTYPE)
 
     # case 1) py == 0
     rz = p[3] / (p[0] + epsilon)
@@ -262,7 +262,7 @@ def evaluate_matrix_element_square(p0, p1, p2, p3):
 @tf.function
 def build_luminosity(x1, x2):
     """Single-top t-channel luminosity"""
-    q2s = tf.fill(x1.shape, mt2)
+    q2s = tf.fill(tf.shape(x1), mt2)
     p5x1 = tf.cast(pdf.xfxQ2([5], x1, q2s), dtype=DTYPE)
     pNx2 = tf.cast(pdf.xfxQ2([2, 4, -1, -3], x2, q2s), dtype=DTYPE)
     prod = tf.transpose(tf.reshape(p5x1, (-1, 1))*pNx2)
