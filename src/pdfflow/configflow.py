@@ -11,7 +11,7 @@ os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "1")
 import tensorflow as tf
 
 # uncomment this line for debugging to avoid compiling any tf.function
-#tf.config.experimental_run_functions_eagerly(True)
+# tf.config.experimental_run_functions_eagerly(True)
 
 # Configure pdfflow logging
 import logging
@@ -22,12 +22,7 @@ logger = logging.getLogger(module_name)
 # Read the log level from environment, 3 (default) == debug, 2 == info, 1 == warning, 0 == error
 DEFAULT_LOG_LEVEL = "3"
 log_level_idx = os.environ.get("PDFFLOW_LOG_LEVEL", DEFAULT_LOG_LEVEL)
-log_dict = {
-        "0" : logging.ERROR,
-        "1" : logging.WARNING,
-        "2" : logging.INFO,
-        "3" : logging.DEBUG
-        }
+log_dict = {"0": logging.ERROR, "1": logging.WARNING, "2": logging.INFO, "3": logging.DEBUG}
 bad_log_warning = None
 if log_level_idx not in log_dict:
     bad_log_warning = log_level_idx
@@ -45,7 +40,9 @@ logger.addHandler(console_handler)
 
 # Now that the logging has been created, warn about the bad logging level
 if bad_log_warning is not None:
-    logger.warning("Accepted log levels are: %s, received: %s", list(log_dict.keys()), bad_log_warning)
+    logger.warning(
+        "Accepted log levels are: %s, received: %s", list(log_dict.keys()), bad_log_warning
+    )
     logger.warning(f"Setting log level to its default value: {DEFAULT_LOG_LEVEL}")
 
 # Define the tensorflow number types

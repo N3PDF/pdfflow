@@ -4,9 +4,59 @@
 How to use
 ==========
 
+.. contents::
+  :local:
+  :depth: 1
+  
+  
+Logging
+-------
+
+``PDFFlow`` uses the internal logging capabilities of python by
+creating a new logger handled named ``pdfflow``.
+You can modify the behavior of the logger as with any sane python library with the following lines:
+
+.. code-block:: python
+
+  import logging
+  log_dict = {
+        "0" : logging.ERROR,
+        "1" : logging.WARNING,
+        "2" : logging.INFO,
+        "3" : logging.DEBUG
+        }
+  logger_pdfflow = logging.getLogger('pdfflow')
+  logger_pdfflow.setLevel(log_dict["0"])
+  
+Where the where the log level can be any level defined in the ``log_dict`` dictionary.
+
+Since ``PDFFlow`` is to be interfaced with non-python code it is also
+possible to control the behaviour through the environment variable ``PDFFLOW_LOG_LEVEL``, in that case any of the keys in ``log_dict`` can be used. For instance:
+
+.. code-block:: bash
+  
+  export PDFFLOW_LOG_LEVEL=1
+
+will suppress all logger information other than ``WARNING`` and ``ERROR``.
+
+
+Environment
+-----------
+
+``PDFFlow`` is based on ``TensorFlow`` and as such all environment variable that
+have an effect on ``TensorFlow``s behavior will also have an effect on ``PDFFlow``.
+
+Here we describe only some of what we found to be the most useful variables.
+For a complete description on the variables controlling the GPU-behavior of ``TensorFlow`` please refer to
+the `nvidia official documentation <https://docs.nvidia.com/deeplearning/frameworks/tensorflow-user-guide/index.html#variablestf>`_.
+
+- ``TF_CPP_MIN_LOG_LEVEL``: controls the ``TensorFlow`` logging level. It is set to 1 by default so that only errors are printed.
+- ``PDFFLOW_LOG_LEVEL``: controls the ``PDFFlow`` logging level. Set to 3 by default so that everything is printed.
+- ``CUDA_VISIBLE_DEVICES``: set the devices that are visible for ``TensorFlow``. If unset it will try to use all GPUs available. In order to force the code to run on CPU it needs to be set to ``""``. In a multi-GPU system you can choose, by index, the GPUs available for ``TensorFlow``, e.g. ``export CUDA_VISIBLE_DEVICES=0,1``.
+
 
 Building the graph ahead of time
-================================
+--------------------------------
 
 The very first call of PDFFlow compiles the ``tf.Graph``. TensorFlow compiles only functions that are called for the first time. The function ``PDF.trace()`` is intended to build all the necessary parts of the ``tf.Graph`` and prevent future retracings that could slow down the execution.
 
