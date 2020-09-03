@@ -107,6 +107,32 @@ def _load_alphas(info_file):
 
     return grids
 
+def mkPDFs(fname, members, dirname=None):
+    """ Wrapper to generate a multimember PDF
+    Needs a name and a directory where to find the grid files.
+
+    Parameters
+    ----------
+        fname: str
+            PDF name and member in the format '<set_name>'
+        members: list(int)
+            List of members to load
+        dirname: str
+            LHAPDF datadir, if None will try to guess from LHAPDF
+
+    Returns
+    -------
+        PDF: pdfflow.PDF
+            instantiated member of the PDF class
+    """
+    if dirname is None:
+        if lhapdf is None:
+            raise ValueError("mkPDF needs a PDF name if lhapdf-python is not installed")
+        dirname_raw = sp.run(
+            ["lhapdf-config", "--datadir"], capture_output=True, text=True, check=True
+        )
+        dirname = dirname_raw.stdout.strip()
+    return PDF(dirname, fname, members)
 
 def mkPDF(fname, dirname=None):
     """ Wrapper to generate a PDF given a PDF name and a directory
@@ -124,14 +150,9 @@ def mkPDF(fname, dirname=None):
         PDF: pdfflow.PDF
             instantiated member of the PDF class
     """
-    if dirname is None:
-        if lhapdf is None:
-            raise ValueError("mkPDF needs a PDF name if lhapdf-python is not installed")
-        dirname_raw = sp.run(
-            ["lhapdf-config", "--datadir"], capture_output=True, text=True, check=True
-        )
-        dirname = dirname_raw.stdout.strip()
-    return PDF(fname, dirname)
+    fname_sp, member = fname.split("/")
+    member = int(member)
+    return mkPDFs(fname_sp, [member], dirname=dirname)
 
 
 class PDF:
@@ -147,26 +168,37 @@ class PDF:
 
     Parameters
     ----------
-        fname: str
-            PDF name and member, must be in the format: '<set_name>/<set member number>'
         dirname: str
             LHAPDF datadir
+        fname: str
+            PDF name must be in the format: '<set_name>'
+        members: list(int)
+            list of integer with the members to be level
     """
 
-    def __init__(self, fname, dirname, compilable=True):
+    def __init__(self, dirname, fname, members, compilable=True):
         if not compilable:
             logger.warning("Running pdfflow in eager mode")
             logger.warning("Setting eager mode will affect all of TF")
             tf.config.experimental_run_functions_eagerly(True)
 
         self.dirname = dirname
-        fname, member = fname.split("/")
-        member = member.zfill(4)
+        self.fname = fname
+        self.members = members
+        self.grids = []
 
-        self.fname = f"{self.dirname}/{fname}/{fname}_{member}.dat"
+        for member_int in members:
+            member = str(member_int).zfill(4)
+            filename = f"{self.dirname}/{fname}/{fname}_{member}.dat"
 
-        logger.info("loading %s", self.fname)
-        grids = _load_data(self.fname)
+            logger.info("loading %s", filename)
+            grids = _load_data(filename)
+
+            subgrids = [Subgrid(grid, i, len(grids)) for i, grid in enumerate(grids)]
+            self.grids.append(subgrids)
+
+        # TODO: Here we are now assuming flavour schemes should match across all members
+        # and across all subgrids. We definitely should error out here instead of printing a warning
         # [(x,Q2,flav,knots), ...]
         flav = list(map(lambda g: g[2], grids))
         for i in range(len(flav) - 1):
@@ -175,10 +207,6 @@ class PDF:
                 logger.warning(
                     "Flavor schemes do not match across all the subgrids --> algorithm will break!"
                 )
-
-        self.subgrids = [Subgrid(grid, i, len(grids)) for i, grid in enumerate(grids)]
-
-        # By default all subgrids are called with the inner subgrid
 
         # Look at the flavor_scheme and ensure that it is sorted
         # save the whole thing in case it is not sorted
@@ -206,15 +234,25 @@ class PDF:
 
     @property
     def q2max(self):
-        """ Upper boundary in q2 of the grid """
-        q2max = self.subgrids[-1].log_q2max
+        """ Upper boundary in q2 of the first grid """
+        q2max = self.grids[0][-1].log_q2max
         return np.exp(q2max)
 
     @property
     def q2min(self):
-        """ Lower boundary in q2 of the grid """
-        q2min = self.subgrids[0].log_q2min
+        """ Lower boundary in q2 of the first grid """
+        q2min = self.grids[0][0].log_q2min
         return np.exp(q2min)
+
+    @property
+    def active_members(self):
+        """ List of all member files """
+        member_list = []
+        for member in members:
+            member = str(member_int).zfill(4)
+            member_list.append(f"{self.fname}_{member}.dat")
+        return member_list
+
 
     @tf.function(input_signature=[GRID_I, GRID_F, GRID_F])
     def _xfxQ2(self, u, arr_x, arr_q2):
@@ -222,7 +260,10 @@ class PDF:
         Function to interpolate
         Called by xfxQ2
         It divides the computation on the q2 axis in subgrids and sums up
-        all the results
+        all the results.
+
+        If the PDF is instantiated with more than one member, the output
+        will contain an extra first dimension to accomodate the members
 
         Parameters
         ----------
@@ -232,6 +273,11 @@ class PDF:
                 x-grid for the evaluation of the pdf
             arr_q2: tf.tensor(float)
                 q2-grid for the evaluation of the pdf
+
+        Returns
+        -------
+            res: tf.tensor(float)
+                grid of results ([members], number of points, flavour)
         """
 
         a_x = tf.math.log(arr_x, name="logx")
@@ -241,11 +287,19 @@ class PDF:
         size_u = tf.size(u, out_type=DTYPEINT)
         shape = tf.stack([size_a, size_u])
 
-        res = tf.zeros(shape, dtype=DTYPE)
-        for subgrid in self.subgrids:
-            res += subgrid(shape, a_q2, pids=u, arr_x=a_x)
+        all_res = []
+        for subgrids in self.grids:
+            res = tf.zeros(shape, dtype=DTYPE)
+            for subgrid in subgrids:
+                res += subgrid(shape, a_q2, pids=u, arr_x=a_x)
+            all_res.append(res)
 
-        return res
+        # This conditional is only seen once
+        # if there is only one member, it will always return the result directly
+        if len(self.grids) == 1:
+            return res
+        else:
+            return tf.stack(res)
 
     @tf.function(input_signature=[GRID_I, GRID_F, GRID_F])
     def xfxQ2(self, pid, a_x, a_q2):
