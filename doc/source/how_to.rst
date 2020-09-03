@@ -11,11 +11,11 @@ The very first iteration of PDFFlow compiles the ``tf.Graph``. TensorFlow compil
 
 Then a ``PDF`` object can be instantiated by the following lines of code:
 
-``p = pdf.mkPDF(pdfname, DIRNAME)``
-``p.trace()``
+``p = pdf.mkPDF(pdfname, DIRNAME) \n
+p.trace()``
 
 
 The strong coupling interpolation requires calling the equivalent ``PDF.alphas_trace()`` function instead:
 
-``p = pdf.mkPDF(pdfname, DIRNAME)``
-``p.alphas_trace()``
+``p = pdf.mkPDF(pdfname, DIRNAME) \n
+p.alphas_trace()``
