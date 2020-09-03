@@ -71,8 +71,6 @@ def set_ticks(ax, start, end, numticks, axis, nskip=2):
     return ax    
     
 
-    
-
 def main(pdfname, pid):
     """Testing PDFflow vs LHAPDF performance."""
     mpl.rcParams['text.usetex'] = True

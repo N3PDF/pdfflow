@@ -499,9 +499,9 @@ class PDF:
         q2 = []
 
         #x points are equal for all the subgrids
-        xmin = float(tf.math.exp(self.subgrids[0].log_xmin))
+        xmin = tf.math.exp(self.subgrids[0].log_xmin).numpy()
 
-        q2min = float(tf.math.exp(self.subgrids[0].log_q2min))
+        q2min = tf.math.exp(self.subgrids[0].log_q2min).numpy()
 
         #points in lowx lowq2 and lowq2 regions
         x+= [xmin*0.99, xmin*1.01]
@@ -510,14 +510,14 @@ class PDF:
 
         for s in self.subgrids:
 
-            q2min = float(tf.math.exp(s.log_q2min))
-            q2max = float(tf.math.exp(s.log_q2max))
+            q2min = tf.math.exp(s.log_q2min).numpy()
+            q2max = tf.math.exp(s.log_q2max).numpy()
 
             #points inside the grid and lowx
             x += [xmin*1.01, xmin*0.99]
             q2 += [(q2min+q2max)*0.5, (q2min+q2max)*0.5]
 
-        q2max = float(self.subgrids[-1].log_q2max)
+        q2max = self.subgrids[-1].log_q2max.numpy()
 
         #points in highx highq2 and highq2 regions
         x += [xmin*0.99, xmin*1.01]
