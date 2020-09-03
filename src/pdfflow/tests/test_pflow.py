@@ -3,7 +3,7 @@
 
     This file also checks that functions can indeed compile
 """
-from pdfflow.pflow import mkPDF
+from pdfflow.pflow import mkPDF, mkPDFs
 import logging
 
 logger = logging.getLogger("pdfflow.test")
@@ -19,10 +19,9 @@ PDFNAME = "NNPDF31_nlo_as_0118"
 install_lhapdf(PDFNAME)
 
 
-def test_pflow():
+def pdfflow_tester(pdf):
     """ Test several pdfflow features form instanciation to calling it
     with different PID formats"""
-    pdf = mkPDF(f"{PDFNAME}/0")
     q2 = [16.7]
     x = [0.5]
     # Check I can get just one pid
@@ -44,6 +43,15 @@ def test_pflow():
     pdf.py_xfxQ2_allpid(x, q2)
     pdf.xfxQ2_allpid(x, q2)
 
+def test_onemember():
+    """ Test the one-central-member of pdfflow """
+    pdf = mkPDF(f"{PDFNAME}/0")
+    pdfflow_tester(pdf)
+
+def test_multimember():
+    """ Test the multi-member capabilities of pdfflow """
+    pdf = mkPDFs(PDFNAME, [0, 2, 4, 7])
+    pdfflow_tester(pdf)
 
 if __name__ == "__main__":
-    test_pflow()
+    test_multimember()

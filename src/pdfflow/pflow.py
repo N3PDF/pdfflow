@@ -107,8 +107,9 @@ def _load_alphas(info_file):
 
     return grids
 
+
 def mkPDFs(fname, members, dirname=None):
-    """ Wrapper to generate a multimember PDF
+    """Wrapper to generate a multimember PDF
     Needs a name and a directory where to find the grid files.
 
     Parameters
@@ -134,8 +135,9 @@ def mkPDFs(fname, members, dirname=None):
         dirname = dirname_raw.stdout.strip()
     return PDF(dirname, fname, members)
 
+
 def mkPDF(fname, dirname=None):
-    """ Wrapper to generate a PDF given a PDF name and a directory
+    """Wrapper to generate a PDF given a PDF name and a directory
     where to find the grid files.
 
     Parameters
@@ -252,7 +254,6 @@ class PDF:
             member = str(member_int).zfill(4)
             member_list.append(f"{self.fname}_{member}.dat")
         return member_list
-
 
     @tf.function(input_signature=[GRID_I, GRID_F, GRID_F])
     def _xfxQ2(self, u, arr_x, arr_q2):
