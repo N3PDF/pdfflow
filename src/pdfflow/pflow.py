@@ -494,7 +494,7 @@ class PDF:
         Builds all the needed graph in advance
         of interpolations
         """
-        print('Building tf.Graph ...')
+        logger.info('Building tf.Graph ...')
         x = []
         q2 = []
 
@@ -535,7 +535,7 @@ class PDF:
         Builds all the needed graph in advance
         of alpha_s interpolations
         """
-        print('Building tf.Graph ...')
+        logger.info('Building tf.Graph ...')
         q2 = []
 
         q2min = float(tf.math.exp(self.alphas_subgrids[0].log_q2min))
