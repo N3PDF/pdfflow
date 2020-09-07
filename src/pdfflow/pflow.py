@@ -488,3 +488,82 @@ class PDF:
 
         # Perform the actual computation
         return self.alphasQ(a_q)
+
+    def trace(self):
+        """
+        Builds all the needed graph in advance
+        of interpolations
+        """
+        logger.info('Building tf.Graph ...')
+        x = []
+        q2 = []
+
+        #x points are equal for all the subgrids
+        xmin = tf.math.exp(self.subgrids[0].log_xmin).numpy()
+
+        q2min = tf.math.exp(self.subgrids[0].log_q2min).numpy()
+
+        #points in lowx lowq2 and lowq2 regions
+        x+= [xmin*0.99, xmin*1.01]
+        q2 += [q2min*0.99, q2min*0.99]
+
+
+        for s in self.subgrids:
+
+            q2min = tf.math.exp(s.log_q2min).numpy()
+            q2max = tf.math.exp(s.log_q2max).numpy()
+
+            #points inside the grid and lowx
+            x += [xmin*1.01, xmin*0.99]
+            q2 += [(q2min+q2max)*0.5, (q2min+q2max)*0.5]
+
+        q2max = self.subgrids[-1].log_q2max.numpy()
+
+        #points in highx highq2 and highq2 regions
+        x += [xmin*0.99, xmin*1.01]
+        q2 += [q2max*1.01, q2max*1.01]
+
+        x = np.array(x)
+        q2 = np.array(q2)
+
+        #trigger retracings
+        self.py_xfxQ2_allpid(x,q2)
+        self.py_xfxQ2(21,x,q2)
+
+    def alphas_trace(self):
+        """
+        Builds all the needed graph in advance
+        of alpha_s interpolations
+        """
+        logger.info('Building tf.Graph ...')
+        q2 = []
+
+        q2min = float(tf.math.exp(self.alphas_subgrids[0].log_q2min))
+
+        #Q2 < Q2min
+        q2 += [q2min*0.99]
+
+        for s in self.alphas_subgrids:
+
+            q2min = float(tf.math.exp(s.log_q2min))
+            q2max = float(tf.math.exp(s.log_q2max))
+
+            #points inside the grid
+            q2 += [(q2min+q2max)*0.5]
+
+        q2max = float(self.subgrids[-1].log_q2max)
+
+        #Q2 > Q2max
+        q2 += [q2max*1.01]
+
+        q2 = np.array(q2)
+
+        #trigger retracings
+        self.py_alphasQ2(q2)
+        self.py_alphasQ(q2**0.5)
+
+
+
+
+
+
