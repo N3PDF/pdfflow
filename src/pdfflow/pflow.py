@@ -561,43 +561,63 @@ class PDF:
         q2 = []
 
         # We need to build all members and they could have different x-grids
-        # by default stop after building the central one (which is assumed to go first)
+        all_ranges = []
+
         for subgrids in self.grids:
 
-            # x points are equal for all the subgrids
-            xmin = tf.math.exp(subgrids[0].log_xmin).numpy()
-
-            q2min = tf.math.exp(subgrids[0].log_q2min).numpy()
-
-            # points in lowx lowq2 and lowq2 regions
-            x += [xmin * 0.99, xmin * 1.01]
-            q2 += [q2min * 0.99, q2min * 0.99]
-
+            # Get all x and q
             for s in subgrids:
-
                 q2min = tf.math.exp(s.log_q2min).numpy()
                 q2max = tf.math.exp(s.log_q2max).numpy()
 
-                # points inside the grid and lowx
-                x += [xmin * 1.01, xmin * 0.99]
-                q2 += [(q2min + q2max) * 0.5, (q2min + q2max) * 0.5]
+                xmin = tf.math.exp(s.log_xmin).numpy()
+                xmax = tf.math.exp(s.log_xmax).numpy()
 
-            q2max = subgrids[-1].log_q2max.numpy()
+                all_ranges.append( ((xmin, xmax), (q2min, q2max)) )
 
-            # points in highx highq2 and highq2 regions
-            x += [xmin * 0.99, xmin * 1.01]
-            q2 += [q2max * 1.01, q2max * 1.01]
+        # Make the lists into a set to remove duplicates
+        all_ranges = list(set(all_ranges))
 
-            x = np.array(x)
-            q2 = np.array(q2)
 
-            # trigger retracings
-            self.py_xfxQ2_allpid(x, q2)
-            self.py_xfxQ2(21, x, q2)
+        absolute_min = 1.0
+        absolute_max = 0.0
 
-            # If the central-member grid is enough, get out
-            if not all_members:
-                return
+        absolute_q2min = 1e10
+        absolute_q2max = 0.0
+
+        for xran, qran in all_ranges:
+            xmin = xran[0]
+            xmax = xran[1]
+
+            q2min = qran[0]
+            q2max = qran[1]
+
+            # Create the x arrays
+            x.append( (xmin+xmax)/2.0 )
+            if xmin < absolute_min:
+                absolute_min = xmin
+            if xmax > absolute_max:
+                absolute_max = xmax
+
+            # Create the q2 array
+            q2.append( (q2min+q2max)/2.0 )
+            if q2min < absolute_q2min:
+                absolute_min = q2min
+            if q2max > absolute_q2max:
+                absolute_q2max = q2max
+
+        x.append(max(absolute_min*0.99, 1e-7))
+        x.append(min(absolute_max*1.01, 1.0))
+        q2.append(max(absolute_q2min, 1e-7))
+        q2.append(absolute_q2max)
+
+        # Make into an array that can be called
+        x = np.array(x)
+        q2 = np.array(q2)
+
+        # trigger retracings
+        self.py_xfxQ2_allpid(x, q2)
+        self.py_xfxQ2(21, x, q2)
 
     def alphas_trace(self):
         """

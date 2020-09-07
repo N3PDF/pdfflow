@@ -64,10 +64,8 @@ def test_multimember():
     run_eager(False)
     pdf = mkPDFs(PDFNAME, [0, 2, 4, 7])
     # Check the tracing with the central-member grid
+    pdf.trace()
     pdfflow_tester(pdf)
-    pdf = mkPDFs(PDFNAME, [3, 9])
-    # Check the tracing with all-members
-    pdfflow_tester(pdf, all_members=True)
 
 if __name__ == "__main__":
-    test_onemember()
+    test_multimember()
