@@ -1,13 +1,13 @@
 # Makefile example
 
-CFLAGS=`pkg-config pdfflow --cflags` -fno-underscoring
+CFLAGS=`pkg-config pdfflow --cflags`
 LIBS=`pkg-config pdfflow --libs` 
 FC=gfortran
 
 all: example
 
 %: %.f90
-	$(FC) $(CFLAGS) -o $@ $< $(LIBS)
+	$(FC) $(CFLAGS) -o $@ pdfflow_f_interface.c $< $(LIBS)
 
 run: example
 	./example
