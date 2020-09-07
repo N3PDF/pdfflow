@@ -4,6 +4,7 @@
     This file also checks that functions can indeed compile
 """
 from pdfflow.pflow import mkPDF, mkPDFs
+from pdfflow.configflow import run_eager
 import logging
 
 logger = logging.getLogger("pdfflow.test")
@@ -20,8 +21,10 @@ install_lhapdf(PDFNAME)
 
 
 def pdfflow_tester(pdf):
-    """ Test several pdfflow features form instanciation to calling it
-    with different PID formats"""
+    """ Test several pdfflow features:
+        - Instantiationg
+        - Calling it with different PID
+    """
     q2 = [16.7]
     x = [0.5]
     # Check I can get just one pid
@@ -45,13 +48,26 @@ def pdfflow_tester(pdf):
 
 def test_onemember():
     """ Test the one-central-member of pdfflow """
+    # Check the central member
     pdf = mkPDF(f"{PDFNAME}/0")
     pdfflow_tester(pdf)
+    # Try a non-central member, but trace first
+    # Ensure it is not running eagerly
+    run_eager(False)
+    pdf = mkPDF(f"{PDFNAME}/1")
+    pdf.trace()
+    pdfflow_tester(pdf)
+
 
 def test_multimember():
     """ Test the multi-member capabilities of pdfflow """
+    run_eager(False)
     pdf = mkPDFs(PDFNAME, [0, 2, 4, 7])
+    # Check the tracing with the central-member grid
     pdfflow_tester(pdf)
+    pdf = mkPDFs(PDFNAME, [3, 9])
+    # Check the tracing with all-members
+    pdfflow_tester(pdf, all_members=True)
 
 if __name__ == "__main__":
-    test_multimember()
+    test_onemember()

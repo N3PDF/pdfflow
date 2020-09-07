@@ -13,6 +13,10 @@ import tensorflow as tf
 # uncomment this line for debugging to avoid compiling any tf.function
 # tf.config.run_functions_eagerly(True)
 
+def run_eager(flag = True):
+    """ Wraper around `run_functions_eagerly` """
+    tf.config.run_functions_eagerly(flag)
+
 # Configure pdfflow logging
 import logging
 
