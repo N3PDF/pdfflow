@@ -5,6 +5,10 @@
 PDFflow: Gotta go fast
 ======================
 
+.. contents::
+   :local:
+   :depth: 1
+
 PDFflow is a parton distribution function interpolation library written in Python and based on the `TensorFlow <https://www.tensorflow.org/>`_ framework.
 It is developed with a focus on speed and efficiency, enabling researchers to perform very expensive calculation as quick and easy as possible.
 
@@ -23,20 +27,20 @@ To that end PDFflow is based on two technologies that together will enable a new
     - `TensorFlow <https://www.tensorflow.org/>`_: the framework developed by Google and made public in November of 2015 is a perfect combination between performance and usability. With a focus on Deep Learning, TensorFlow provides an algebra library able to easily run operations in many different devices: CPUs, GPUs, TPUs with little input by the developer. Write your code once.
 
 
-FAQ
-===
-
 Why the name ``pdfflow``?
 ---------------------------
 
 It is a combination of the names `PDF` and `Tensorflow`.
 
 .. toctree::
-    :maxdepth: 3
-    :caption: Contents:
+   :maxdepth: 3
+   :glob:
+   :caption: Contents:
 
-    index
-    how_to
+   PDFFlow<self>
+   overview
+   how_to
+
 
 .. automodule:: pdfflow
     :members:

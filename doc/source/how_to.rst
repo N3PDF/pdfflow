@@ -1,8 +1,8 @@
 .. _howto-label:
 
-==========
-How to use
-==========
+=============
+General usage
+=============
 
 .. contents::
   :local:
