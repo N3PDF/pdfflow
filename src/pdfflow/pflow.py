@@ -355,7 +355,8 @@ class PDF:
         f_f = self._xfxQ2(pid_idx, a_x, a_q2)
 
         # Return the values in the order the user asked
-        f_f = tf.gather(f_f, user_idx, axis=1)
+        # the flavour axis here is the last one
+        f_f = tf.gather(f_f, user_idx, axis=-1)
 
         result = tf.squeeze(f_f)
         return result
@@ -544,19 +545,11 @@ class PDF:
         # Perform the actual computation
         return self.alphasQ(a_q)
 
-    def trace(self, all_members=False):
+    def trace(self):
         """
         Builds all the needed graph in advance of interpolations
-        Takes the central member as the target grid
-
-        If each member has a different grid size, use the flag `all_members`
-
-        Parameters
-        ---------
-            all_members: bool
-                Whether to build all members according to their own grids
         """
-        logger.info("Building tf.Graph ...")
+        logger.info("Building tf.Graph, this can take a while...")
         x = []
         q2 = []
 
@@ -588,18 +581,18 @@ class PDF:
         q2max = np.max(q2grids)
         q2min = np.min(q2grids)
 
-        xgrids.append((xmin*0.99, xmin))
-        xgrids.append((xmax, xmax*1.01))
-        q2grids.append((q2min*0.99, q2min))
-        q2grids.append((q2max, q2max*1.01))
+        xgrids.append((xmin * 0.99, xmin))
+        xgrids.append((xmax, xmax * 1.01))
+        q2grids.append((q2min * 0.99, q2min))
+        q2grids.append((q2max, q2max * 1.01))
 
         # Now create a set of points such that all x-grids are visited
         # for all grids in q2
         for xmin, xmax in xgrids:
-            xpoint = (xmax-xmin)/2.0
+            xpoint = (xmax - xmin) / 2.0
             for q2min, q2max in q2grids:
                 x.append(xpoint)
-                q2.append((q2max-q2min)/2.0)
+                q2.append((q2max - q2min) / 2.0)
 
         # Make into an array that can be called
         x = np.array(x)
