@@ -28,7 +28,7 @@ to obtain members (0,1,2) we can do:
 
 .. code-block:: python
 
-  from pdfflow.pflow import mkPDF
+  from pdfflow.pflow import mkPDFs
   pdf = mkPDFs(pdfset, [0, 1, 2])
 
 
