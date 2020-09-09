@@ -307,7 +307,7 @@ class PDF:
         """
         User interface for pdfflow when called with
         tensorflow tensors
-        It asks pid, x, q2 points
+         asks pid, x, q2 points
 
         Parameters
         ----------
@@ -560,8 +560,9 @@ class PDF:
         x = []
         q2 = []
 
-        # We need to build all members and they could have different x-grids
-        all_ranges = []
+        # We need to build all members and they could have different grids
+        xgrids = []
+        q2grids = []
 
         for subgrids in self.grids:
 
@@ -573,43 +574,32 @@ class PDF:
                 xmin = tf.math.exp(s.log_xmin).numpy()
                 xmax = tf.math.exp(s.log_xmax).numpy()
 
-                all_ranges.append( ((xmin, xmax), (q2min, q2max)) )
+                xgrids.append((xmin, xmax))
+                q2grids.append((q2min, q2max))
 
-        # Make the lists into a set to remove duplicates
-        all_ranges = list(set(all_ranges))
+        # Make the lists into sets to remove duplicates
+        xgrids = list(set(xgrids))
+        q2grids = list(set(q2grids))
 
+        # Put points in the extrapolation region
+        xmax = np.max(xgrids)
+        xmin = np.min(xgrids)
 
-        absolute_min = 1.0
-        absolute_max = 0.0
+        q2max = np.max(q2grids)
+        q2min = np.min(q2grids)
 
-        absolute_q2min = 1e10
-        absolute_q2max = 0.0
+        xgrids.append((xmin*0.99, xmin))
+        xgrids.append((xmax, xmax*1.01))
+        q2grids.append((q2min*0.99, q2min))
+        q2grids.append((q2max, q2max*1.01))
 
-        for xran, qran in all_ranges:
-            xmin = xran[0]
-            xmax = xran[1]
-
-            q2min = qran[0]
-            q2max = qran[1]
-
-            # Create the x arrays
-            x.append( (xmin+xmax)/2.0 )
-            if xmin < absolute_min:
-                absolute_min = xmin
-            if xmax > absolute_max:
-                absolute_max = xmax
-
-            # Create the q2 array
-            q2.append( (q2min+q2max)/2.0 )
-            if q2min < absolute_q2min:
-                absolute_min = q2min
-            if q2max > absolute_q2max:
-                absolute_q2max = q2max
-
-        x.append(max(absolute_min*0.99, 1e-7))
-        x.append(min(absolute_max*1.01, 1.0))
-        q2.append(max(absolute_q2min, 1e-7))
-        q2.append(absolute_q2max)
+        # Now create a set of points such that all x-grids are visited
+        # for all grids in q2
+        for xmin, xmax in xgrids:
+            xpoint = (xmax-xmin)/2.0
+            for q2min, q2max in q2grids:
+                x.append(xpoint)
+                q2.append((q2max-q2min)/2.0)
 
         # Make into an array that can be called
         x = np.array(x)
