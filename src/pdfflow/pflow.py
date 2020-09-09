@@ -300,7 +300,7 @@ class PDF:
         if len(self.grids) == 1:
             return res
         else:
-            return tf.stack(res)
+            return tf.stack(all_res)
 
     @tf.function(input_signature=[GRID_I, GRID_F, GRID_F])
     def xfxQ2(self, pid, a_x, a_q2):
