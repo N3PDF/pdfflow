@@ -307,7 +307,31 @@ class PDF:
         """
         User interface for pdfflow when called with
         tensorflow tensors
-         asks pid, x, q2 points
+        returns PDF evaluated in each f(x,q2) for each pid
+
+        The output of the function is of shape
+        (members, number_of_points, flavours)
+        but note that dimensions of size 1 will be squeezed out.
+        for instance, if called with one single value of the x, q2 pair
+        for one single member for one single flavour the result will be a scalar.
+
+        Example
+        -------
+        >>> from pdfflow.pflow import mkPDF
+        >>> from pdfflow.configflow import run_eager, float_me, int_me
+        >>> run_eager(True)
+        >>> pdf = mkPDF("NNPDF31_nlo_as_0118/0")
+        >>> pdf.xfxQ2(int_me([21]), float_me([0.4]), float_me([15625.0]))
+        <tf.Tensor: shape=(), dtype=float64, numpy=0.06684181536088425>
+        >>> pdf.xfxQ2(int_me([1,2]), float_me([0.4]), float_me([15625.0]))
+        <tf.Tensor: shape=(2,), dtype=float64, numpy=array([0.08914275, 0.28612276])>
+        >>> pdf.xfxQ2(int_me([1]), float_me([0.1, 0.3, 0.6]), float_me([15625.0, 91.0, 2.0]))
+        <tf.Tensor: shape=(3,), dtype=float64, numpy=array([0.39789932, 0.18068107, 0.02278675])>
+        >>> pdf.xfxQ2(int_me([21, 1]), float_me([0.1, 0.3, 0.6]), float_me([15625.0, 91.0, 2.0]))
+        <tf.Tensor: shape=(3, 2), dtype=float64, numpy=
+        array([[1.1642452 , 0.39789932],
+            [0.16300335, 0.18068107],
+            [0.05240091, 0.02278675]])>
 
         Parameters
         ----------
@@ -319,20 +343,20 @@ class PDF:
                 grid on q^2 where to compute the PDF
         Returns
         -------
-            pdf: tensor
-                PDF evaluated in each f(x,q2) for each flavour
+            pdf: tf.tensor
+                grid of results ([members], [number of points], [flavour])
         """
-        # Parse the input
-        # this function assumes the user is asking for a tensor of pids
-        # TODO if the user is to do non-tf stuff print a warning and direct
-        # them to use the python version of the functions
-        # must feed a mask for flavors to _xfxQ2
-        # cast down if necessary the type of the pid
-        # pid = int_me(pid)
-
-        # same for the a_x and a_q2 arrays
-        # a_x = float_me(arr_x)
-        # a_q2 = float_me(arr_q2)
+        # Check whether the array is a tensor
+        if not tf.is_tensor(pid) or not tf.is_tensor(a_x) or not tf.is_tensor(a_q2):
+            logger.error(
+                "Method xfxQ2 can only be called with tensorflow variables "
+                "use `py_xfxQ2` to obtain results with regular python variables "
+                "or use the functions `int_me` and `float_me` from pdfflow.configflow "
+                "to cast the input to tensorflow variables"
+            )
+            raise TypeError("xfxQ2 called with wrong types")
+            # TODO: this error only shows up in EagerMode because otherwise it fails
+            # before arriving due to the signature
 
         # And ensure it is unique
         # TODO maybe error if the user ask for the same pid twice or for a non-registered pid?
@@ -365,9 +389,24 @@ class PDF:
     def xfxQ2_allpid(self, a_x, a_q2):
         """
         User interface for pdfflow when called with
-        tensorflow tensors
-        It asks x, q2 points
-        returns all flavours
+        tensorflow tensors.
+        returns PDF evaluated in each f(x,q2) for all flavours
+
+        The output of the function is of shape
+        (members, number_of_points, all_flavours)
+        but note that dimensions of size 1 will be squeezed out.
+
+        Example
+        -------
+        >>> from pdfflow.pflow import mkPDF
+        >>> from pdfflow.configflow import run_eager, float_me, int_me
+        >>> run_eager(True)
+        >>> pdf = mkPDF("NNPDF31_nlo_as_0118/0")
+        >>> pdf.xfxQ2_allpid(float_me([0.4]), float_me([15625.0]))
+        <tf.Tensor: shape=(11,), dtype=float64, numpy=
+        array([2.03487396e-04, 4.64913697e-03, 2.36497526e-04, 4.54391659e-03,
+            3.81215383e-03, 6.68418154e-02, 8.91427455e-02, 2.86122760e-01,
+            5.96581806e-03, 4.64913709e-03, 2.03487286e-04])>
 
         Parameters
         ----------
@@ -378,7 +417,7 @@ class PDF:
         Returns
         -------
             pdf: tensor
-                PDF evaluated in each f(x,q2) for each flavour
+                grid of results ([members], [number of points], flavour)
         """
         pid = self.flavor_scheme
         return self.xfxQ2(pid, a_x, a_q2)
@@ -387,9 +426,25 @@ class PDF:
     def py_xfxQ2_allpid(self, arr_x, arr_q2):
         """
         Python interface for pdfflow
-        The input gets converted to the right
-        tf type before calling the corresponding functions
+        The input gets converted to the right tensorflow type
+        before calling the corresponding function: `xfxQ2_allpid`
         Returns all flavours
+
+        The output of the function is of shape
+        (members, number_of_points, all_flavours)
+        but note that dimensions of size 1 will be squeezed out.
+
+        Example
+        -------
+        >>> from pdfflow.pflow import mkPDF
+        >>> from pdfflow.configflow import run_eager
+        >>> run_eager(True)
+        >>> pdf = mkPDF("NNPDF31_nlo_as_0118/0")
+        >>> pdf.py_xfxQ2_allpid([0.4], [15625.0])
+        <tf.Tensor: shape=(11,), dtype=float64, numpy=
+        array([2.03487396e-04, 4.64913697e-03, 2.36497526e-04, 4.54391659e-03,
+            3.81215383e-03, 6.68418154e-02, 8.91427455e-02, 2.86122760e-01,
+            5.96581806e-03, 4.64913709e-03, 2.03487286e-04])>
 
         Parameters
         ----------
@@ -400,7 +455,7 @@ class PDF:
         Returns
         -------
             pdf: tensor
-                PDF evaluated in each f(x,q2) for each flavour
+                grid of results ([members], [number of points], flavour)
         """
         a_x = float_me(arr_x)
         a_q2 = float_me(arr_q2)
@@ -409,8 +464,31 @@ class PDF:
     def py_xfxQ2(self, pid, arr_x, arr_q2):
         """
         Python interface for pdfflow
-        The input gets converted to the right
-        tf type before calling the corresponding functions
+        The input gets converted to the right tensorflow type
+        before calling the corresponding function: `xfxQ2`
+        returns PDF evaluated in each f(x,q2) for each pid
+
+        The output of the function is of shape
+        (members, number_of_points, flavours)
+        but note that dimensions of size 1 will be squeezed out.
+
+        Example
+        -------
+        >>> from pdfflow.pflow import mkPDFs
+        >>> from pdfflow.configflow import run_eager, float_me, int_me
+        >>> run_eager(True)
+        >>> pdf = mkPDFs("NNPDF31_nlo_as_0118", [0, 1, 4])
+        >>> pdf.py_xfxQ2(21, [0.4, 0.5], [15625.0, 15625.0])
+        <tf.Tensor: shape=(3, 2), dtype=float64, numpy=
+        array([[0.02977381, 0.00854525],
+            [0.03653673, 0.00929325],
+            [0.031387  , 0.00896622]])>
+        >>> pdf.py_xfxQ2([1,2], [0.4], [15625.0])
+        <tf.Tensor: shape=(3, 2), dtype=float64, numpy=
+        array([[0.05569674, 0.19323399],
+            [0.05352555, 0.18965438],
+            [0.04515956, 0.18704451]])>
+
 
         Parameters
         ----------
@@ -423,7 +501,7 @@ class PDF:
         Returns
         -------
             pdf: tensor
-                PDF evaluated in each f(x,q2) for each flavour
+                grid of results ([members], [number of points], [flavour])
         """
         # if pid is None, the mask is set to true everywhere
         if pid is None:
@@ -473,10 +551,6 @@ class PDF:
             alphas: tensor
                 alphas evaluated in each q^2 query point
         """
-        # Parse the input
-        # a_q2 = float_me(arr_q2)
-
-        # Perform the actual computation
         return self._alphasQ2(a_q2)
 
     @tf.function(input_signature=[GRID_F])
@@ -498,16 +572,25 @@ class PDF:
         # Parse the input
         # print('trace')
         # a_q = float_me(arr_q)
-        a_q2 = a_q ** 2
+        a_q2 = tf.square(a_q)
 
         # Perform the actual computation
         return self._alphasQ2(a_q2)
 
     def py_alphasQ2(self, arr_q2):
         """
-        User interface for pdfflow alphas interpolation when called with
-        tensorflow tensors
-        It asks q^2 points
+        User interface for pdfflow alphas interpolation when called
+        with python variables.
+        Returns alpha_s for each value of Q2
+
+        Example
+        -------
+        >>> from pdfflow.pflow import mkPDF
+        >>> from pdfflow.configflow import run_eager
+        >>> run_eager(True)
+        >>> pdf = mkPDF("NNPDF31_nlo_as_0118/0")
+        >>> pdf.py_alphasQ2([15625.0, 94])
+        <tf.Tensor: shape=(2,), dtype=float64, numpy=array([0.11264939, 0.17897409])>
 
         Parameters
         ----------
@@ -526,9 +609,19 @@ class PDF:
 
     def py_alphasQ(self, arr_q):
         """
+        User interface for pdfflow alphas interpolation when called
+        with python variables.
+        Returns alpha_s for each value of Q
         User interface for pdfflow alphas interpolation when called with
-        tensorflow tensors
-        It asks q points
+
+        Example
+        -------
+        >>> from pdfflow.pflow import mkPDF
+        >>> from pdfflow.configflow import run_eager
+        >>> run_eager(True)
+        >>> pdf = mkPDF("NNPDF31_nlo_as_0118/0")
+        >>> pdf.py_alphasQ([125.0, 94])
+        <tf.Tensor: shape=(2,), dtype=float64, numpy=array([0.11264939, 0.11746421])>
 
         Parameters
         ----------
