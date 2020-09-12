@@ -551,6 +551,15 @@ class PDF:
             alphas: tensor
                 alphas evaluated in each q^2 query point
         """
+        # Check whether the array is a tensor
+        if not tf.is_tensor(a_q2):
+            logger.error(
+                "The `alphasQ2` method can only be called with tensorflow variables "
+                "use `py_alphasQ2` to obtain results with regular python variables "
+                "or use the functions `int_me` and `float_me` from pdfflow.configflow "
+                "to cast the input to tensorflow variables"
+            )
+            raise TypeError("alphasQ2 called with wrong types")
         return self._alphasQ2(a_q2)
 
     @tf.function(input_signature=[GRID_F])
@@ -569,13 +578,15 @@ class PDF:
             alphas: tensor
                 alphas evaluated in each q query point
         """
-        # Parse the input
-        # print('trace')
-        # a_q = float_me(arr_q)
-        a_q2 = tf.square(a_q)
-
-        # Perform the actual computation
-        return self._alphasQ2(a_q2)
+        if not tf.is_tensor(a_q):
+            logger.error(
+                "The `alphasQ` method can only be called with tensorflow variables "
+                "use `py_alphasQ` to obtain results with regular python variables "
+                "or use the functions `int_me` and `float_me` from pdfflow.configflow "
+                "to cast the input to tensorflow variables"
+            )
+            raise TypeError("alphasQ called with wrong types")
+        return self.alphasQ2(tf.square(a_q))
 
     def py_alphasQ2(self, arr_q2):
         """
