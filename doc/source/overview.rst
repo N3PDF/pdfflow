@@ -11,14 +11,11 @@ Overview
 Installing a PDF set
 --------------------
 PDF sets can be installed in two ways:
-- downloading directly from `LHAPDF PDF sets page <https://lhapdf.hepforge.org/pdfsets.html>`_and
-  placing the files locally in the correct folder;
+- downloading directly from `LHAPDF PDF sets page <https://lhapdf.hepforge.org/pdfsets.html>`_and placing the files locally in the correct folder;
 - exploiting the ``lhapdf`` script, through the following commands:
 .. code-block:: bash
 	lhapdf list
 	lhapdf install <pdf set>
-
-
 
 Instantiating a PDF
 -------------------
@@ -32,7 +29,6 @@ If ``LHAPDF`` and the ``pdfset`` are installed in the system it is enough to cal
   from pdfflow.pflow import mkPDF
   pdf = mkPDF(f"{pdfset}/0")
 
-
 To obtain the central member (0) of the ``pdfset``.
 It is often necessary to require several members of a set, for instance to compute
 pdf error. This can be achieved with the ``mkPDFs`` function, for instance,
@@ -42,7 +38,6 @@ to obtain members (0,1,2) we can do:
 
   from pdfflow.pflow import mkPDFs
   pdf = mkPDFs(pdfset, [0, 1, 2])
-
 
 Note that both ``mkPDF`` and ``mkPDFs`` accept the keyword argument ``dirname``.
 If ``dirname`` is not provided, ``pdfflow`` will try to obtain the PDF directory
@@ -56,6 +51,7 @@ The class can also be instantiated directly with:
   from pdfflow.pflow import PDF
   pdf = PDF(dirname, pdfset, [0]) # obtain a PDF instance for member 0
   pdf = PDF(dirname, pdfset, [2, 5]) # obtain a PDF instance for members 2 and 5
+
 
 PDF UIs usage
 -------------
