@@ -108,14 +108,16 @@ def _load_alphas(info_file):
     return grids
 
 
-def mkPDF(fname, dirname=None):
-    """ Wrapper to generate a PDF given a PDF name and a directory
-    where to find the grid files.
+def mkPDFs(fname, members, dirname=None):
+    """Wrapper to generate a multimember PDF
+    Needs a name and a directory where to find the grid files.
 
     Parameters
     ----------
         fname: str
-            PDF name and member in the format '<set_name>/<set member number>'
+            PDF name and member in the format '<set_name>'
+        members: list(int)
+            List of members to load
         dirname: str
             LHAPDF datadir, if None will try to guess from LHAPDF
 
@@ -131,7 +133,28 @@ def mkPDF(fname, dirname=None):
             ["lhapdf-config", "--datadir"], capture_output=True, text=True, check=True
         )
         dirname = dirname_raw.stdout.strip()
-    return PDF(fname, dirname)
+    return PDF(dirname, fname, members)
+
+
+def mkPDF(fname, dirname=None):
+    """Wrapper to generate a PDF given a PDF name and a directory
+    where to find the grid files.
+
+    Parameters
+    ----------
+        fname: str
+            PDF name and member in the format '<set_name>/<set member number>'
+        dirname: str
+            LHAPDF datadir, if None will try to guess from LHAPDF
+
+    Returns
+    -------
+        PDF: pdfflow.PDF
+            instantiated member of the PDF class
+    """
+    fname_sp, member = fname.split("/")
+    member = int(member)
+    return mkPDFs(fname_sp, [member], dirname=dirname)
 
 
 class PDF:
@@ -147,26 +170,37 @@ class PDF:
 
     Parameters
     ----------
-        fname: str
-            PDF name and member, must be in the format: '<set_name>/<set member number>'
         dirname: str
             LHAPDF datadir
+        fname: str
+            PDF name must be in the format: '<set_name>'
+        members: list(int)
+            list of integer with the members to be level
     """
 
-    def __init__(self, fname, dirname, compilable=True):
+    def __init__(self, dirname, fname, members, compilable=True):
         if not compilable:
             logger.warning("Running pdfflow in eager mode")
             logger.warning("Setting eager mode will affect all of TF")
             tf.config.experimental_run_functions_eagerly(True)
 
         self.dirname = dirname
-        fname, member = fname.split("/")
-        member = member.zfill(4)
+        self.fname = fname
+        self.members = members
+        self.grids = []
 
-        self.fname = f"{self.dirname}/{fname}/{fname}_{member}.dat"
+        for member_int in members:
+            member = str(member_int).zfill(4)
+            filename = f"{self.dirname}/{fname}/{fname}_{member}.dat"
 
-        logger.info("loading %s", self.fname)
-        grids = _load_data(self.fname)
+            logger.info("loading %s", filename)
+            grids = _load_data(filename)
+
+            subgrids = [Subgrid(grid, i, len(grids)) for i, grid in enumerate(grids)]
+            self.grids.append(subgrids)
+
+        # TODO: Here we are now assuming flavour schemes should match across all members
+        # and across all subgrids. We definitely should error out here instead of printing a warning
         # [(x,Q2,flav,knots), ...]
         flav = list(map(lambda g: g[2], grids))
         for i in range(len(flav) - 1):
@@ -175,10 +209,6 @@ class PDF:
                 logger.warning(
                     "Flavor schemes do not match across all the subgrids --> algorithm will break!"
                 )
-
-        self.subgrids = [Subgrid(grid, i, len(grids)) for i, grid in enumerate(grids)]
-
-        # By default all subgrids are called with the inner subgrid
 
         # Look at the flavor_scheme and ensure that it is sorted
         # save the whole thing in case it is not sorted
@@ -206,15 +236,24 @@ class PDF:
 
     @property
     def q2max(self):
-        """ Upper boundary in q2 of the grid """
-        q2max = self.subgrids[-1].log_q2max
+        """ Upper boundary in q2 of the first grid """
+        q2max = self.grids[0][-1].log_q2max
         return np.exp(q2max)
 
     @property
     def q2min(self):
-        """ Lower boundary in q2 of the grid """
-        q2min = self.subgrids[0].log_q2min
+        """ Lower boundary in q2 of the first grid """
+        q2min = self.grids[0][0].log_q2min
         return np.exp(q2min)
+
+    @property
+    def active_members(self):
+        """ List of all member files """
+        member_list = []
+        for member in members:
+            member = str(member_int).zfill(4)
+            member_list.append(f"{self.fname}_{member}.dat")
+        return member_list
 
     @tf.function(input_signature=[GRID_I, GRID_F, GRID_F])
     def _xfxQ2(self, u, arr_x, arr_q2):
@@ -222,7 +261,10 @@ class PDF:
         Function to interpolate
         Called by xfxQ2
         It divides the computation on the q2 axis in subgrids and sums up
-        all the results
+        all the results.
+
+        If the PDF is instantiated with more than one member, the output
+        will contain an extra first dimension to accomodate the members
 
         Parameters
         ----------
@@ -232,6 +274,11 @@ class PDF:
                 x-grid for the evaluation of the pdf
             arr_q2: tf.tensor(float)
                 q2-grid for the evaluation of the pdf
+
+        Returns
+        -------
+            res: tf.tensor(float)
+                grid of results ([members], number of points, flavour)
         """
 
         a_x = tf.math.log(arr_x, name="logx")
@@ -241,18 +288,50 @@ class PDF:
         size_u = tf.size(u, out_type=DTYPEINT)
         shape = tf.stack([size_a, size_u])
 
-        res = tf.zeros(shape, dtype=DTYPE)
-        for subgrid in self.subgrids:
-            res += subgrid(shape, a_q2, pids=u, arr_x=a_x)
+        all_res = []
+        for subgrids in self.grids:
+            res = tf.zeros(shape, dtype=DTYPE)
+            for subgrid in subgrids:
+                res += subgrid(shape, a_q2, pids=u, arr_x=a_x)
+            all_res.append(res)
 
-        return res
+        # This conditional is only seen once
+        # if there is only one member, it will always return the result directly
+        if len(self.grids) == 1:
+            return res
+        else:
+            return tf.stack(all_res)
 
     @tf.function(input_signature=[GRID_I, GRID_F, GRID_F])
     def xfxQ2(self, pid, a_x, a_q2):
         """
         User interface for pdfflow when called with
         tensorflow tensors
-        It asks pid, x, q2 points
+        returns PDF evaluated in each f(x,q2) for each pid
+
+        The output of the function is of shape
+        (members, number_of_points, flavours)
+        but note that dimensions of size 1 will be squeezed out.
+        for instance, if called with one single value of the x, q2 pair
+        for one single member for one single flavour the result will be a scalar.
+
+        Example
+        -------
+        >>> from pdfflow.pflow import mkPDF
+        >>> from pdfflow.configflow import run_eager, float_me, int_me
+        >>> run_eager(True)
+        >>> pdf = mkPDF("NNPDF31_nlo_as_0118/0")
+        >>> pdf.xfxQ2(int_me([21]), float_me([0.4]), float_me([15625.0]))
+        <tf.Tensor: shape=(), dtype=float64, numpy=0.06684181536088425>
+        >>> pdf.xfxQ2(int_me([1,2]), float_me([0.4]), float_me([15625.0]))
+        <tf.Tensor: shape=(2,), dtype=float64, numpy=array([0.08914275, 0.28612276])>
+        >>> pdf.xfxQ2(int_me([1]), float_me([0.1, 0.3, 0.6]), float_me([15625.0, 91.0, 2.0]))
+        <tf.Tensor: shape=(3,), dtype=float64, numpy=array([0.39789932, 0.18068107, 0.02278675])>
+        >>> pdf.xfxQ2(int_me([21, 1]), float_me([0.1, 0.3, 0.6]), float_me([15625.0, 91.0, 2.0]))
+        <tf.Tensor: shape=(3, 2), dtype=float64, numpy=
+        array([[1.1642452 , 0.39789932],
+            [0.16300335, 0.18068107],
+            [0.05240091, 0.02278675]])>
 
         Parameters
         ----------
@@ -264,20 +343,20 @@ class PDF:
                 grid on q^2 where to compute the PDF
         Returns
         -------
-            pdf: tensor
-                PDF evaluated in each f(x,q2) for each flavour
+            pdf: tf.tensor
+                grid of results ([members], [number of points], [flavour])
         """
-        # Parse the input
-        # this function assumes the user is asking for a tensor of pids
-        # TODO if the user is to do non-tf stuff print a warning and direct
-        # them to use the python version of the functions
-        # must feed a mask for flavors to _xfxQ2
-        # cast down if necessary the type of the pid
-        # pid = int_me(pid)
-
-        # same for the a_x and a_q2 arrays
-        # a_x = float_me(arr_x)
-        # a_q2 = float_me(arr_q2)
+        # Check whether the array is a tensor
+        if not tf.is_tensor(pid) or not tf.is_tensor(a_x) or not tf.is_tensor(a_q2):
+            logger.error(
+                "Method xfxQ2 can only be called with tensorflow variables "
+                "use `py_xfxQ2` to obtain results with regular python variables "
+                "or use the functions `int_me` and `float_me` from pdfflow.configflow "
+                "to cast the input to tensorflow variables"
+            )
+            raise TypeError("xfxQ2 called with wrong types")
+            # TODO: this error only shows up in EagerMode because otherwise it fails
+            # before arriving due to the signature
 
         # And ensure it is unique
         # TODO maybe error if the user ask for the same pid twice or for a non-registered pid?
@@ -300,7 +379,8 @@ class PDF:
         f_f = self._xfxQ2(pid_idx, a_x, a_q2)
 
         # Return the values in the order the user asked
-        f_f = tf.gather(f_f, user_idx, axis=1)
+        # the flavour axis here is the last one
+        f_f = tf.gather(f_f, user_idx, axis=-1)
 
         result = tf.squeeze(f_f)
         return result
@@ -309,9 +389,24 @@ class PDF:
     def xfxQ2_allpid(self, a_x, a_q2):
         """
         User interface for pdfflow when called with
-        tensorflow tensors
-        It asks x, q2 points
-        returns all flavours
+        tensorflow tensors.
+        returns PDF evaluated in each f(x,q2) for all flavours
+
+        The output of the function is of shape
+        (members, number_of_points, all_flavours)
+        but note that dimensions of size 1 will be squeezed out.
+
+        Example
+        -------
+        >>> from pdfflow.pflow import mkPDF
+        >>> from pdfflow.configflow import run_eager, float_me, int_me
+        >>> run_eager(True)
+        >>> pdf = mkPDF("NNPDF31_nlo_as_0118/0")
+        >>> pdf.xfxQ2_allpid(float_me([0.4]), float_me([15625.0]))
+        <tf.Tensor: shape=(11,), dtype=float64, numpy=
+        array([2.03487396e-04, 4.64913697e-03, 2.36497526e-04, 4.54391659e-03,
+            3.81215383e-03, 6.68418154e-02, 8.91427455e-02, 2.86122760e-01,
+            5.96581806e-03, 4.64913709e-03, 2.03487286e-04])>
 
         Parameters
         ----------
@@ -322,7 +417,7 @@ class PDF:
         Returns
         -------
             pdf: tensor
-                PDF evaluated in each f(x,q2) for each flavour
+                grid of results ([members], [number of points], flavour)
         """
         pid = self.flavor_scheme
         return self.xfxQ2(pid, a_x, a_q2)
@@ -331,9 +426,25 @@ class PDF:
     def py_xfxQ2_allpid(self, arr_x, arr_q2):
         """
         Python interface for pdfflow
-        The input gets converted to the right
-        tf type before calling the corresponding functions
+        The input gets converted to the right tensorflow type
+        before calling the corresponding function: `xfxQ2_allpid`
         Returns all flavours
+
+        The output of the function is of shape
+        (members, number_of_points, all_flavours)
+        but note that dimensions of size 1 will be squeezed out.
+
+        Example
+        -------
+        >>> from pdfflow.pflow import mkPDF
+        >>> from pdfflow.configflow import run_eager
+        >>> run_eager(True)
+        >>> pdf = mkPDF("NNPDF31_nlo_as_0118/0")
+        >>> pdf.py_xfxQ2_allpid([0.4], [15625.0])
+        <tf.Tensor: shape=(11,), dtype=float64, numpy=
+        array([2.03487396e-04, 4.64913697e-03, 2.36497526e-04, 4.54391659e-03,
+            3.81215383e-03, 6.68418154e-02, 8.91427455e-02, 2.86122760e-01,
+            5.96581806e-03, 4.64913709e-03, 2.03487286e-04])>
 
         Parameters
         ----------
@@ -344,7 +455,7 @@ class PDF:
         Returns
         -------
             pdf: tensor
-                PDF evaluated in each f(x,q2) for each flavour
+                grid of results ([members], [number of points], flavour)
         """
         a_x = float_me(arr_x)
         a_q2 = float_me(arr_q2)
@@ -353,8 +464,31 @@ class PDF:
     def py_xfxQ2(self, pid, arr_x, arr_q2):
         """
         Python interface for pdfflow
-        The input gets converted to the right
-        tf type before calling the corresponding functions
+        The input gets converted to the right tensorflow type
+        before calling the corresponding function: `xfxQ2`
+        returns PDF evaluated in each f(x,q2) for each pid
+
+        The output of the function is of shape
+        (members, number_of_points, flavours)
+        but note that dimensions of size 1 will be squeezed out.
+
+        Example
+        -------
+        >>> from pdfflow.pflow import mkPDFs
+        >>> from pdfflow.configflow import run_eager, float_me, int_me
+        >>> run_eager(True)
+        >>> pdf = mkPDFs("NNPDF31_nlo_as_0118", [0, 1, 4])
+        >>> pdf.py_xfxQ2(21, [0.4, 0.5], [15625.0, 15625.0])
+        <tf.Tensor: shape=(3, 2), dtype=float64, numpy=
+        array([[0.02977381, 0.00854525],
+            [0.03653673, 0.00929325],
+            [0.031387  , 0.00896622]])>
+        >>> pdf.py_xfxQ2([1,2], [0.4], [15625.0])
+        <tf.Tensor: shape=(3, 2), dtype=float64, numpy=
+        array([[0.05569674, 0.19323399],
+            [0.05352555, 0.18965438],
+            [0.04515956, 0.18704451]])>
+
 
         Parameters
         ----------
@@ -367,7 +501,7 @@ class PDF:
         Returns
         -------
             pdf: tensor
-                PDF evaluated in each f(x,q2) for each flavour
+                grid of results ([members], [number of points], [flavour])
         """
         # if pid is None, the mask is set to true everywhere
         if pid is None:
@@ -417,10 +551,15 @@ class PDF:
             alphas: tensor
                 alphas evaluated in each q^2 query point
         """
-        # Parse the input
-        # a_q2 = float_me(arr_q2)
-
-        # Perform the actual computation
+        # Check whether the array is a tensor
+        if not tf.is_tensor(a_q2):
+            logger.error(
+                "The `alphasQ2` method can only be called with tensorflow variables "
+                "use `py_alphasQ2` to obtain results with regular python variables "
+                "or use the functions `int_me` and `float_me` from pdfflow.configflow "
+                "to cast the input to tensorflow variables"
+            )
+            raise TypeError("alphasQ2 called with wrong types")
         return self._alphasQ2(a_q2)
 
     @tf.function(input_signature=[GRID_F])
@@ -439,19 +578,30 @@ class PDF:
             alphas: tensor
                 alphas evaluated in each q query point
         """
-        # Parse the input
-        # print('trace')
-        # a_q = float_me(arr_q)
-        a_q2 = a_q ** 2
-
-        # Perform the actual computation
-        return self._alphasQ2(a_q2)
+        if not tf.is_tensor(a_q):
+            logger.error(
+                "The `alphasQ` method can only be called with tensorflow variables "
+                "use `py_alphasQ` to obtain results with regular python variables "
+                "or use the functions `int_me` and `float_me` from pdfflow.configflow "
+                "to cast the input to tensorflow variables"
+            )
+            raise TypeError("alphasQ called with wrong types")
+        return self.alphasQ2(tf.square(a_q))
 
     def py_alphasQ2(self, arr_q2):
         """
-        User interface for pdfflow alphas interpolation when called with
-        tensorflow tensors
-        It asks q^2 points
+        User interface for pdfflow alphas interpolation when called
+        with python variables.
+        Returns alpha_s for each value of Q2
+
+        Example
+        -------
+        >>> from pdfflow.pflow import mkPDF
+        >>> from pdfflow.configflow import run_eager
+        >>> run_eager(True)
+        >>> pdf = mkPDF("NNPDF31_nlo_as_0118/0")
+        >>> pdf.py_alphasQ2([15625.0, 94])
+        <tf.Tensor: shape=(2,), dtype=float64, numpy=array([0.11264939, 0.17897409])>
 
         Parameters
         ----------
@@ -470,9 +620,19 @@ class PDF:
 
     def py_alphasQ(self, arr_q):
         """
+        User interface for pdfflow alphas interpolation when called
+        with python variables.
+        Returns alpha_s for each value of Q
         User interface for pdfflow alphas interpolation when called with
-        tensorflow tensors
-        It asks q points
+
+        Example
+        -------
+        >>> from pdfflow.pflow import mkPDF
+        >>> from pdfflow.configflow import run_eager
+        >>> run_eager(True)
+        >>> pdf = mkPDF("NNPDF31_nlo_as_0118/0")
+        >>> pdf.py_alphasQ([125.0, 94])
+        <tf.Tensor: shape=(2,), dtype=float64, numpy=array([0.11264939, 0.11746421])>
 
         Parameters
         ----------
@@ -491,79 +651,90 @@ class PDF:
 
     def trace(self):
         """
-        Builds all the needed graph in advance
-        of interpolations
+        Builds all the needed graph in advance of interpolations
         """
-        logger.info('Building tf.Graph ...')
+        logger.info("Building tf.Graph, this can take a while...")
         x = []
         q2 = []
 
-        #x points are equal for all the subgrids
-        xmin = tf.math.exp(self.subgrids[0].log_xmin).numpy()
+        # We need to build all members and they could have different grids
+        xgrids = []
+        q2grids = []
 
-        q2min = tf.math.exp(self.subgrids[0].log_q2min).numpy()
+        for subgrids in self.grids:
 
-        #points in lowx lowq2 and lowq2 regions
-        x+= [xmin*0.99, xmin*1.01]
-        q2 += [q2min*0.99, q2min*0.99]
+            # Get all x and q
+            for s in subgrids:
+                q2min = tf.math.exp(s.log_q2min).numpy()
+                q2max = tf.math.exp(s.log_q2max).numpy()
 
+                xmin = tf.math.exp(s.log_xmin).numpy()
+                xmax = tf.math.exp(s.log_xmax).numpy()
 
-        for s in self.subgrids:
+                xgrids.append((xmin, xmax))
+                q2grids.append((q2min, q2max))
 
-            q2min = tf.math.exp(s.log_q2min).numpy()
-            q2max = tf.math.exp(s.log_q2max).numpy()
+        # Make the lists into sets to remove duplicates
+        xgrids = list(set(xgrids))
+        q2grids = list(set(q2grids))
 
-            #points inside the grid and lowx
-            x += [xmin*1.01, xmin*0.99]
-            q2 += [(q2min+q2max)*0.5, (q2min+q2max)*0.5]
+        # Put points in the extrapolation region
+        xmax = np.max(xgrids)
+        xmin = np.min(xgrids)
 
-        q2max = self.subgrids[-1].log_q2max.numpy()
+        q2max = np.max(q2grids)
+        q2min = np.min(q2grids)
 
-        #points in highx highq2 and highq2 regions
-        x += [xmin*0.99, xmin*1.01]
-        q2 += [q2max*1.01, q2max*1.01]
+        xgrids.append((xmin * 0.99, xmin))
+        xgrids.append((xmax, xmax * 1.01))
+        q2grids.append((q2min * 0.99, q2min))
+        q2grids.append((q2max, q2max * 1.01))
 
+        # Now create a set of points such that all x-grids are visited
+        # for all grids in q2
+        for xmin, xmax in xgrids:
+            xpoint = (xmax - xmin) / 2.0
+            for q2min, q2max in q2grids:
+                x.append(xpoint)
+                q2.append((q2max - q2min) / 2.0)
+
+        # Make into an array that can be called
         x = np.array(x)
         q2 = np.array(q2)
 
-        #trigger retracings
-        self.py_xfxQ2_allpid(x,q2)
-        self.py_xfxQ2(21,x,q2)
+        # trigger retracings
+        self.py_xfxQ2_allpid(x, q2)
+        self.py_xfxQ2(21, x, q2)
 
     def alphas_trace(self):
         """
         Builds all the needed graph in advance
         of alpha_s interpolations
         """
-        logger.info('Building tf.Graph ...')
+        logger.info("Building tf.Graph ...")
         q2 = []
 
         q2min = float(tf.math.exp(self.alphas_subgrids[0].log_q2min))
 
-        #Q2 < Q2min
-        q2 += [q2min*0.99]
+        # Q2 < Q2min
+        q2 += [q2min * 0.99]
 
         for s in self.alphas_subgrids:
 
             q2min = float(tf.math.exp(s.log_q2min))
             q2max = float(tf.math.exp(s.log_q2max))
 
-            #points inside the grid
-            q2 += [(q2min+q2max)*0.5]
+            # points inside the grid
+            q2 += [(q2min + q2max) * 0.5]
 
-        q2max = float(self.subgrids[-1].log_q2max)
+        # Get the upper boundary
+        q2max = float(self.alphas_subgrids[-1].log_q2max)
 
-        #Q2 > Q2max
-        q2 += [q2max*1.01]
+        # Q2 > Q2max
+        q2 += [q2max * 1.01]
 
         q2 = np.array(q2)
 
-        #trigger retracings
+        # trigger retracings
         self.py_alphasQ2(q2)
-        self.py_alphasQ(q2**0.5)
-
-
-
-
-
-
+        self.py_alphasQ(q2 ** 0.5)

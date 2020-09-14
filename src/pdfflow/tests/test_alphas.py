@@ -4,6 +4,7 @@
     running eagerly means less overhead on the CI which is running on CPU
 """
 import pdfflow.pflow as pdf
+from pdfflow.configflow import run_eager
 import logging
 
 logger = logging.getLogger("pdfflow.test")
@@ -59,9 +60,7 @@ def test_accuracy_alphas(atol=1e-6):
     between pdfflow and LHAPDF.
     This test run eagerly
     """
-    import tensorflow as tf
-
-    tf.config.experimental_run_functions_eagerly(True)
+    run_eager(True)
     for setname in LIST_PDF:
         for member in range(MEMBERS):
             pdfset = f"{setname}/{member}"
@@ -75,7 +74,7 @@ def test_accuracy_alphas(atol=1e-6):
                 flow_values = pdfflow.py_alphasQ(q2arr)
                 lhapdf_values = get_alphavals(q2arr, pdfset, sq2 = False)
                 np.testing.assert_allclose(flow_values, lhapdf_values, atol=atol)
-    tf.config.experimental_run_functions_eagerly(False)
+    run_eager(False)
 
 def test_alphas_q2(atol=1e-6):
     """ Check the accuracy for all PDF sets for all members given
@@ -97,8 +96,20 @@ def test_alphas_q2(atol=1e-6):
                 lhapdf_values = get_alphavals(q2arr, pdfset, sq2 = True)
                 np.testing.assert_allclose(flow_values, lhapdf_values, atol=atol)
 
+def test_alpha_trace():
+    """ Check that the alpha_s can be traced and then instantiated """
+    # Ensure the functions are not run eagerly
+    run_eager(False)
+    setname = LIST_PDF[0]
+    # Do it for one single replica
+    pdfset = f"{setname}/0"
+    pex = pdf.mkPDF(pdfset, f"{DIRNAME}/")
+    pex.alphas_trace()
+    # Do it for many replicas
+    pex2 = pdf.mkPDFs(setname, [0,1,2])
+    pex2.alphas_trace()
+
 
 
 if __name__ == "__main__":
-    test_accuracy_alphas()
-    test_alphas_q2()
+    test_alpha_trace()
