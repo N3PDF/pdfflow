@@ -11,8 +11,8 @@ Overview
 Installing a PDF set
 --------------------
 PDF sets can be installed in two ways:
-- downloading directly from `LHAPDF PDF sets page <https://lhapdf.hepforge.org/pdfsets.html>`_and placing the files locally in the correct folder;
-- exploiting the ``lhapdf`` script, through the following commands:
+	- downloading directly from `LHAPDF PDF sets page <https://lhapdf.hepforge.org/pdfsets.html>`_ and placing the files locally in the correct folder;
+	- exploiting the ``lhapdf`` script, through the following commands:
 .. code-block:: bash
 	lhapdf list
 	lhapdf install <pdf set>
