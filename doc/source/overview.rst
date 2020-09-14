@@ -136,8 +136,8 @@ The strong coupling interpolation requires calling its own methods of the ``PDF`
 	pdf = mkPDFs(pdfset, [0,1,2])
 	pdf.alphas_trace()
 
-	q = [10**(2*i) for i in range(1,6)]
-	pdf.py_alphasQ2(q)
+	q2 = [10**(2*i) for i in range(1,6)]
+	pdf.py_alphasQ2(q2)
 
 According to the PDF interpolation discussed above, we provide the user with ``py_alphasQ2`` Python and ``alphasQ2`` ``TensorFlow`` interfaces for the strong coupling interpolation.
 
