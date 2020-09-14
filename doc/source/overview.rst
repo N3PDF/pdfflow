@@ -92,7 +92,7 @@ This function deals with the conversion of the input into TensorFlow variables.
 	
 	pdf = mkPDFs(pdfset, [0,1,2])
 	x = [10**i for i in range(-6,-1)]
-	q2 = [10**i for i in range(1,6)]
+	q2 = [10**(2*i) for i in range(1,6)]
 	pid = [-1,21,1]
 
 	pdf.py_xfxQ2(pid, x, q2)
@@ -111,7 +111,7 @@ lower level ``tf.functions`` such as ``xfxQ2``:
 	
 	pdf = mkPDFs(pdfset, [0,1,2])
 	x = float_me([10**i for i in range(-6,-1)])
-	q2 = float_me([10**i for i in range(1,6)])
+	q2 = float_me([10**(2*i) for i in range(1,6)])
 	pid = int_me([-1,21,1])
 
 	pdf.xfxQ2(pid, x, q2)
@@ -122,5 +122,23 @@ If arguments had been ``tf.Tensor`` objects, the preferred way to call the inter
 via the ``xfxQ2`` function.
 To go through the computation of all the pids in the flavor scheme, use ``xfxQ2_allpid`` or the
 ``py_xfxQ2_allpid`` version instead.
-Note that the strong coupling interpolation requires calling
-its own ``alphasQ`` and ``alphasQ2`` interpolating functions and the equivalent pythonic interfaces.
+
+
+Strong coupling interpolation
+-----------------------------
+
+The strong coupling interpolation requires calling its own methods of the ``PDF`` object:
+
+.. code-block:: python
+
+	from pdfflow.pflow import mkPDFs
+	
+	pdf = mkPDFs(pdfset, [0,1,2])
+	pdf.alphas_trace()
+
+	q = [10**(2*i) for i in range(1,6)]
+	pdf.py_alphasQ2(q)
+
+According to the PDF interpolation discussed above, we provide the user with ``py_alphasQ2`` Python and ``alphasQ2`` ``TensorFlow`` interfaces for the strong coupling interpolation.
+
+In order to mimic the ``LHAPDF`` set of functions, we implement also the ``alphasQ`` and ``py_alphasQ`` ``PDF`` methods, by which the user is relieved of squaring the query array elements.
