@@ -36,7 +36,7 @@ If ``LHAPDF`` and the ``pdfset`` are installed in the system it is enough to cal
 
 .. code-block:: python
 
-  from pdfflow.pflow import mkPDF
+  from pdfflow import mkPDF
   pdf = mkPDF(f"{pdfset}/0")
   
 And ``pdfflow`` will try to obtain the PDF directory
@@ -45,7 +45,7 @@ in which the PDF folder can be found, for instance:
 
 .. code-block:: python
 
-  from pdfflow.pflow import mkPDF
+  from pdfflow import mkPDF
   pdf = mkPDF(f"{pdfset}/0", dirname="/usr/share/lhapdf/LHAPDF")
 
 To obtain the central member (0) of the ``pdfset``.
@@ -55,7 +55,7 @@ to obtain members (0,1,2) we can do:
 
 .. code-block:: python
 
-  from pdfflow.pflow import mkPDFs
+  from pdfflow import mkPDFs
   pdf = mkPDFs(pdfset, [0, 1, 2])
 
 Note that both ``mkPDF`` and ``mkPDFs`` accept the keyword argument ``dirname``.
@@ -88,7 +88,7 @@ This function deals with the conversion of the input into TensorFlow variables.
 
 .. code-block:: python
 
-	from pdfflow.pflow import mkPDFs
+	from pdfflow import mkPDFs
 	
 	pdf = mkPDFs(pdfset, [0,1,2])
 	x = [10**i for i in range(-6,-1)]
@@ -106,8 +106,7 @@ lower level ``tf.functions`` such as ``xfxQ2``:
 
 .. code-block:: python
 
-	from pdfflow.pflow import mkPDFs
-	from pdfflow.configflow import float_me, int_me
+	from pdfflow import mkPDFs, flaot_me, int_me
 	
 	pdf = mkPDFs(pdfset, [0,1,2])
 	x = float_me([10**i for i in range(-6,-1)])
@@ -132,8 +131,7 @@ The strong coupling interpolation requires calling its own methods of the ``PDF`
 
 .. code-block:: python
 
-  from pdfflow.pflow import mkPDFs
-  from pdfflow.configflow import float_me
+  from pdfflow import mkPDFs, float_me
 
   pdf = mkPDFs(pdfset, [0,1,2])
   pdf.alphas_trace()
