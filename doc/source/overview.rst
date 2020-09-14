@@ -141,4 +141,4 @@ The strong coupling interpolation requires calling its own methods of the ``PDF`
 
 According to the PDF interpolation discussed above, we provide the user with ``py_alphasQ2`` Python and ``alphasQ2`` ``TensorFlow`` interfaces for the strong coupling interpolation.
 
-In order to mimic the ``LHAPDF`` set of functions, we implement also the ``alphasQ`` and ``py_alphasQ`` ``PDF`` methods, by which the user is relieved of squaring the query array elements.
+In order to mimic the ``LHAPDF`` set of functions, we implement also the ``alphasQ`` and ``py_alphasQ`` ``PDF`` methods, by which the user is relieved of squaring the query array elements manually.
