@@ -1,7 +1,7 @@
 .. _howto-label:
 
 =============
-General usage
+Advanced usage
 =============
 
 .. contents::
