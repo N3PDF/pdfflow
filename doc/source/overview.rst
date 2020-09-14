@@ -75,8 +75,8 @@ The class can also be instantiated directly with:
 
 Note that in order to instantiate a PDF class it is always necessary to provide the source directory of the PDF sets.
 
-PDF UIs usage
-=============
+PDF interpolation
+=================
 The PDF interpolation can be worked out calling the ``py_xfxQ2`` method with
 python or TensorFlow objects as arguments:
 
@@ -125,20 +125,24 @@ To go through the computation of all the pids in the flavor scheme, use ``xfxQ2_
 
 
 Strong coupling interpolation
------------------------------
+=============================
 
 The strong coupling interpolation requires calling its own methods of the ``PDF`` object:
 
+
 .. code-block:: python
 
-	from pdfflow.pflow import mkPDFs
-	
-	pdf = mkPDFs(pdfset, [0,1,2])
-	pdf.alphas_trace()
+  from pdfflow.pflow import mkPDFs
+  from pdfflow.configflow import float_me
 
-	q2 = [10**(2*i) for i in range(1,6)]
-	pdf.py_alphasQ2(q2)
+  pdf = mkPDFs(pdfset, [0,1,2])
+  pdf.alphas_trace()
 
-According to the PDF interpolation discussed above, we provide the user with ``py_alphasQ2`` Python and ``alphasQ2`` ``TensorFlow`` interfaces for the strong coupling interpolation.
+  q2 = [10**(2*i) for i in range(1,6)]
+  pdf.py_alphasQ2(q2)
+  pdf.alphasQ2(float_me(q2))
+
+
+Akin to the PDF interpolation discussed above, we provide the user with ``py_alphasQ2`` for the Python interface and ``alphasQ2`` for ``TensorFlow`` for the strong coupling interpolation.
 
 In order to mimic the ``LHAPDF`` set of functions, we implement also the ``alphasQ`` and ``py_alphasQ`` ``PDF`` methods, by which the user is relieved of squaring the query array elements manually.
