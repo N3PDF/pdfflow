@@ -28,7 +28,7 @@ You can modify the behavior of the logger as with any sane python library with t
   logger_pdfflow = logging.getLogger('pdfflow')
   logger_pdfflow.setLevel(log_dict["0"])
   
-Where the where the log level can be any level defined in the ``log_dict`` dictionary.
+Where the log level can be any level defined in the ``log_dict`` dictionary.
 
 Since ``PDFFlow`` is to be interfaced with non-python code it is also
 possible to control the behaviour through the environment variable ``PDFFLOW_LOG_LEVEL``, in that case any of the keys in ``log_dict`` can be used. For instance:
@@ -44,7 +44,7 @@ Environment
 -----------
 
 ``PDFFlow`` is based on ``TensorFlow`` and as such all environment variable that
-have an effect on ``TensorFlow``s behavior will also have an effect on ``PDFFlow``.
+have an effect on ``TensorFlow``\`s behavior will also have an effect on ``PDFFlow``.
 
 Here we describe only some of what we found to be the most useful variables.
 For a complete description on the variables controlling the GPU-behavior of ``TensorFlow`` please refer to
