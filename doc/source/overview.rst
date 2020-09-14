@@ -9,19 +9,27 @@ Overview
    :depth: 1
 
 Installing a PDF set
---------------------
-PDF sets can be installed in two ways:
-	- downloading directly from `LHAPDF PDF sets page <https://lhapdf.hepforge.org/pdfsets.html>`_ and placing the files locally in the correct folder;
-	- exploiting the ``lhapdf`` script, through the following commands:
+====================
+PDF sets can be installed in two ways
 
-.. code-block:: console
+	1. downloading directly the PDF sets, from instance from `LHAPDF PDF sets page <https://lhapdf.hepforge.org/pdfsets.html>`_ or `NNPDF <http://nnpdf.mi.infn.it/for-users/unpolarized-pdf-sets/>`_
+	2. exploiting the ``lhapdf`` scripts, through the following commands:
+
+.. code-block:: bash
 
 	lhapdf list
 	lhapdf install <pdf set>
 
+which downloads and install the sets directly to ``lhapdf-config --datadir``.
+
+
 Instantiating a PDF
--------------------
-PDFs can be instantiated in a similar manner to [``LHAPDF``](https://lhapdf.hepforge.org/)
+===================
+
+mkPDF wrapper
+^^^^^^^^^^^^^
+
+PDFs can be instantiated in a similar manner to `LHAPDF <https://lhapdf.hepforge.org/>`_
 by calling the provided ``mkPDF`` and ``mkPDFs`` functions.
 
 If ``LHAPDF`` and the ``pdfset`` are installed in the system it is enough to call:
@@ -30,6 +38,15 @@ If ``LHAPDF`` and the ``pdfset`` are installed in the system it is enough to cal
 
   from pdfflow.pflow import mkPDF
   pdf = mkPDF(f"{pdfset}/0")
+  
+And ``pdfflow`` will try to obtain the PDF directory
+from ``LHAPDF``. If, instead, we have manually downloaded the PDF, we need to specify the folder
+in which the PDF folder can be found, for instance:
+
+.. code-block:: python
+
+  from pdfflow.pflow import mkPDF
+  pdf = mkPDF(f"{pdfset}/0", dirname="/usr/share/lhapdf/LHAPDF")
 
 To obtain the central member (0) of the ``pdfset``.
 It is often necessary to require several members of a set, for instance to compute
@@ -42,10 +59,12 @@ to obtain members (0,1,2) we can do:
   pdf = mkPDFs(pdfset, [0, 1, 2])
 
 Note that both ``mkPDF`` and ``mkPDFs`` accept the keyword argument ``dirname``.
-If ``dirname`` is not provided, ``pdfflow`` will try to obtain the PDF directory
-from ``LHAPDF``.
-If ``dirname`` is provided, instead, ``pdfflow`` will load the pdffset from the given directory.
-These functions are all wrappers around the low-level ``PDF`` class and provide an instance to the class.
+
+
+PDF class
+^^^^^^^^^
+
+The aforementioned functions are all wrappers around the low-level ``PDF`` class and provide an instance to the class.
 The class can also be instantiated directly with:
 
 .. code-block:: python
@@ -54,10 +73,18 @@ The class can also be instantiated directly with:
   pdf = PDF(dirname, pdfset, [0]) # obtain a PDF instance for member 0
   pdf = PDF(dirname, pdfset, [2, 5]) # obtain a PDF instance for members 2 and 5
 
+Note that in order to instantiate a PDF class it is always necessary to provide the source directory of the PDF sets.
 
 PDF UIs usage
--------------
-The PDF interpolation can be worked out calling the ``py_xfxQ2`` method with pythonic arguments:
+=============
+The PDF interpolation can be worked out calling the ``py_xfxQ2`` method with
+python or TensorFlow objects as arguments:
+
+Python interface
+^^^^^^^^^^^^^^^^
+
+When using python arguments as the input we provide the ``py_xfxQ2``.
+This function deals with the conversion of the input into TensorFlow variables.
 
 .. code-block:: python
 
@@ -69,6 +96,27 @@ The PDF interpolation can be worked out calling the ``py_xfxQ2`` method with pyt
 	pid = [-1,21,1]
 
 	pdf.py_xfxQ2(pid, x, q2)
+	
+
+TensorFlow interface
+^^^^^^^^^^^^^^^^^^^^
+
+Instead, if the arguments are already tensorflow objects, it is possible to call
+lower level ``tf.functions`` such as ``xfxQ2``:
+
+.. code-block:: python
+
+	from pdfflow.pflow import mkPDFs
+	from pdfflow.configflow import float_me, int_me
+	
+	pdf = mkPDFs(pdfset, [0,1,2])
+	x = float_me([10**i for i in range(-6,-1)])
+	q2 = float_me([10**i for i in range(1,6)])
+	pid = int_me([-1,21,1])
+
+	pdf.xfxQ2(pid, x, q2)
+	
+.. note:: The ``float_me`` and ``int_me`` functions are wrappers around ``tf.cast`` which we provide with the aim of ensuring that integers are cast to 32-bit integers and float to 64-bit floats.
 
 If arguments had been ``tf.Tensor`` objects, the preferred way to call the interpolation would have been
 via the ``xfxQ2`` function.
