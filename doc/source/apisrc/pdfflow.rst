@@ -7,7 +7,7 @@ Submodules
 pdfflow.pdfflow module
 ------------------------
 
-.. automodule:: pdfflow.pdfflow
+.. automodule:: pdfflow.pflow
    :members:
    :undoc-members:
    :show-inheritance:

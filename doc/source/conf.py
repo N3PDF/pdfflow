@@ -28,7 +28,7 @@ author = 'Stefano Carrazza, Juan Cruz-Martinez and Marco Rossi'
 release = pdfflow.__version__
 
 # The full version, including alpha/beta/rc tags
-autodoc_mock_imports = ['tensorflow']
+autodoc_mock_imports = ['tensorflow', 'tensorflow-probability']
 
 
 # -- General configuration ---------------------------------------------------
