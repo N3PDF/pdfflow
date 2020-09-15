@@ -1,6 +1,8 @@
 [![Documentation Status](https://readthedocs.org/projects/pdfflow/badge/?version=latest)](https://pdfflow.readthedocs.io/en/latest/?badge=latest)
 ![pytest](https://github.com/N3PDF/pdfflow/workflows/pytest/badge.svg)
 [![DOI](https://zenodo.org/badge/238731330.svg)](https://zenodo.org/badge/latestdoi/238731330)
+[![AUR](https://img.shields.io/aur/version/python-pdfflow)](https://aur.archlinux.org/packages/python-pdfflow)
+
 
 # PDFflow
 
