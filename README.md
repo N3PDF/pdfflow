@@ -1,4 +1,6 @@
-![pytest](https://github.com/N3PDF/pdfflow/workflows/pytest/badge.svg) [![DOI](https://zenodo.org/badge/238731330.svg)](https://zenodo.org/badge/latestdoi/238731330)
+[![Documentation Status](https://readthedocs.org/projects/pdfflow/badge/?version=latest)](https://pdfflow.readthedocs.io/en/latest/?badge=latest)
+![pytest](https://github.com/N3PDF/pdfflow/workflows/pytest/badge.svg)
+[![DOI](https://zenodo.org/badge/238731330.svg)](https://zenodo.org/badge/latestdoi/238731330)
 
 # PDFflow
 
@@ -15,11 +17,6 @@ The key features of PDFflow is the possibility to query PDF sets on GPU accelera
 The package can be installed with pip:
 ```
 python3 -m pip install pdfflow
-```
-
-as well as with `conda`, from the `conda-forge` channel:
-```
-conda install pdfflow -c conda-forge
 ```
 
 If you prefer a manual installation just use:
