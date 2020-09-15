@@ -5,9 +5,9 @@ import re
 
 
 requirements = ['numpy', 'pyyaml']
-if os.environ.get('READTHEDOCS') != 'True':
-    requirements.append('tensorflow')
-    requirements.append('tensorflow-probability')
+#if os.environ.get('READTHEDOCS') != 'True':
+requirements.append('tensorflow')
+requirements.append('tensorflow-probability')
 
 PACKAGE = 'pdfflow'
 
