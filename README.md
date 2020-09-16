@@ -38,4 +38,4 @@ There are some examples in the `benchmarks` folder.
 
 If you use the package pelase cite the following paper and zenodo references:
 - https://doi.org/10.5281/zenodo.3964190
-- https://arxiv.org/abs/20xx.xxxxx
+- https://arxiv.org/abs/2009.06635
