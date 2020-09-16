@@ -1,9 +1,9 @@
 .. title::
     pdfflow's documentation!
 
-======================
-PDFflow: Gotta go fast
-======================
+====================================================
+PDFflow: PDF interpolation for hardware accelerators
+====================================================
 
 .. contents::
    :local:
