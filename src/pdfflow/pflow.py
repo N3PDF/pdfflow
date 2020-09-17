@@ -8,6 +8,8 @@ import yaml
 import subprocess as sp
 import numpy as np
 
+import os
+
 try:
     import lhapdf
 except ModuleNotFoundError:
@@ -191,7 +193,7 @@ class PDF:
 
         for member_int in members:
             member = str(member_int).zfill(4)
-            filename = f"{self.dirname}/{fname}/{fname}_{member}.dat"
+            filename = os.path.join(self.dirname, fname, f"{fname}_{member}.dat")
 
             logger.info("loading %s", filename)
             grids = _load_data(filename)
@@ -226,7 +228,7 @@ class PDF:
 
         # now load metadata from info file
         logger.info("Enabling computation of alpha")
-        self.fname = f"{self.dirname}/{fname}/{fname}.info"
+        self.fname = os.path.join(self.dirname, fname, f"{fname}.info")
 
         logger.info("loading %s", self.fname)
         alpha_grids = _load_alphas(self.fname)

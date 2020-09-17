@@ -31,8 +31,6 @@ parser.add_argument("--label0", default=None, type=str,
 parser.add_argument("--label1", default=None, type=str,
                     help=" ".join(["Legend label of second pdfflow running device,",
                                     "defaults to tf device auto selection"]))
-
-
 DIRNAME = (sp.run(["lhapdf-config", "--datadir"], stdout=sp.PIPE,
            universal_newlines=True).stdout.strip("\n") + "/")
 
@@ -71,10 +69,10 @@ def accumulate_times(pdfname, dev0, dev1, no_lhapdf):
     else:
         l_pdf = None
 
-    xmin = np.exp(p0.subgrids[0].log_xmin)
-    xmax = np.exp(p0.subgrids[0].log_xmax)
-    q2min = np.sqrt(np.exp(p0.subgrids[0].log_q2min))
-    q2max = np.sqrt(np.exp(p0.subgrids[-1].log_q2max))
+    xmin = np.exp(p0.grids[0][0].log_xmin)
+    xmax = np.exp(p0.grids[0][0].log_xmax)
+    q2min = np.sqrt(np.exp(p0.grids[0][0].log_q2min))
+    q2max = np.sqrt(np.exp(p0.grids[0][-1].log_q2max))
 
     t_pdf0 = []
     t_pdf1 = []

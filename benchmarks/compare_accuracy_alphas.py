@@ -79,6 +79,7 @@ def compare_alphas(pdfname, ax):
 def main(pdfname):
     """Testing PDFflow vs LHAPDF performance."""
     mpl.rcParams['text.usetex'] = True
+
     mpl.rcParams['savefig.format'] = 'pdf'
     mpl.rcParams['figure.figsize'] = [11,5.5]
     mpl.rcParams['axes.titlesize'] = 20
