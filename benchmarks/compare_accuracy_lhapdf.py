@@ -17,8 +17,6 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--pdfname", "-p", default="NNPDF31_nlo_as_0118/0",
                     type=str, help='The PDF set name/replica number.')
 parser.add_argument("--pid", default=21, type=int, help='The flavour PID.')
-parser.add_argument("--no_latex", action="store_true",
-                    help="Don't use latex to render plots")
 DIRNAME = sp.run(['lhapdf-config','--datadir'], stdout=sp.PIPE,
                  universal_newlines=True).stdout.strip('\n') + '/'
 EPS = np.finfo(float).eps
@@ -73,10 +71,9 @@ def set_ticks(ax, start, end, numticks, axis, nskip=2):
     return ax    
     
 
-def main(pdfname, pid, no_latex=False):
+def main(pdfname, pid):
     """Testing PDFflow vs LHAPDF performance."""
-    if not no_latex:
-        mpl.rcParams['text.usetex'] = True
+    mpl.rcParams['text.usetex'] = True
     mpl.rcParams['savefig.format'] = 'pdf'
     mpl.rcParams['figure.figsize'] = [11,5.5]
     mpl.rcParams['axes.titlesize'] = 20

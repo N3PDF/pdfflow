@@ -16,8 +16,6 @@ from compare_accuracy_lhapdf import set_ticks
 parser = argparse.ArgumentParser()
 parser.add_argument("--pdfname", "-p", default="NNPDF31_nlo_as_0118/0",
                     type=str, help='The PDF set name/replica number.')
-parser.add_argument("--no_latex", action="store_true",
-                    help="Don't use latex to render plots")
 DIRNAME = sp.run(['lhapdf-config','--datadir'], stdout=sp.PIPE,
                  universal_newlines=True).stdout.strip('\n') + '/'
 EPS = np.finfo(float).eps
@@ -78,10 +76,9 @@ def compare_alphas(pdfname, ax):
     return ax
 
 
-def main(pdfname, no_latex=False):
+def main(pdfname):
     """Testing PDFflow vs LHAPDF performance."""
-    if not no_latex:
-        mpl.rcParams['text.usetex'] = True
+    mpl.rcParams['text.usetex'] = True
 
     mpl.rcParams['savefig.format'] = 'pdf'
     mpl.rcParams['figure.figsize'] = [11,5.5]
