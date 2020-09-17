@@ -31,8 +31,8 @@ parser.add_argument("--label0", default=None, type=str,
 parser.add_argument("--label1", default=None, type=str,
                     help=" ".join(["Legend label of second pdfflow running device,",
                                     "defaults to tf device auto selection"]))
-
-
+parser.add_argument("--no_latex", action="store_true",
+                    help="Don't use latex to render plots")
 DIRNAME = (sp.run(["lhapdf-config", "--datadir"], stdout=sp.PIPE,
            universal_newlines=True).stdout.strip("\n") + "/")
 
@@ -71,10 +71,10 @@ def accumulate_times(pdfname, dev0, dev1, no_lhapdf):
     else:
         l_pdf = None
 
-    xmin = np.exp(p0.subgrids[0].log_xmin)
-    xmax = np.exp(p0.subgrids[0].log_xmax)
-    q2min = np.sqrt(np.exp(p0.subgrids[0].log_q2min))
-    q2max = np.sqrt(np.exp(p0.subgrids[-1].log_q2max))
+    xmin = np.exp(p0.grids[0][0].log_xmin)
+    xmax = np.exp(p0.grids[0][0].log_xmax)
+    q2min = np.sqrt(np.exp(p0.grids[0][0].log_q2min))
+    q2max = np.sqrt(np.exp(p0.grids[0][-1].log_q2max))
 
     t_pdf0 = []
     t_pdf1 = []
@@ -113,7 +113,7 @@ def accumulate_times(pdfname, dev0, dev1, no_lhapdf):
 
 def main(pdfname=None, n_draws=10, pid=21, no_lhapdf=False,
          tensorboard=False, dev0=None, dev1=None,
-         label0=None, label1=None):
+         label0=None, label1=None, no_latex=False):
     """Testing PDFflow vs LHAPDF performance."""
     if tensorboard:
         tf.profiler.experimental.start('logdir')
@@ -132,7 +132,8 @@ def main(pdfname=None, n_draws=10, pid=21, no_lhapdf=False,
 
     import matplotlib.pyplot as plt
     import matplotlib as mpl
-    mpl.rcParams['text.usetex'] = True
+    if not no_latex:
+        mpl.rcParams['text.usetex'] = True
     mpl.rcParams['savefig.format'] = 'pdf'
     mpl.rcParams['figure.figsize'] = [7,8]
     mpl.rcParams['axes.titlesize'] = 20
