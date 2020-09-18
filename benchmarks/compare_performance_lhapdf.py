@@ -60,9 +60,10 @@ def accumulate_times(pdfname, dev0, dev1, no_lhapdf):
         p0 = pdf.mkPDF(pdfname, DIRNAME)
         p0.trace()
 
-    with tf.device(dev1):
-        p1 = pdf.mkPDF(pdfname, DIRNAME)
-        p1.trace()
+    if dev1 is not None:
+        with tf.device(dev1):
+            p1 = pdf.mkPDF(pdfname, DIRNAME)
+            p1.trace()
 
     if no_lhapdf:
         l_pdf = lhapdf.mkPDF(pdfname)
@@ -78,8 +79,8 @@ def accumulate_times(pdfname, dev0, dev1, no_lhapdf):
     t_pdf1 = []
     t_lha = []
     
-    n = np.linspace(1e5,1e6,20)
-    for j in range(10):
+    n = np.linspace(1e5,1e6,2)
+    for j in range(2):
         t0 = []
         t1 = []
         t2 = []
@@ -91,9 +92,12 @@ def accumulate_times(pdfname, dev0, dev1, no_lhapdf):
                 t_ =  test_pdfflow(p0, a_x, a_q2)
             t0 += [t_]
 
-            with tf.device(dev1):
-                t_ =  test_pdfflow(p1, a_x, a_q2)
-            t1 += [t_]
+            if dev1 is not None:
+                with tf.device(dev1):
+                    t_ =  test_pdfflow(p1, a_x, a_q2)
+                t1 += [t_]
+            else:
+                t1 += [[]]
 
             t_ = test_lhapdf(l_pdf, a_x, a_q2) if no_lhapdf else []
             t2 += [t_]
@@ -140,13 +144,14 @@ def main(pdfname=None, n_draws=10, pid=21, no_lhapdf=False,
 
     avg_l = t_lha.mean(0)
     avg_p0 = t_pdf0.mean(0)
-    avg_p1 = t_pdf1.mean(0)
+    avg_p1 = t_pdf1.mean(0) if dev1 is not None else None
     std_l = t_lha.std(0)
     std_p0 = t_pdf0.std(0)
-    std_p1 = t_pdf1.std(0)
+    std_p1 = t_pdf1.std(0) if dev1 is not None else None
 
     std_ratio0 = np.sqrt((std_l/avg_p0)**2 + (avg_l*std_p0/(avg_p0)**2)**2)
-    std_ratio1 = np.sqrt((std_l/avg_p1)**2 + (avg_l*std_p1/(avg_p1)**2)**2)
+    std_ratio1 = np.sqrt((std_l/avg_p1)**2 + (avg_l*std_p1/(avg_p1)**2)**2)\
+                 if dev1 is not None else None
 
     fig = plt.figure()
     gs = fig.add_gridspec(nrows=3, ncols=1, hspace=0.1)
@@ -154,7 +159,8 @@ def main(pdfname=None, n_draws=10, pid=21, no_lhapdf=False,
     ax = fig.add_subplot(gs[:-1,:])
     ax.errorbar(n,avg_p0,yerr=std_p0,label=r'\texttt{PDFFlow}: %s'%label0,
                 linestyle='--', color='b', marker='^')
-    ax.errorbar(n,avg_p1,yerr=std_p1,label=r'\texttt{PDFFlow}: %s'%label1,
+    if dev1 is not None:
+        ax.errorbar(n,avg_p1,yerr=std_p1,label=r'\texttt{PDFFlow}: %s'%label1,
                 linestyle='--', color='#ff7f0e', marker='s')
     ax.errorbar(n,avg_l,yerr=std_l,label=r'LHAPDF (CPU)',
                 linestyle='--', color='g', marker='o')
@@ -176,8 +182,9 @@ def main(pdfname=None, n_draws=10, pid=21, no_lhapdf=False,
     ax = fig.add_subplot(gs[-1,:])
     ax.errorbar(n, (avg_l/avg_p0),yerr=std_ratio0, label=r'%s'%label0,
                 linestyle='--', color='b', marker='^')
-    ax.errorbar(n, (avg_l/avg_p1),yerr=std_ratio1, label=r'%s'%label1,
-                linestyle='--', color='#ff7f0e', marker='s')
+    if dev1 is not None:
+        ax.errorbar(n, (avg_l/avg_p1),yerr=std_ratio1, label=r'%s'%label1,
+                    linestyle='--', color='#ff7f0e', marker='s')
     ax.set_xlabel(r'Number of $(x,Q)$ points drawn $[\times 10^{5}]$',
                   fontsize=18)
     ax.set_ylabel(r'Ratio to LHAPDF',
@@ -193,7 +200,6 @@ def main(pdfname=None, n_draws=10, pid=21, no_lhapdf=False,
     ax.tick_params(axis='y', direction='in',
                    left=True, labelleft=True,
                    right=True, labelright=False)
-    #ax.legend(frameon=False)
 
     plt.savefig('time.pdf', bbox_inches='tight', dpi=200)
     plt.close()
