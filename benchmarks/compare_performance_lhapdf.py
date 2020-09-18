@@ -62,9 +62,10 @@ def accumulate_times(pdfname, dev0, dev1, no_lhapdf):
         p0 = pdf.mkPDF(pdfname, DIRNAME)
         p0.trace()
 
-    with tf.device(dev1):
-        p1 = pdf.mkPDF(pdfname, DIRNAME)
-        p1.trace()
+    if dev1 is not None:
+        with tf.device(dev1):
+            p1 = pdf.mkPDF(pdfname, DIRNAME)
+            p1.trace()
 
     if no_lhapdf:
         l_pdf = lhapdf.mkPDF(pdfname)
@@ -80,8 +81,8 @@ def accumulate_times(pdfname, dev0, dev1, no_lhapdf):
     t_pdf1 = []
     t_lha = []
     
-    n = np.linspace(1e5,1e6,20)
-    for j in range(10):
+    n = np.linspace(1e5,1e6,2)
+    for j in range(2):
         t0 = []
         t1 = []
         t2 = []
@@ -93,9 +94,12 @@ def accumulate_times(pdfname, dev0, dev1, no_lhapdf):
                 t_ =  test_pdfflow(p0, a_x, a_q2)
             t0 += [t_]
 
-            with tf.device(dev1):
-                t_ =  test_pdfflow(p1, a_x, a_q2)
-            t1 += [t_]
+            if dev1 is not None:
+                with tf.device(dev1):
+                    t_ =  test_pdfflow(p1, a_x, a_q2)
+                t1 += [t_]
+            else:
+                t1 += [[]]
 
             t_ = test_lhapdf(l_pdf, a_x, a_q2) if no_lhapdf else []
             t2 += [t_]
@@ -142,13 +146,14 @@ def main(pdfname=None, n_draws=10, pid=21, no_lhapdf=False,
 
     avg_l = t_lha.mean(0)
     avg_p0 = t_pdf0.mean(0)
-    avg_p1 = t_pdf1.mean(0)
+    avg_p1 = t_pdf1.mean(0) if dev1 is not None else None
     std_l = t_lha.std(0)
     std_p0 = t_pdf0.std(0)
-    std_p1 = t_pdf1.std(0)
+    std_p1 = t_pdf1.std(0) if dev1 is not None else None
 
     std_ratio0 = np.sqrt((std_l/avg_p0)**2 + (avg_l*std_p0/(avg_p0)**2)**2)
-    std_ratio1 = np.sqrt((std_l/avg_p1)**2 + (avg_l*std_p1/(avg_p1)**2)**2)
+    std_ratio1 = np.sqrt((std_l/avg_p1)**2 + (avg_l*std_p1/(avg_p1)**2)**2)\
+                 if dev1 is not None else None
 
     k = len(t_pdf0)**0.5
 
