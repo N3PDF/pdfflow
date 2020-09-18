@@ -79,8 +79,8 @@ def accumulate_times(pdfname, dev0, dev1, no_lhapdf):
     t_pdf1 = []
     t_lha = []
     
-    n = np.linspace(1e5,1e6,2)
-    for j in range(2):
+    n = np.linspace(1e5,1e6,20)
+    for j in range(10):
         t0 = []
         t1 = []
         t2 = []
