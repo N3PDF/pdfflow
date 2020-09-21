@@ -8,7 +8,7 @@ import yaml
 import subprocess as sp
 import numpy as np
 
-import os
+import os, sys
 
 try:
     import lhapdf
@@ -131,10 +131,14 @@ def mkPDFs(fname, members, dirname=None):
     if dirname is None:
         if lhapdf is None:
             raise ValueError("mkPDF needs a PDF name if lhapdf-python is not installed")
-        dirname_raw = sp.run(
-            ["lhapdf-config", "--datadir"], capture_output=True, text=True, check=True
-        )
-        dirname = dirname_raw.stdout.strip()
+        lhapdf_cmd = ["lhapdf-config", "--datadir"]
+        # Check the python version in order to use the right subprocess call
+        if sys.version_info.major == 3 and sys.version_info.minor < 7:
+            dirname_raw = sp.run(lhapdf_cmd, check=True, stdout=sp.PIPE)
+            dirname = dirname_raw.stdout.decode().strip()
+        else:
+            dirname_raw = sp.run(lhapdf_cmd, capture_output=True, text=True, check=True)
+            dirname = dirname_raw.stdout.strip()
     return PDF(dirname, fname, members)
 
 
