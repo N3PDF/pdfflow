@@ -27,22 +27,27 @@ parser.add_argument("--plot", action="store_true",
                     help="Just collect and plot results")
 parser.add_argument("--no_mkl", action="store_true",
                     help="do not use MKL-DNN")
-parser.add_argument("--no_lhapdf", action="store_true",
+parser.add_argument("--lhapdf", action="store_true",
                     help="do not compute lhapdf")
-parser.add_argument("--intra_op", default="1", type=str,
+parser.add_argument("--intra_op", default=1, type=int,
                     help="TensorFlow intra-op parameter")
-parser.add_argument("--inter_op", default="96", type=str,
+parser.add_argument("--inter_op", default=96, type=int,
                     help="TensorFlow inter-op parameter")
+parser.add_argument("--verbose", action="store_true",
+                    help="show mkl-dnn verbose")
 DIRNAME = (sp.run(["lhapdf-config", "--datadir"], stdout=sp.PIPE,
            universal_newlines=True).stdout.strip("\n") + "/")
 
-def set_variables(args):
+def set_variables(args, verbose=False):
     """
     Sets the environment variables and tune MKL-DNN parameters
     Parameters:
         args: dict
+        verbose: bool
     """
     if args is not None:
+        if verbose:
+            os.environ["MKLDNN_VERBOSE"] = "1"
         os.environ["KMP_AFFINITY"] = args['KMP_AFFINITY']
         os.environ["KMP_BLOCKTIME"] = args["KMP_BLOCKTIME"]#'1'
         os.environ["KMP_SETTINGS"] = args["KMP_SETTINGS"]
@@ -71,15 +76,13 @@ def test_lhapdf(l_pdf, a_x, a_q2):
     return time() - start
 
 
-def accumulate_times(pdfname, no_lhapdf=True, args=None):
+def accumulate_times(pdfname, no_lhapdf=True, args=None, verbose=False):
     """
     Computes performance times
     Parameters:
         pdfname: str
         no_lhapdf: str, device name over which run pdfflow
     """
-    print("\nCalling with args:")
-    print(args)
     if not no_lhapdf:
         p = lhapdf.mkPDF(pdfname)
         xmin = 1e-9
@@ -87,7 +90,7 @@ def accumulate_times(pdfname, no_lhapdf=True, args=None):
         q2min = 1.65**2
         q2max = 1e10
     else:
-        set_variables(args)
+        set_variables(args, verbose)
         p = pdf.mkPDF(pdfname, DIRNAME)
         p.trace()
         xmin = np.exp(p.grids[0][0].log_xmin)
@@ -97,8 +100,8 @@ def accumulate_times(pdfname, no_lhapdf=True, args=None):
 
     t_tot = []
     
-    n = np.linspace(1e5,1e6,2)
-    for j in range(2):
+    n = np.linspace(1e5,1e6,20)
+    for j in range(10):
         t = []
         for i in tqdm.tqdm(n):
             a_x = np.random.uniform(xmin, xmax,[int(i),])
@@ -117,7 +120,7 @@ def accumulate_times(pdfname, no_lhapdf=True, args=None):
 
 
 def compute(pdfname=None, n_draws=10, pid=21, tensorboard=False,
-            no_mkl=False, no_lhapdf=False, intra_op="1", inter_op="96"):
+            no_mkl=False, lhapdf=False, intra_op="1", inter_op="96", verbose=False):
     """
     Different kinds of computations:
     |lhapdf---or---pdfflow
@@ -128,18 +131,18 @@ def compute(pdfname=None, n_draws=10, pid=21, tensorboard=False,
     |                  /    |   \
     |                 0   1,96  2,96
                      (inter_op,intra_op)
+    Derfault: mkl with inter_op 1 and intra_op 96
     """
     if tensorboard:
         tf.profiler.experimental.start('logdir')
 
-
-    if not no_lhapdf:
+    if lhapdf:
         n, t = accumulate_times(pdfname, False)
     
         fname_n = "../benchmarks/n_lha"
         fname_t = "../benchmarks/t_lha"
     else:        
-        if not no_mkl:
+        if no_mkl:
             n, t = accumulate_times(pdfname)
             fname_n = "../benchmarks/n_no_mkl"
             fname_t = "../benchmarks/t_no_mkl"
@@ -152,13 +155,15 @@ def compute(pdfname=None, n_draws=10, pid=21, tensorboard=False,
             args["inter_op"] = inter_op
             args["intra_op"] = intra_op
 
-            n, t = accumulate_times(pdfname, args=args)
+            n, t = accumulate_times(pdfname, args=args, verbose=verbose)
             fname_n = f"../benchmarks/n_inter{inter_op}_intra{intra_op}"
             fname_t = f"../benchmarks/t_inter{inter_op}_intra{intra_op}"
 
     if tensorboard:
         tf.profiler.experimental.stop('logdir')
 
+    np.save(fname_n, n)
+    np.save(fname_t, t)
 
 def make_plot(inter_op="1", intra_op="96"):
     import matplotlib.pyplot as plt
@@ -172,23 +177,23 @@ def make_plot(inter_op="1", intra_op="96"):
     mpl.rcParams['legend.fontsize'] = 18
 
     dir_name = "../benchmarks/"
-    n_lha = np.load(dir_name + "n_lha")
-    t_lha = np.load(dir_name + "t_lha")
+    n_lha = np.load(dir_name + "n_lha.npy")
+    t_lha = np.load(dir_name + "t_lha.npy")
     
-    n_def = np.load(dir_name + "n_no_mkl")
-    t_def = np.load(dir_name + "t_no_mkl")
+    n_def = np.load(dir_name + "n_no_mkl.npy")
+    t_def = np.load(dir_name + "t_no_mkl.npy")
 
-    #_0 = np.load(dir_name + f"n_{}")
-    #t_0 = np.load(dir_name + f"t_{}")
+    #n_0 = np.load(dir_name + f"n_{}.npy")
+    #t_0 = np.load(dir_name + f"t_{}.npy")
 
-    n_1 = np.load(dir_name + f"n_{inter_op}")
-    t_1 = np.load(dir_name + f"t_{intra_op}")
+    n_1 = np.load(dir_name + f"n_inter{inter_op}_intra{intra_op}.npy")
+    t_1 = np.load(dir_name + f"t_inter{inter_op}_intra{intra_op}.npy")
 
-    n_2 = np.load(dir_name + f"n_{inter_op}")
-    t_2 = np.load(dir_name + f"t_{intra_op}")
+    n_2 = np.load(dir_name + f"n_inter{inter_op}_intra{intra_op}.npy")
+    t_2 = np.load(dir_name + f"t_inter{inter_op}_intra{intra_op}.npy")
 
-    n_3 = np.load(dir_name + f"n_{inter_op}")
-    t_3 = np.load(dir_name + f"t_{intra_op}")
+    n_3 = np.load(dir_name + f"n_inter{inter_op}_intra{intra_op}.npy")
+    t_3 = np.load(dir_name + f"t_inter{inter_op}_intra{intra_op}.npy")
 
 
     def unc(t_l, t_p):
@@ -198,7 +203,7 @@ def make_plot(inter_op="1", intra_op="96"):
         std_p = t_p.std(0)
         return np.sqrt((std_l/avg_p)**2 + (avg_l*std_p/(avg_p)**2)**2)
 
-    k = len(t_l)**0.5
+    k = len(t_lha)**0.5
 
         
     fig = plt.figure()
@@ -254,9 +259,6 @@ def make_plot(inter_op="1", intra_op="96"):
     ax.errorbar(n_3,t_lha.mean(0)/t_3.mean(0),yerr=unc(t_lha,t_3)/k,
                 label=r'\texttt{PDFFlow}: 2, 96',
                 linestyle='--', color='darkmagenta', marker='o')
-    if dev1 is not None:
-        ax.errorbar(n, (avg_l/avg_p1),yerr=std_ratio1, label=r'%s'%label1,
-                    linestyle='--', color='#ff7f0e', marker='s')
     ax.set_xlabel(r'Number of $(x,Q)$ points drawn $[\times 10^{5}]$',
                   fontsize=18)
     ax.set_ylabel(r'Ratio to LHAPDF',
@@ -277,23 +279,21 @@ def make_plot(inter_op="1", intra_op="96"):
     plt.close()
 
 
-def main(pdfname=None, n_draws=10, pid=21, tensorboard=False,
-         plot=False, no_mkl=False, no_lhapdf=False,
-         intra_op="1", inter_op="96"):
+def main(args):
     """
     Testing PDFflow vs LHAPDF performance on Intel hardware.
     Exploits MKL-DNN library
     """
 
-    if plot:
-        make_plot(intra_op="1", inter_op="96")
+    if args["plot"]:
+        make_plot(intra_op=args["intra_op"], inter_op=args["inter_op"])
     else:
-        compute(pdfname=None, n_draws=10, pid=21, tensorboard=False,
-                no_mkl=False, no_lhapdf=False, intra_op="1", inter_op="96")
+        del args["plot"]
+        compute(**args)
 
 
 if __name__ == "__main__":
     args = vars(parser.parse_args())
     start = time()
-    main(**args)
+    main(args)
     print(time() - start)
