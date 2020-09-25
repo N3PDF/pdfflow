@@ -23,6 +23,16 @@ parser.add_argument("--pid", default=21, type=int,
                     help="The flavour PID.")
 parser.add_argument("-t", "--tensorboard", action="store_true",
                     help="Enable tensorboard profile logging")
+parser.add_argument("--plot", action="store_true",
+                    help="Just collect and plot results")
+parser.add_argument("--no_mkl", action="store_true",
+                    help="do not use MKL-DNN")
+parser.add_argument("--no_lhapdf", action="store_true",
+                    help="do not compute lhapdf")
+parser.add_argument("--intra_op", default="1", type=str,
+                    help="TensorFlow intra-op parameter")
+parser.add_argument("--inter_op", default="96", type=str,
+                    help="TensorFlow inter-op parameter")
 DIRNAME = (sp.run(["lhapdf-config", "--datadir"], stdout=sp.PIPE,
            universal_newlines=True).stdout.strip("\n") + "/")
 
@@ -106,39 +116,51 @@ def accumulate_times(pdfname, no_lhapdf=True, args=None):
     return n, t_tot
 
 
-def main(pdfname=None, n_draws=10, pid=21, tensorboard=False):
-    """Testing PDFflow vs LHAPDF performance."""
+def compute(pdfname=None, n_draws=10, pid=21, tensorboard=False,
+            no_mkl=False, no_lhapdf=False, intra_op="1", inter_op="96"):
+    """
+    Different kinds of computations:
+    |lhapdf---or---pdfflow
+    |             /       \
+    |       no_mkl         mkl
+    |                    /  | \
+    |                   /   |  \
+    |                  /    |   \
+    |                 0   1,96  2,96
+                     (inter_op,intra_op)
+    """
     if tensorboard:
         tf.profiler.experimental.start('logdir')
 
-    #n_lha, t_lha = accumulate_times(pdfname, False)
+
+    if not no_lhapdf:
+        n, t = accumulate_times(pdfname, False)
     
-    #n_def, t_def = accumulate_times(pdfname)
+        fname_n = "../benchmarks/n_lha"
+        fname_t = "../benchmarks/t_lha"
+    else:        
+        if not no_mkl:
+            n, t = accumulate_times(pdfname)
+            fname_n = "../benchmarks/n_no_mkl"
+            fname_t = "../benchmarks/t_no_mkl"
+        else:
+            args = {}
+            args["KMP_AFFINITY"] = "granularity=tile,compact"
+            args["KMP_BLOCKTIME"] = "0"
+            args["KMP_SETTINGS"] = "1"
+            args["OMP_NUM_THREADS"] = "96"
+            args["inter_op"] = inter_op
+            args["intra_op"] = intra_op
 
-    args = {}
-    args["KMP_AFFINITY"] = "granularity=tile,compact"
-    args["KMP_BLOCKTIME"] = "0"
-    args["KMP_SETTINGS"] = "1"
-    args["OMP_NUM_THREADS"] = "96"
-    args["inter_op"] = None
-    args["intra_op"] = None
-    #n_0, t_0 = accumulate_times(pdfname, args=args)
-
-    args["inter_op"] = 0
-    args["intra_op"] = 0
-    #n_1, t_1 = accumulate_times(pdfname, args=args)
-
-    args["inter_op"] = 1
-    args["intra_op"] = 96
-    n_2, t_2 = accumulate_times(pdfname, args=args)
-
-    args["inter_op"] = 2
-    args["intra_op"] = 96
-    n_3, t_3 = accumulate_times(pdfname, args=args)
+            n, t = accumulate_times(pdfname, args=args)
+            fname_n = f"../benchmarks/n_inter{inter_op}_intra{intra_op}"
+            fname_t = f"../benchmarks/t_inter{inter_op}_intra{intra_op}"
 
     if tensorboard:
         tf.profiler.experimental.stop('logdir')
 
+
+def make_plot(inter_op="1", intra_op="96"):
     import matplotlib.pyplot as plt
     import matplotlib as mpl
     mpl.rcParams['text.usetex'] = True
@@ -148,6 +170,26 @@ def main(pdfname=None, n_draws=10, pid=21, tensorboard=False):
     mpl.rcParams['ytick.labelsize'] = 17
     mpl.rcParams['xtick.labelsize'] = 17
     mpl.rcParams['legend.fontsize'] = 18
+
+    dir_name = "../benchmarks/"
+    n_lha = np.load(dir_name + "n_lha")
+    t_lha = np.load(dir_name + "t_lha")
+    
+    n_def = np.load(dir_name + "n_no_mkl")
+    t_def = np.load(dir_name + "t_no_mkl")
+
+    #_0 = np.load(dir_name + f"n_{}")
+    #t_0 = np.load(dir_name + f"t_{}")
+
+    n_1 = np.load(dir_name + f"n_{inter_op}")
+    t_1 = np.load(dir_name + f"t_{intra_op}")
+
+    n_2 = np.load(dir_name + f"n_{inter_op}")
+    t_2 = np.load(dir_name + f"t_{intra_op}")
+
+    n_3 = np.load(dir_name + f"n_{inter_op}")
+    t_3 = np.load(dir_name + f"t_{intra_op}")
+
 
     def unc(t_l, t_p):
         avg_l = t_l.mean(0)
@@ -169,9 +211,9 @@ def main(pdfname=None, n_draws=10, pid=21, tensorboard=False):
     ax.errorbar(n_def,t_def.mean(0),yerr=t_def.std(0)/k,
                 label=r'\texttt{PDFFlow}: no MKL-DNN',
                 linestyle='--', color='lime', marker='s')
-    ax.errorbar(n_0,t_0.mean(0),yerr=t_0.std(0)/k,
-                label=r'\texttt{PDFFlow}: None, None ',
-                linestyle='--', color='salmon', marker='o')
+    #ax.errorbar(n_0,t_0.mean(0),yerr=t_0.std(0)/k,
+    #            label=r'\texttt{PDFFlow}: None, None ',
+    #            linestyle='--', color='salmon', marker='o')
     ax.errorbar(n_1,t_1.mean(0),yerr=t_1.std(0)/k,
                 label=r'\texttt{PDFFlow}: 0, 0',
                 linestyle='--', color='sandybrown', marker='o')
@@ -200,9 +242,9 @@ def main(pdfname=None, n_draws=10, pid=21, tensorboard=False):
     ax.errorbar(n_def,t_lha.mean(0)/t_def.mean(0),yerr=unc(t_lha,t_def)/k,
                 label=r'\texttt{PDFFlow}: no MKL-DNN',
                 linestyle='--', color='lime', marker='s')
-    ax.errorbar(n_0,t_lha.mean(0)/t_0.mean(0),yerr=unc(t_lha,t_0)/k,
-                label=r'\texttt{PDFFlow}: None, None ',
-                linestyle='--', color='salmon', marker='o')
+    #ax.errorbar(n_0,t_lha.mean(0)/t_0.mean(0),yerr=unc(t_lha,t_0)/k,
+    #            label=r'\texttt{PDFFlow}: None, None ',
+    #            linestyle='--', color='salmon', marker='o')
     ax.errorbar(n_1,t_lha.mean(0)/t_1.mean(0),yerr=unc(t_lha,t_1)/k,
                 label=r'\texttt{PDFFlow}: 0, 0',
                 linestyle='--', color='sandybrown', marker='o')
@@ -233,6 +275,21 @@ def main(pdfname=None, n_draws=10, pid=21, tensorboard=False):
 
     plt.savefig('time.pdf', bbox_inches='tight', dpi=200)
     plt.close()
+
+
+def main(pdfname=None, n_draws=10, pid=21, tensorboard=False,
+         plot=False, no_mkl=False, no_lhapdf=False,
+         intra_op="1", inter_op="96"):
+    """
+    Testing PDFflow vs LHAPDF performance on Intel hardware.
+    Exploits MKL-DNN library
+    """
+
+    if plot:
+        make_plot(intra_op="1", inter_op="96")
+    else:
+        compute(pdfname=None, n_draws=10, pid=21, tensorboard=False,
+                no_mkl=False, no_lhapdf=False, intra_op="1", inter_op="96")
 
 
 if __name__ == "__main__":
