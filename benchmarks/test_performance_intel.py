@@ -75,7 +75,7 @@ def accumulate_times(pdfname, no_lhapdf=True, args=None):
         q2min = 1.65**2
         q2max = 1e10
     else:
-        set_variables(v)
+        set_variables(args)
         p = pdf.mkPDF(pdfname, DIRNAME)
         p.trace()
         xmin = np.exp(p.grids[0][0].log_xmin)
