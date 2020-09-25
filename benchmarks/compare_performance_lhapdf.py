@@ -148,15 +148,17 @@ def main(pdfname=None, n_draws=10, pid=21, no_lhapdf=False,
     std_ratio0 = np.sqrt((std_l/avg_p0)**2 + (avg_l*std_p0/(avg_p0)**2)**2)
     std_ratio1 = np.sqrt((std_l/avg_p1)**2 + (avg_l*std_p1/(avg_p1)**2)**2)
 
+    k = len(t_pdf0)**0.5
+
     fig = plt.figure()
     gs = fig.add_gridspec(nrows=3, ncols=1, hspace=0.1)
 
     ax = fig.add_subplot(gs[:-1,:])
-    ax.errorbar(n,avg_p0,yerr=std_p0,label=r'\texttt{PDFFlow}: %s'%label0,
+    ax.errorbar(n,avg_p0,yerr=std_p0/k,label=r'\texttt{PDFFlow}: %s'%label0,
                 linestyle='--', color='b', marker='^')
-    ax.errorbar(n,avg_p1,yerr=std_p1,label=r'\texttt{PDFFlow}: %s'%label1,
+    ax.errorbar(n,avg_p1,yerr=std_p1/k,label=r'\texttt{PDFFlow}: %s'%label1,
                 linestyle='--', color='#ff7f0e', marker='s')
-    ax.errorbar(n,avg_l,yerr=std_l,label=r'LHAPDF (CPU)',
+    ax.errorbar(n,avg_l,yerr=std_l/k,label=r'LHAPDF (CPU)',
                 linestyle='--', color='g', marker='o')
     ax.title.set_text(r'\texttt{PDFflow} - LHAPDF perfomances')
     ax.set_ylabel(r'$t [s]$', fontsize=20)
@@ -174,9 +176,9 @@ def main(pdfname=None, n_draws=10, pid=21, no_lhapdf=False,
 
 
     ax = fig.add_subplot(gs[-1,:])
-    ax.errorbar(n, (avg_l/avg_p0),yerr=std_ratio0, label=r'%s'%label0,
+    ax.errorbar(n, (avg_l/avg_p0),yerr=std_ratio0/k, label=r'%s'%label0,
                 linestyle='--', color='b', marker='^')
-    ax.errorbar(n, (avg_l/avg_p1),yerr=std_ratio1, label=r'%s'%label1,
+    ax.errorbar(n, (avg_l/avg_p1),yerr=std_ratio1/k, label=r'%s'%label1,
                 linestyle='--', color='#ff7f0e', marker='s')
     ax.set_xlabel(r'Number of $(x,Q)$ points drawn $[\times 10^{5}]$',
                   fontsize=18)
