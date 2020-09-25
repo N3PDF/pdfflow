@@ -26,23 +26,23 @@ parser.add_argument("-t", "--tensorboard", action="store_true",
 DIRNAME = (sp.run(["lhapdf-config", "--datadir"], stdout=sp.PIPE,
            universal_newlines=True).stdout.strip("\n") + "/")
 
-def set_variables(v):
+def set_variables(args):
     """
     Sets the environment variables and tune MKL-DNN parameters
     Parameters:
-        v: dict
+        args: dict
     """
-    if v is not None:
-        os.environ["KMP_AFFINITY"] = v['KMP_AFFINITY']
-        os.environ["KMP_BLOCKTIME"] = v["KMP_BLOCKTIME"]#'1'
-        os.environ["KMP_SETTINGS"] = v["KMP_SETTINGS"]
-        os.environ["OMP_NUM_THREADS"] = v['OMP_NUM_THREADS']#'96'
+    if args is not None:
+        os.environ["KMP_AFFINITY"] = args['KMP_AFFINITY']
+        os.environ["KMP_BLOCKTIME"] = args["KMP_BLOCKTIME"]#'1'
+        os.environ["KMP_SETTINGS"] = args["KMP_SETTINGS"]
+        os.environ["OMP_NUM_THREADS"] = args['OMP_NUM_THREADS']#'96'
 
         context._context = None
         context._create_context()
-        if v["inter_op"] is not None:
-            tf.config.threading.set_inter_op_parallelism_threads(v["inter_op"])
-            tf.config.threading.set_intra_op_parallelism_threads(v["intra_op"])
+        if args["inter_op"] is not None:
+            tf.config.threading.set_inter_op_parallelism_threads(args["inter_op"])
+            tf.config.threading.set_intra_op_parallelism_threads(args["intra_op"])
     else:
         os.environ["TF_DISABLE_MKL"] = "1"
 
@@ -68,6 +68,8 @@ def accumulate_times(pdfname, no_lhapdf=True, args=None):
         pdfname: str
         no_lhapdf: str, device name over which run pdfflow
     """
+    print("\nCalling with args:")
+    print(args)
     if not no_lhapdf:
         p = lhapdf.mkPDF(pdfname)
         xmin = 1e-9
@@ -109,22 +111,22 @@ def main(pdfname=None, n_draws=10, pid=21, tensorboard=False):
     if tensorboard:
         tf.profiler.experimental.start('logdir')
 
-    n_lha, t_lha = accumulate_times(pdfname, False)
+    #n_lha, t_lha = accumulate_times(pdfname, False)
     
-    args = None
-    n_def, t_def = accumulate_times(pdfname, args=args)
+    #n_def, t_def = accumulate_times(pdfname)
 
+    args = {}
     args["KMP_AFFINITY"] = "granularity=tile,compact"
     args["KMP_BLOCKTIME"] = "0"
     args["KMP_SETTINGS"] = "1"
     args["OMP_NUM_THREADS"] = "96"
     args["inter_op"] = None
     args["intra_op"] = None
-    n_0, t_0 = accumulate_times(pdfname, args=args)
+    #n_0, t_0 = accumulate_times(pdfname, args=args)
 
     args["inter_op"] = 0
     args["intra_op"] = 0
-    n_1, t_1 = accumulate_times(pdfname, args=args)
+    #n_1, t_1 = accumulate_times(pdfname, args=args)
 
     args["inter_op"] = 1
     args["intra_op"] = 96
