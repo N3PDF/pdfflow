@@ -12,7 +12,7 @@ Installing a PDF set
 ====================
 PDF sets can be installed in two ways
 
-	1. downloading directly the PDF sets, from instance from `LHAPDF PDF sets page <https://lhapdf.hepforge.org/pdfsets.html>`_ or `NNPDF <http://nnpdf.mi.infn.it/for-users/unpolarized-pdf-sets/>`_
+	1. downloading directly the PDF sets, for instance from `LHAPDF PDF sets page <https://lhapdf.hepforge.org/pdfsets.html>`_ or `NNPDF <http://nnpdf.mi.infn.it/for-users/unpolarized-pdf-sets/>`_
 	2. exploiting the ``lhapdf`` scripts, through the following commands:
 
 .. code-block:: bash
