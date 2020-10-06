@@ -4,7 +4,6 @@
 """
 
 import tensorflow as tf
-import tensorflow_probability as tfp
 from pdfflow.configflow import DTYPE, DTYPEINT
 
 
