@@ -5,10 +5,10 @@ Define some constants, header style
 import os
 import logging
 import numpy as np
-import tensorflow as tf
 
 # Set TF to only log errors
 os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "1")
+import tensorflow as tf
 
 # uncomment this line for debugging to avoid compiling any tf.function
 # tf.config.run_functions_eagerly(True)
