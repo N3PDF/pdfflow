@@ -31,6 +31,8 @@ parser.add_argument("--label0", default=None, type=str,
 parser.add_argument("--label1", default=None, type=str,
                     help=" ".join(["Legend label of second pdfflow running device,",
                                     "defaults to tf device auto selection"]))
+parser.add_argument("--no_tex", action="store_false",
+                    help="Don't render pyplot with tex")
 DIRNAME = (sp.run(["lhapdf-config", "--datadir"], stdout=sp.PIPE,
            universal_newlines=True).stdout.strip("\n") + "/")
 
@@ -111,7 +113,7 @@ def accumulate_times(pdfname, dev0, dev1, no_lhapdf):
 
 def main(pdfname=None, n_draws=10, pid=21, no_lhapdf=False,
          tensorboard=False, dev0=None, dev1=None,
-         label0=None, label1=None):
+         label0=None, label1=None, no_tex=True):
     """Testing PDFflow vs LHAPDF performance."""
     if tensorboard:
         tf.profiler.experimental.start('logdir')
@@ -130,7 +132,7 @@ def main(pdfname=None, n_draws=10, pid=21, no_lhapdf=False,
 
     import matplotlib.pyplot as plt
     import matplotlib as mpl
-    mpl.rcParams['text.usetex'] = True
+    mpl.rcParams['text.usetex'] = no_tex
     mpl.rcParams['savefig.format'] = 'pdf'
     mpl.rcParams['figure.figsize'] = [7,8]
     mpl.rcParams['axes.titlesize'] = 20
@@ -154,13 +156,14 @@ def main(pdfname=None, n_draws=10, pid=21, no_lhapdf=False,
     gs = fig.add_gridspec(nrows=3, ncols=1, hspace=0.1)
 
     ax = fig.add_subplot(gs[:-1,:])
-    ax.errorbar(n,avg_p0,yerr=std_p0/k,label=r'\texttt{PDFFlow}: %s'%label0,
+    PDFFLOW = r'\texttt{PDFFlow}' if no_tex else r'PDFFlow'
+    ax.errorbar(n,avg_p0,yerr=std_p0,label=r'%s: %s'%(PDFFLOW, label0),
                 linestyle='--', color='b', marker='^')
-    ax.errorbar(n,avg_p1,yerr=std_p1/k,label=r'\texttt{PDFFlow}: %s'%label1,
+    ax.errorbar(n,avg_p1,yerr=std_p1,label=r'%s: %s'%(PDFFLOW, label1),
                 linestyle='--', color='#ff7f0e', marker='s')
     ax.errorbar(n,avg_l,yerr=std_l/k,label=r'LHAPDF (CPU)',
                 linestyle='--', color='g', marker='o')
-    ax.title.set_text(r'\texttt{PDFflow} - LHAPDF perfomances')
+    ax.title.set_text('%s - LHAPDF performances'%PDFFLOW)
     ax.set_ylabel(r'$t [s]$', fontsize=20)
     ticks = list(np.linspace(1e5,1e6,10))
     labels = [r'%d'%i for i in range(1,11)]
@@ -174,13 +177,13 @@ def main(pdfname=None, n_draws=10, pid=21, no_lhapdf=False,
                    right=True, labelright=False)
     ax.legend(frameon=False)
 
-
     ax = fig.add_subplot(gs[-1,:])
     ax.errorbar(n, (avg_l/avg_p0),yerr=std_ratio0/k, label=r'%s'%label0,
                 linestyle='--', color='b', marker='^')
     ax.errorbar(n, (avg_l/avg_p1),yerr=std_ratio1/k, label=r'%s'%label1,
                 linestyle='--', color='#ff7f0e', marker='s')
-    ax.set_xlabel(r'Number of $(x,Q)$ points drawn $[\times 10^{5}]$',
+    xlabel = r'$[\times 10^{5}]$' if no_tex else '$x10^{5}$'
+    ax.set_xlabel(''.join([r'Number of $(x,Q)$ points drawn', xlabel]),
                   fontsize=18)
     ax.set_ylabel(r'Ratio to LHAPDF',
                   fontsize=18)
@@ -195,7 +198,6 @@ def main(pdfname=None, n_draws=10, pid=21, no_lhapdf=False,
     ax.tick_params(axis='y', direction='in',
                    left=True, labelleft=True,
                    right=True, labelright=False)
-    #ax.legend(frameon=False)
 
     plt.savefig('time.pdf', bbox_inches='tight', dpi=200)
     plt.close()

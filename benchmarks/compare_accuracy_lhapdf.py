@@ -17,6 +17,8 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--pdfname", "-p", default="NNPDF31_nlo_as_0118/0",
                     type=str, help='The PDF set name/replica number.')
 parser.add_argument("--pid", default=21, type=int, help='The flavour PID.')
+parser.add_argument("--no_tex", action="store_false",
+                    help="Don't render pyplot with tex")
 DIRNAME = sp.run(['lhapdf-config','--datadir'], stdout=sp.PIPE,
                  universal_newlines=True).stdout.strip('\n') + '/'
 EPS = np.finfo(float).eps
@@ -71,17 +73,15 @@ def set_ticks(ax, start, end, numticks, axis, nskip=2):
     return ax    
     
 
-def main(pdfname, pid):
+def main(pdfname, pid, no_tex=True):
     """Testing PDFflow vs LHAPDF performance."""
-    mpl.rcParams['text.usetex'] = True
+    mpl.rcParams['text.usetex'] = no_tex
     mpl.rcParams['savefig.format'] = 'pdf'
     mpl.rcParams['figure.figsize'] = [11,5.5]
     mpl.rcParams['axes.titlesize'] = 20
     mpl.rcParams['ytick.labelsize'] = 17
     mpl.rcParams['xtick.labelsize'] = 17
     mpl.rcParams['legend.fontsize'] = 14
-
-
 
     import pdfflow.pflow as pdf
 
@@ -123,8 +123,8 @@ def main(pdfname, pid):
                    right=True, labelright=False)
 
     ax.set_title(r'%s, flav = %d' % (name, pid))
-    ax.set_ylabel(r'$\displaystyle{r_{i}(x,Q)}$',
-                  fontsize=20)
+    ylabel = r'$\displaystyle{r_{i}(x,Q)}$' if no_tex else '$r_{i}$(x,Q)'
+    ax.set_ylabel(ylabel, fontsize=20)
     ax.set_xlabel(r'$x$', fontsize=17)
     ax.legend(frameon=False, ncol=2,
               loc='upper right', bbox_to_anchor=(1.02,0.9))
