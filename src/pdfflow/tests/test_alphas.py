@@ -3,19 +3,19 @@
     this code is made to run eagerly as @tf.function is tested by test_pflow
     running eagerly means less overhead on the CI which is running on CPU
 """
+import os
+import logging
+import subprocess as sp
+import numpy as np
+import lhapdf
 import pdfflow.pflow as pdf
 from pdfflow.configflow import run_eager
-import logging
 
 logger = logging.getLogger("pdfflow.test")
 
-import os
 
 # Run tests in CPU
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
-import lhapdf
-import numpy as np
-import subprocess as sp
 
 # Utility to install lhapdf sets
 def install_lhapdf(pdfset):
@@ -45,7 +45,7 @@ def gen_q2(qmin, qmax):
     return np.random.rand(SIZE) * (qmax - qmin) + qmin
 
 
-def get_alphavals(q2arr, pdfset, sq2 = False):
+def get_alphavals(q2arr, pdfset, sq2=False):
     """ Generate an array of alphas(q) values from LHAPDF """
     lhapdf_pdf = lhapdf.mkPDF(pdfset)
     if sq2:
@@ -72,7 +72,7 @@ def test_accuracy_alphas(atol=1e-6):
                 q2arr = gen_q2(qi, qf)
                 logger.info(" Q2 from %f to %f", qi, qf)
                 flow_values = pdfflow.py_alphasQ(q2arr)
-                lhapdf_values = get_alphavals(q2arr, pdfset, sq2 = False)
+                lhapdf_values = get_alphavals(q2arr, pdfset, sq2=False)
                 np.testing.assert_allclose(flow_values, lhapdf_values, atol=atol)
     run_eager(False)
 
@@ -93,7 +93,7 @@ def test_alphas_q2(atol=1e-6):
                 q2arr = gen_q2(qi, qf)
                 logger.info(" Q2 from %f to %f", qi, qf)
                 flow_values = pdfflow.py_alphasQ2(q2arr)
-                lhapdf_values = get_alphavals(q2arr, pdfset, sq2 = True)
+                lhapdf_values = get_alphavals(q2arr, pdfset, sq2=True)
                 np.testing.assert_allclose(flow_values, lhapdf_values, atol=atol)
 
 def test_alpha_trace():
@@ -106,7 +106,7 @@ def test_alpha_trace():
     pex = pdf.mkPDF(pdfset, f"{DIRNAME}/")
     pex.alphas_trace()
     # Do it for many replicas
-    pex2 = pdf.mkPDFs(setname, [0,1,2])
+    pex2 = pdf.mkPDFs(setname, [0, 1, 2])
     pex2.alphas_trace()
 
 

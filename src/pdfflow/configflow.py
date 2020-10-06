@@ -3,26 +3,24 @@ Define some constants, header style
 """
 # Most of this can be moved to a yaml file without loss of generality
 import os
-
+import logging
 import numpy as np
+import tensorflow as tf
 
 # Set TF to only log errors
 os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "1")
-import tensorflow as tf
 
 # uncomment this line for debugging to avoid compiling any tf.function
 # tf.config.run_functions_eagerly(True)
 
-def run_eager(flag = True):
+def run_eager(flag=True):
     """ Wrapper around `run_functions_eagerly` """
-    if tf.__version__ == '2.2.0':
+    if '2.2' in tf.__version__:
         tf.config.experimental_run_functions_eagerly(flag)
-    elif tf.__version__ == '2.3.0':
+    elif '2.3' in tf.__version__:
         tf.config.run_functions_eagerly(flag)
 
 # Configure pdfflow logging
-import logging
-
 module_name = __name__.split(".")[0]
 logger = logging.getLogger(module_name)
 
