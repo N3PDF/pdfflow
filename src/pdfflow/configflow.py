@@ -14,8 +14,11 @@ import tensorflow as tf
 # tf.config.run_functions_eagerly(True)
 
 def run_eager(flag = True):
-    """ Wraper around `run_functions_eagerly` """
-    tf.config.run_functions_eagerly(flag)
+    """ Wrapper around `run_functions_eagerly` """
+    if tf.__version__ == '2.2.0':
+        tf.config.experimental_run_functions_eagerly(flag)
+    elif tf.__version__ == '2.3.0':
+        tf.config.run_functions_eagerly(flag)
 
 # Configure pdfflow logging
 import logging
