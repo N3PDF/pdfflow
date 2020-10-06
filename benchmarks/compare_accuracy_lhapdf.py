@@ -128,13 +128,9 @@ def main(pdfname, pid):
     ax.set_xlabel(r'$x$', fontsize=17)
     ax.legend(frameon=False, ncol=2,
               loc='upper right', bbox_to_anchor=(1.02,0.9))
-    #plt.savefig('diff_%s_flav%d_fixedQ.pdf' % (pdfname.replace('/','-'), pid),
-    #            bbox_inches='tight', dpi=200)
-    #plt.close()
 
     x = np.array([1e-10,1e-9,1.1e-9,5e-7,1e-6,1e-4,1e-2,0.5,0.99], dtype=float)
     q2 = np.logspace(1, 7, 10000, dtype=float)**2
-    #fig = plt.figure(tight_layout=True)
     ax = fig.add_subplot(gs[1])
     for ix in x:
         s_time = time.time()
@@ -163,8 +159,6 @@ def main(pdfname, pid):
                    left=True, labelleft=False)
 
     ax.set_title(r'%s, flav = %d' % (name, pid))
-    #ax.set_ylabel(r'$\displaystyle{\frac{|f_{p} - f_{l}|}{|f_{l}|+\epsilon}}$',
-    #              fontsize=21)
     ax.set_xlabel(r'$Q$', fontsize=17)
     ax.legend(frameon=False, ncol=2,
               loc='upper right', bbox_to_anchor=(1.02,0.9))
