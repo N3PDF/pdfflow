@@ -5,19 +5,19 @@ Define some constants, header style
 import os
 import logging
 import numpy as np
-import tensorflow as tf
 
 # Set TF to only log errors
 os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "1")
+import tensorflow as tf
 
 # uncomment this line for debugging to avoid compiling any tf.function
 # tf.config.run_functions_eagerly(True)
 
 def run_eager(flag=True):
     """ Wrapper around `run_functions_eagerly` """
-    if '2.2' in tf.__version__:
+    if tf.__version__ < '2.3.0':
         tf.config.experimental_run_functions_eagerly(flag)
-    elif '2.3' in tf.__version__:
+    else:
         tf.config.run_functions_eagerly(flag)
 
 # Configure pdfflow logging
