@@ -8,13 +8,14 @@ Benchmark script for LHAPDF comparison being hardware agnostic.
 import os
 import glob
 import lhapdf
-import pdfflow.pflow as pdf
 import argparse
 import subprocess as sp
 import numpy as np
 import tensorflow as tf
 from time import time
 import tqdm
+import pdfflow.pflow as pdf
+from pdfflow.configflow import float_me
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--pdfname", "-p", default="NNPDF31_nlo_as_0118/0", type=str,
@@ -42,16 +43,18 @@ def set_env_vars(dev):
     dev: str, could be one of CPU:<> / GPU:<> / TPU
     """
     if "GPU" in dev:
+        print("Running PDFFlow on GPU")
         gpu, gpu_n = dev.split(":")
         gpus = [i for i in range(len(tf.config.list_physical_devices('GPU')))]
         gpus.append("*") # add the possibility to take all the GPUs
         if not gpu_n in gpus:
             raise AssertionError("Selected GPU not present on machine")
         else:
-            if gpu_n is not "*":
+            if gpu_n !=  "*":
                 os.environ["CUDA_VISIBLE_DEVICES"] = gpu_n
 
     if "CPU" in dev:
+        print("Running PDFFlow on CPU")
         os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 def load_inputs(pdfname, n_points, n_exp):
@@ -80,16 +83,18 @@ def test_pdfflow(p, a_x, a_q2, strategy):
         a_q2: numpy array of inputs
         strategy: TPUStrategy, allows TPU computation
     """
-    if strategy is None:
+    if strategy == None:
         start = time()
         p.py_xfxQ2_allpid(a_x, a_q2)
     else:
         start = time()
-        strategy.runt(p.py_xfxQ2_allpid, args=(a_x, a_q2))
+        a_x = float_me(a_x)
+        a_q2 = float_me(a_q2)
+        strategy.run(p.xfxQ2_allpid, args=(a_x, a_q2))
     return time() - start
 
 
-def test_lhapdf(l_pdf, a_x, a_q2):    
+def test_lhapdf(l_pdf, a_x, a_q2):
     start = time()
     f_lha = []
     for i in range(a_x.shape[0]):
@@ -106,18 +111,17 @@ def accumulate_times(pdfname, points_exp_x, points_exp_q2, no_lhapdf, dev):
         q2: list, q2 arrays to be passed as inputs
         no_lhapdf: bool, if not to do also lhapdf times
     """
-    if dev is "TPU":
-        resolver = tf.distribute.cluster_resolver.TPUClusterResolver()
+    if dev == "TPU":
+        print("Running PDFFlow on TPU")
+        tpu_address = os.environ["TPU_NAME"]
+        resolver = tf.distribute.cluster_resolver.TPUClusterResolver(tpu=tpu_address)
         tf.config.experimental_connect_to_cluster(resolver)
         tf.tpu.experimental.initialize_tpu_system(resolver)
         strategy = tf.distribute.TPUStrategy(resolver)
     else:
-        strategy=None
+        strategy = None
     p = pdf.mkPDF(pdfname, DIRNAME)
-    if strategy is None:
-        p.trace()
-    else:
-        strategy.run(p.trace)
+    p.trace()
 
     l_pdf = None if no_lhapdf else lhapdf.mkPDF(pdfname)
 
@@ -129,11 +133,11 @@ def accumulate_times(pdfname, points_exp_x, points_exp_q2, no_lhapdf, dev):
     t_pdf = []
     t_lha = None if no_lhapdf else []
     
-    for exp_x, exp_q2 in zip(points_exp_x, points_exp_q2):
+    for exp_x, exp_q2 in tqdm.tqdm(zip(points_exp_x, points_exp_q2)):
         #iterate over n_points query lengths
         tp = []
         tl = None if no_lhapdf else []
-        for x, q2 in zip(exp_x, exp_q2):
+        for x, q2 in tqdm.tqdm(zip(exp_x, exp_q2)):
             # iterate over the experiments
             tp.append(test_pdfflow(p, x, q2, strategy))
 
@@ -192,6 +196,7 @@ def run(pdfname, n_points, n_exp, no_lhapdf, dev):
 
     res_pdf, res_lha = accumulate_times(pdfname, x, q2, no_lhapdf, dev)
 
+    dir_name = "../benchmarks/tmp/"
     pdfname = "-".join(pdfname.split("/"))
     fname = "".join([dir_name,  f"results_{pdfname}_{n_points}_{n_exp}_{dev}"])
     np.save(res_pdf, fname)
@@ -213,10 +218,10 @@ def main_2(pdfname=None, n_draws=10, pid=21, no_lhapdf=False,
         tf.profiler.experimental.start('logdir')
     
     #check legend labels
-    if label0 is None:
+    if label0 == None:
         label0 = dev0
     
-    if label1 is None:
+    if label1 == None:
         label1 = dev1
 
     n, t_pdf0, t_pdf1, t_lha = accumulate_times(pdfname, dev0, dev1, no_lhapdf)
