@@ -54,6 +54,12 @@ def four_neighbour_knots(a_x, a_q2, padded_x, padded_q2, actual_values):
     x_id = tf.clip_by_value(x_id, tf.constant([0], dtype=DTYPEINT), s_x-3)
     q2_id = tf.clip_by_value(q2_id, tf.constant([0], dtype=DTYPEINT), s-3)
 
+    s_x = tf.size(padded_x, out_type=DTYPEINT)
+    s = tf.size(padded_q2, out_type=DTYPEINT)
+    
+    x_id = tf.clip_by_value(x_id, tf.constant([0], dtype=DTYPEINT), s_x-3)
+    q2_id = tf.clip_by_value(q2_id, tf.constant([0], dtype=DTYPEINT), s-3)
+    
     piu = tf.reshape(tf.range(-1, 3, dtype=DTYPEINT), (4, 1))
     corn_x_id = tf.repeat(tf.reshape(x_id, (1, -1)), 4, axis=0) + piu
     corn_q2_id = tf.repeat(tf.reshape(q2_id, (1, -1)), 4, axis=0) + piu
