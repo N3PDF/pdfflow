@@ -162,7 +162,6 @@ def main(pdfname=None, n_draws=10, pid=21, no_lhapdf=False,
     ax.errorbar(n,avg_p1,yerr=std_p1,label=r'%s: %s'%(PDFFLOW, label1),
                 linestyle='--', color='#ff7f0e', marker='s')
     ax.errorbar(n,avg_l,yerr=std_l/k,label=r'LHAPDF (CPU)',
-    ax.errorbar(n,avg_l,yerr=std_l,label=r'LHAPDF (CPU)',
                 linestyle='--', color='g', marker='o')
     ax.title.set_text('%s - LHAPDF performances'%PDFFLOW)
     ax.set_ylabel(r'$t [s]$', fontsize=20)
