@@ -366,8 +366,9 @@ class PDF:
 
         # And ensure it is unique
         # TODO maybe error if the user ask for the same pid twice or for a non-registered pid?
-        upid, user_idx = tf.unique(pid, out_idx=DTYPEINT)
-
+        #upid, user_idx = tf.unique(pid, out_idx=DTYPEINT)
+        upid = tf.cast(pid, DTYPEINT)
+        user_idx = tf.range(tf.shape(pid))
         # And return the positions in the flavor_scheme array
         # if the flavours are sorted, do it the easy way
         if self.flavors_sorted:
