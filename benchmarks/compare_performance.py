@@ -23,10 +23,10 @@ parser.add_argument("--pdfname", "-p", default="NNPDF31_nlo_as_0118/0", type=str
 parser.add_argument("--mode", default="generate", type=str,
                     help="generate/run/plot")
 parser.add_argument("--n_exp", default=10, type=int,
-                    help="Number of experiments.")
+                    help="Number of experiments to average on.")
 parser.add_argument("--n_points", default=20, type=int,
                     help="Number of different query array lengths.")
-parser.add_argument("--no_lhapdf", action="store_false",
+parser.add_argument("--no_lhapdf", action="store_true",
                     help="Don't run lhapdf, only pdfflow")
 parser.add_argument("-t", "--tensorboard", action="store_true",
                     help="Enable tensorboard profile logging")
@@ -34,8 +34,11 @@ parser.add_argument("--dev", default="GPU:*", type=str,
                     help="pdfflow running device: CPU:0/GPU:<n,*>/TPU")
 parser.add_argument("--no_tex", action="store_false",
                     help="Don't render pyplot with tex")
+parser.add_argument("--fname", default="time.pdf", type=str,
+                    help="Output plot file name")
 DIRNAME = (sp.run(["lhapdf-config", "--datadir"], stdout=sp.PIPE,
            universal_newlines=True).stdout.strip("\n") + "/")
+DIRTMP = "../benchmarks/tmp/"
 
 def set_env_vars(dev):
     """
@@ -57,21 +60,30 @@ def set_env_vars(dev):
         print("Running PDFFlow on CPU")
         os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
-def load_inputs(pdfname, n_points, n_exp):
+
+def load_run_inputs(pdfname, n_points, n_exp):
     n = np.linspace(1e5, 1e6, n_points).astype(int).cumsum()
     
     pdfname = "-".join(pdfname.split("/"))
-    dir_name = "../benchmarks/tmp/"
 
-    fname = "".join([dir_name,  f"input_{pdfname}_{n_points}_{n_exp}_x.npy"])
+    fname = "".join([DIRTMP,  f"input_{pdfname}_{n_points}_{n_exp}_x.npy"])
     x = np.load(fname)
     x = np.split(x.reshape([n_exp,-1]), n, axis=1)[:-1]
 
-    fname = "".join([dir_name,  f"input_{pdfname}_{n_points}_{n_exp}_q2.npy"])
-    q2 = np.load(fname)
+    fname = "".join([DIRTMP,  f"input_{pdfname}_{n_points}_{n_exp}_q2.npy"])
+    q2 = np.load(fname) #shape [n_exp, all draws]
     q2 = np.split(q2.reshape([n_exp,-1]), n, axis=1)[:-1]
 
     return x, q2
+
+
+def load_plot_inputs(fname, dev):
+    fname = "".join([DIRTMP,
+                     f"{fname}_{dev}.npy"])
+    res = np.load(fname)
+
+    return {"results":res[:-1],
+            "n": res[-1]}
 
 
 def test_pdfflow(p, a_x, a_q2, strategy):
@@ -132,11 +144,13 @@ def accumulate_times(pdfname, points_exp_x, points_exp_q2, no_lhapdf, dev):
 
     t_pdf = []
     t_lha = None if no_lhapdf else []
+    n = []
     
     for exp_x, exp_q2 in tqdm.tqdm(zip(points_exp_x, points_exp_q2)):
         #iterate over n_points query lengths
         tp = []
         tl = None if no_lhapdf else []
+        n.append(exp_x.shape[-1])
         for x, q2 in tqdm.tqdm(zip(exp_x, exp_q2)):
             # iterate over the experiments
             tp.append(test_pdfflow(p, x, q2, strategy))
@@ -146,14 +160,89 @@ def accumulate_times(pdfname, points_exp_x, points_exp_q2, no_lhapdf, dev):
         t_pdf.append(tp)
         if not no_lhapdf:
             t_lha.append(tl)
-    return np.array(t_pdf), np.array(t_lha)
+    # t_pdf is a list with shape [n_points, n_exp]
+    # n is a list with shape [n_points]
+    return np.array(n)[:,None], np.array(t_pdf), np.array(t_lha)
+
+
+def make_plots(fname, no_tex, **kwargs):
+    """
+    Function for making plots
+    fname: str, plots file name
+    kwargs: format key = value
+            value is a dict with the following keys:
+            n, results, label, color, marker keys
+
+    Note: the function is general except for the fine tuning on the tick axes
+    """
+    import matplotlib.pyplot as plt
+    fig = plt.figure()
+    gs = fig.add_gridspec(nrows=3, ncols=1, hspace=0.1)
+
+    ax = fig.add_subplot(gs[:-1,:])
+    for key, v in kwargs.items():
+        n = v["n"]
+        k = np.sqrt(len(n))
+        avg = v["results"].mean(1)
+        err = v["results"].std(1)/k
+        ax.errorbar(n,avg,yerr=err,label=v["label"],
+                    linestyle='--', color=v["color"],
+                    marker=v["marker"])
+    ax.title.set_text('%s - LHAPDF performances'%PDFFLOW)
+    ax.set_ylabel(r'$t [s]$', fontsize=20)
+    ticks = list(np.linspace(1e5,1e6,10))
+    labels = [r'%d'%i for i in range(1,11)]
+    ax.xaxis.set_major_locator(mpl.ticker.FixedLocator(ticks))
+    ax.xaxis.set_major_formatter(mpl.ticker.FixedFormatter(labels))
+    ax.tick_params(axis='x', direction='in',
+                   bottom=True, labelbottom=False,
+                   top=True, labeltop=False)
+    ax.tick_params(axis='y', direction='in',
+                   left=True, labelleft=True,
+                   right=True, labelright=False)
+    ax.legend(frameon=False)
+
+    ax = fig.add_subplot(gs[-1,:])
+    
+    def unc(avg_l, std_l, avg_p, std_p):
+        return np.sqrt((std_l/avg_p)**2 + (avg_l*std_p/(avg_p)**2)**2)
+    
+    for key, v in kwargs.items():
+        if key == "LHAPDF":
+            avg_l = v["results"].mean(1)
+            std_l = v["results"].std(1)
+            continue
+        n = v["n"]
+        k = np.sqrt(len(n))
+        avg = v["results"].mean(1)
+        std = v["results"].std(1)/k
+        err = unc(avg_l, std_l, avg, std)
+        ax.errorbar(n,avg/avg_l,yerr=err,label=v["label"],
+                    linestyle='--', color=v["color"],
+                    marker=v["marker"])
+    xlabel = r'$[\times 10^{5}]$' if no_tex else '$x10^{5}$'
+    ax.set_xlabel(''.join([r'Number of $(x,Q)$ points drawn', xlabel]),
+                  fontsize=18)
+    ax.set_ylabel(r'Ratio to LHAPDF',
+                  fontsize=18)
+    ax.set_yscale('log')
+    ax.xaxis.set_major_locator(mpl.ticker.FixedLocator(ticks))
+    ax.xaxis.set_major_formatter(mpl.ticker.FixedFormatter(labels))
+    ax.tick_params(axis='x', direction='in',
+                   bottom=True, labelbottom=True,
+                   top=True, labeltop=False)
+    ax.tick_params(axis='y', direction='in',
+                   left=True, labelleft=True,
+                   right=True, labelright=False)
+
+    plt.savefig('time.pdf', bbox_inches='tight', dpi=200)
+    plt.close()
 
 
 def generate(pdfname, n_points, n_exp):
     print("Generate inputs")
-    dir_name = "../benchmarks/tmp/"
-    if not os.path.isdir(dir_name):
-        os.makedirs(dir_name)
+    if not os.path.isdir(DIRTMP):
+        os.makedirs(DIRTMP)
 
     p = pdf.mkPDF(pdfname, DIRNAME)
 
@@ -172,12 +261,12 @@ def generate(pdfname, n_points, n_exp):
                                         np.log(q2max),[i,])))
     x = np.concatenate(x)
     q2 = np.concatenate(q2)
-
+    
     pdfname = "-".join(pdfname.split("/"))
-    fname = "".join([dir_name,  f"input_{pdfname}_{n_points}_{n_exp}_x"])
+    fname = "".join([DIRTMP,  f"input_{pdfname}_{n_points}_{n_exp}_x"])
     np.save(fname, x)
     
-    fname = "".join([dir_name,  f"input_{pdfname}_{n_points}_{n_exp}_q2"])
+    fname = "".join([DIRTMP,  f"input_{pdfname}_{n_points}_{n_exp}_q2"])
     np.save(fname, q2)
 
 
@@ -192,44 +281,23 @@ def run(pdfname, n_points, n_exp, no_lhapdf, dev):
 
     set_env_vars(dev)
 
-    x, q2 = load_inputs(pdfname, n_points, n_exp)
+    x, q2 = load_run_inputs(pdfname, n_points, n_exp)
 
-    res_pdf, res_lha = accumulate_times(pdfname, x, q2, no_lhapdf, dev)
+    n, res_pdf, res_lha = accumulate_times(pdfname, x, q2, no_lhapdf, dev)
 
-    dir_name = "../benchmarks/tmp/"
     pdfname = "-".join(pdfname.split("/"))
-    fname = "".join([dir_name,  f"results_{pdfname}_{n_points}_{n_exp}_{dev}"])
-    np.save(res_pdf, fname)
+    fname = "".join([DIRTMP,  f"results_{pdfname}_{n_points}_{n_exp}_{dev}"])
+    print(n.shape)
+    print(res_pdf.shape)
+    np.save(fname, np.concatenate([res_pdf, n], 1))
 
     if not no_lhapdf:
-        fname = "".join([dir_name,  f"results_{pdfname}_{n_points}_{n_exp}_lhapdf"])
-        np.save(res_lha, fname)
+        fname = "".join([DIRTMP,  f"results_{pdfname}_{n_points}_{n_exp}_lhapdf"])
+        np.save(fname, np.concatenate([res_lha, n], 1))
 
 
-def plot():
+def plot(in_fname, n_points, dev, out_fname, no_tex):
     print("Collect results and plotting")
-
-
-def main_2(pdfname=None, n_draws=10, pid=21, no_lhapdf=False,
-         tensorboard=False, dev0=None, dev1=None,
-         label0=None, label1=None, no_tex=True):
-    """Testing PDFflow vs LHAPDF performance."""
-    if tensorboard:
-        tf.profiler.experimental.start('logdir')
-    
-    #check legend labels
-    if label0 == None:
-        label0 = dev0
-    
-    if label1 == None:
-        label1 = dev1
-
-    n, t_pdf0, t_pdf1, t_lha = accumulate_times(pdfname, dev0, dev1, no_lhapdf)
-
-    if tensorboard:
-        tf.profiler.experimental.stop('logdir')
-
-    import matplotlib.pyplot as plt
     import matplotlib as mpl
     mpl.rcParams['text.usetex'] = no_tex
     mpl.rcParams['savefig.format'] = 'pdf'
@@ -239,81 +307,40 @@ def main_2(pdfname=None, n_draws=10, pid=21, no_lhapdf=False,
     mpl.rcParams['xtick.labelsize'] = 17
     mpl.rcParams['legend.fontsize'] = 18
 
-    avg_l = t_lha.mean(0)
-    avg_p0 = t_pdf0.mean(0)
-    avg_p1 = t_pdf1.mean(0) if dev1 is not None else None
-    std_l = t_lha.std(0)
-    std_p0 = t_pdf0.std(0)
-    std_p1 = t_pdf1.std(0) if dev1 is not None else None
-
-    std_ratio0 = np.sqrt((std_l/avg_p0)**2 + (avg_l*std_p0/(avg_p0)**2)**2)
-    std_ratio1 = np.sqrt((std_l/avg_p1)**2 + (avg_l*std_p1/(avg_p1)**2)**2)\
-                 if dev1 is not None else None
-
-    k = len(t_pdf0)**0.5
-
-    fig = plt.figure()
-    gs = fig.add_gridspec(nrows=3, ncols=1, hspace=0.1)
-
-    ax = fig.add_subplot(gs[:-1,:])
-    PDFFLOW = r'\texttt{PDFFlow}' if no_tex else r'PDFFlow'
-    ax.errorbar(n,avg_p0,yerr=std_p0,label=r'%s: %s'%(PDFFLOW, label0),
-                linestyle='--', color='b', marker='^')
-    ax.errorbar(n,avg_p1,yerr=std_p1,label=r'%s: %s'%(PDFFLOW, label1),
-                linestyle='--', color='#ff7f0e', marker='s')
-    ax.errorbar(n,avg_l,yerr=std_l/k,label=r'LHAPDF (CPU)',
-                linestyle='--', color='g', marker='o')
-    ax.title.set_text('%s - LHAPDF performances'%PDFFLOW)
-    ax.set_ylabel(r'$t [s]$', fontsize=20)
-    ticks = list(np.linspace(1e5,1e6,10))
-    labels = [r'%d'%i for i in range(1,11)]
-    ax.xaxis.set_major_locator(mpl.ticker.FixedLocator(ticks))
-    ax.xaxis.set_major_formatter(mpl.ticker.FixedFormatter(labels))
-    ax.tick_params(axis='x', direction='in',
-                   bottom=True, labelbottom=False,
-                   top=True, labeltop=False)
-    ax.tick_params(axis='y', direction='in',
-                   left=True, labelleft=True,
-                   right=True, labelright=False)
-    ax.legend(frameon=False)
-
-    ax = fig.add_subplot(gs[-1,:])
-    ax.errorbar(n, (avg_l/avg_p0),yerr=std_ratio0/k, label=r'%s'%label0,
-                linestyle='--', color='b', marker='^')
-    ax.errorbar(n, (avg_l/avg_p1),yerr=std_ratio1/k, label=r'%s'%label1,
-                linestyle='--', color='#ff7f0e', marker='s')
-    xlabel = r'$[\times 10^{5}]$' if no_tex else '$x10^{5}$'
-    ax.set_xlabel(''.join([r'Number of $(x,Q)$ points drawn', xlabel]),
-                  fontsize=18)
-    ax.set_ylabel(r'Ratio to LHAPDF',
-                  fontsize=18)
-    ax.set_yscale('log')
-    ticks = list(np.linspace(1e5,1e6,10))
-    labels = [r'%d'%i for i in range(1,11)]
-    ax.xaxis.set_major_locator(mpl.ticker.FixedLocator(ticks))
-    ax.xaxis.set_major_formatter(mpl.ticker.FixedFormatter(labels))
-    ax.tick_params(axis='x', direction='in',
-                   bottom=True, labelbottom=True,
-                   top=True, labeltop=False)
-    ax.tick_params(axis='y', direction='in',
-                   left=True, labelleft=True,
-                   right=True, labelright=False)
-
-    plt.savefig('time.pdf', bbox_inches='tight', dpi=200)
-    plt.close()
+    texpdf = "PDFFlow" if no_tex else r"\texttt{PDFFlow}"
+    lhapdf = {
+        **load_plot_inputs(in_fname, "lhapdf"),
+        "label": "LHAPDF",
+        "color": "blue",
+        "marker": "o"
+    }
+    pdfflow = {
+        **load_plot_inputs(in_fname, "CPU:0"),
+        "label": "%s: cpu"%texpdf,
+        "color": "lime",
+        "marker": "^"
+    }
+    make_plots(out_fname, no_tex, lhapdf=lhapdf, pdfflow=pdfflow)
 
 
-def main(args):
-    if args["mode"] == "generate":
-        generate(args["pdfname"], args["n_points"], args["n_exp"])
-    if args["mode"] == "run":
-        run(args["pdfname"], args["n_points"], args["n_exp"], args["no_lhapdf"], args["dev"])
-    if args["mode"] == "plot":
-        plot()
+def main(pdfname, mode, n_exp, n_points, no_lhapdf, tensorboard, dev, no_tex,
+         fname):
+    if mode == "generate":
+        generate(pdfname, n_points, n_exp)
+    if mode == "run":
+        if tensorboard:
+            tf.profile.experimental.start('logdir')
+        run(pdfname, n_points, n_exp, no_lhapdf, dev)
+        if tensorboard:
+            tf.profile.experimental.stop('logdir')
+    if mode == "plot":
+        pdfname = "-".join(pdfname.split("/"))
+        in_name = f"results_{pdfname}_{n_points}_{n_exp}"
+        plot(in_name, n_points, dev, fname, no_tex)
 
 
 if __name__ == "__main__":
     args = vars(parser.parse_args())
     start = time()
-    main(args)
+    main(**args)
     print(time() - start)
