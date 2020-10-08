@@ -220,7 +220,7 @@ def make_plots(fname, no_tex, args):
         avg = v["mean"]
         std = v["std"]
         err = unc(args[0]["mean"], args[0]["std"], avg, std)
-        ax.errorbar(n,avg/args[0]["mean"],yerr=err,label=v["label"],
+        ax.errorbar(n,args[0]["mean"]/avg,yerr=err,label=v["label"],
                     linestyle='--', color=v["color"],
                     marker=v["marker"])
     xlabel = '$x10^{5}$' if no_tex else r'$[\times 10^{5}]$'
@@ -293,8 +293,6 @@ def run(pdfname, n_points, n_exp, no_lhapdf, dev, ext=None):
         fname = "".join([DIRTMP,  f"results_{pdfname}_{n_points}_{n_exp}_{dev}"])
     else:
         fname = "".join([DIRTMP,  f"results_{pdfname}_{n_points}_{n_exp}_{ext}"])
-    print(n.shape)
-    print(res_pdf.shape)
     np.save(fname, np.concatenate([res_pdf, n], 1))
 
     if not no_lhapdf:

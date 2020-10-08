@@ -3,16 +3,9 @@ Benchmark script for LHAPDF comparison.
 """
 import os
 import sys
-import lhapdf
-import pdfflow.pflow as pdf
 import argparse
-import subprocess as sp
-import numpy as np
-from tensorflow.python.eager import context
 from time import time
-import tqdm
 sys.path.append(os.path.dirname(__file__))
-from compare_performance import generate, run, plot
 
 
 parser = argparse.ArgumentParser()
@@ -41,25 +34,19 @@ def set_variables(no_mkl, inter_op, intra_op):
     """
     if no_mkl:
         os.environ["TF_DISABLE_MKL"] = "1"
+    else:
+        os.environ["KMP_AFFINITY"] = "granularity=tile,compact"
+        os.environ["KMP_BLOCKTIME"] = "0"
+        os.environ["KMP_SETTINGS"] = "1"
+
+
     import tensorflow as tf
+    from tensorflow.python.eager import context
     if not no_mkl:
+        context._context = None
+        context._create_context()
         tf.config.threading.set_inter_op_parallelism_threads(inter_op)
         tf.config.threading.set_intra_op_parallelism_threads(intra_op)
-    
-    #os.environ["KMP_AFFINITY"] = args['KMP_AFFINITY']
-    #os.environ["KMP_BLOCKTIME"] = args["KMP_BLOCKTIME"]#'1'
-    #os.environ["KMP_SETTINGS"] = args["KMP_SETTINGS"]
-    #os.environ["OMP_NUM_THREADS"] = args['OMP_NUM_THREADS']#'96'
-
-    # context._context = None
-    # context._create_context()
-    #import tensorflow as tf
-    #if args["inter_op"] is not None:
-    #    tf.config.threading.set_inter_op_parallelism_threads(args["inter_op"])
-    #    tf.config.threading.set_intra_op_parallelism_threads(args["intra_op"])
-    #else:
-    #    os.environ["TF_DISABLE_MKL"] = "1"
-
 
 
 def run_exp(pdfname, no_lhapdf, no_mkl, inter_op, intra_op):
@@ -77,12 +64,14 @@ def run_exp(pdfname, no_lhapdf, no_mkl, inter_op, intra_op):
     """
     dev = "CPU:0"
     ext = "nomkl" if no_mkl else f"{inter_op}_{intra_op}"
-    set_variables(args, inter_op, intra_op)
+    set_variables(no_mkl, inter_op, intra_op)
+    from compare_performance import run
     run(pdfname, 20, 10, no_lhapdf, dev, ext=ext)
 
 
 def main(pdfname, mode, no_lhapdf, no_mkl, inter_op, intra_op, no_tex, fname):
     if mode == "generate":
+        from compare_performance import generate
         generate(pdfname, 20, 10)
     if mode == "run":
         run_exp(pdfname, no_lhapdf, no_mkl, inter_op, intra_op)
@@ -122,6 +111,7 @@ def main(pdfname, mode, no_lhapdf, no_mkl, inter_op, intra_op, no_tex, fname):
             "marker": "^"
             }
         ]
+        from compare_performance import plot
         plot(in_name, fname, no_tex, args)
 
 
