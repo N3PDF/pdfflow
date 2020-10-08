@@ -11,6 +11,8 @@ import lhapdf
 import argparse
 import subprocess as sp
 import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib as mpl
 import tensorflow as tf
 from time import time
 import tqdm
@@ -82,8 +84,13 @@ def load_plot_inputs(fname, dev):
                      f"{fname}_{dev}.npy"])
     res = np.load(fname)
 
-    return {"results":res[:-1],
-            "n": res[-1]}
+    n = res[:,-1]
+    mean = res[:,:-1].mean(1)
+    std = res[:,:-1].std(1)/np.sqrt(len(n))
+
+    return {"n": n,
+            "mean": mean,
+            "std": std}
 
 
 def test_pdfflow(p, a_x, a_q2, strategy):
@@ -172,22 +179,22 @@ def make_plots(fname, no_tex, **kwargs):
     kwargs: format key = value
             value is a dict with the following keys:
             n, results, label, color, marker keys
+            it must contain a kwarg called lhapdf!
 
     Note: the function is general except for the fine tuning on the tick axes
     """
-    import matplotlib.pyplot as plt
     fig = plt.figure()
     gs = fig.add_gridspec(nrows=3, ncols=1, hspace=0.1)
 
     ax = fig.add_subplot(gs[:-1,:])
     for key, v in kwargs.items():
         n = v["n"]
-        k = np.sqrt(len(n))
-        avg = v["results"].mean(1)
-        err = v["results"].std(1)/k
+        avg = v["mean"]
+        err = v["std"]
         ax.errorbar(n,avg,yerr=err,label=v["label"],
                     linestyle='--', color=v["color"],
                     marker=v["marker"])
+    PDFFLOW= "PDFFlow" if no_tex else r"\texttt{PDFFlow}"
     ax.title.set_text('%s - LHAPDF performances'%PDFFLOW)
     ax.set_ylabel(r'$t [s]$', fontsize=20)
     ticks = list(np.linspace(1e5,1e6,10))
@@ -208,16 +215,13 @@ def make_plots(fname, no_tex, **kwargs):
         return np.sqrt((std_l/avg_p)**2 + (avg_l*std_p/(avg_p)**2)**2)
     
     for key, v in kwargs.items():
-        if key == "LHAPDF":
-            avg_l = v["results"].mean(1)
-            std_l = v["results"].std(1)
+        if key == "lha":
             continue
         n = v["n"]
-        k = np.sqrt(len(n))
-        avg = v["results"].mean(1)
-        std = v["results"].std(1)/k
-        err = unc(avg_l, std_l, avg, std)
-        ax.errorbar(n,avg/avg_l,yerr=err,label=v["label"],
+        avg = v["mean"]
+        std = v["std"]
+        err = unc(kwargs["lha"]["mean"], kwargs["lha"]["std"], avg, std)
+        ax.errorbar(n,avg/kwargs["lha"]["mean"],yerr=err,label=v["label"],
                     linestyle='--', color=v["color"],
                     marker=v["marker"])
     xlabel = r'$[\times 10^{5}]$' if no_tex else '$x10^{5}$'
@@ -298,7 +302,6 @@ def run(pdfname, n_points, n_exp, no_lhapdf, dev):
 
 def plot(in_fname, n_points, dev, out_fname, no_tex):
     print("Collect results and plotting")
-    import matplotlib as mpl
     mpl.rcParams['text.usetex'] = no_tex
     mpl.rcParams['savefig.format'] = 'pdf'
     mpl.rcParams['figure.figsize'] = [7,8]
@@ -308,19 +311,19 @@ def plot(in_fname, n_points, dev, out_fname, no_tex):
     mpl.rcParams['legend.fontsize'] = 18
 
     texpdf = "PDFFlow" if no_tex else r"\texttt{PDFFlow}"
-    lhapdf = {
+    lha = {
         **load_plot_inputs(in_fname, "lhapdf"),
         "label": "LHAPDF",
         "color": "blue",
         "marker": "o"
     }
-    pdfflow = {
+    pdf = {
         **load_plot_inputs(in_fname, "CPU:0"),
         "label": "%s: cpu"%texpdf,
         "color": "lime",
         "marker": "^"
     }
-    make_plots(out_fname, no_tex, lhapdf=lhapdf, pdfflow=pdfflow)
+    make_plots(out_fname, no_tex, lha=lha, pdf=pdf)
 
 
 def main(pdfname, mode, n_exp, n_points, no_lhapdf, tensorboard, dev, no_tex,
