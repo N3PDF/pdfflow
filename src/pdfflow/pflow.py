@@ -669,7 +669,7 @@ class PDF:
         # Perform the actual computation
         return self.alphasQ(a_q)
 
-    def trace(self, strategy=None):
+    def trace(self, strategy=None, tensorboard=False):
         """
         Builds all the needed graph in advance of interpolations
 
@@ -680,6 +680,13 @@ class PDF:
         ----------
             strategy: tf.distribute.TPUStrategy
                 strategy to deploy pdfflow on TPU
+            tensorboard: bool
+        
+        If tensorboard is true:
+        Returns
+        -------
+            x: tf.Tensor
+            q2: tf.Tensor
         """
         logger.info("Building tf.Graph, this can take a while...")
         x = []
@@ -729,6 +736,9 @@ class PDF:
         # Make into an array that can be called
         x = np.array(x)
         q2 = np.array(q2)
+
+        if tensorboard:
+            return float_me(x), float_me(q2)
 
         # trigger tracings
         if strategy is not None:

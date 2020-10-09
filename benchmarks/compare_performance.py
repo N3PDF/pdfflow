@@ -39,8 +39,9 @@ parser.add_argument("--no_tex", action="store_true",
 parser.add_argument("--fname", default="time.pdf", type=str,
                     help="Output plot file name")
 DIRNAME = (sp.run(["lhapdf-config", "--datadir"], stdout=sp.PIPE,
-           universal_newlines=True).stdout.strip("\n") + "/")
+                  universal_newlines=True).stdout.strip("\n") + "/")
 DIRTMP = "../benchmarks/tmp/"
+
 
 def set_env_vars(dev):
     """
@@ -51,11 +52,11 @@ def set_env_vars(dev):
         print("Running PDFFlow on GPU")
         gpu, gpu_n = dev.split(":")
         gpus = [i for i in range(len(tf.config.list_physical_devices('GPU')))]
-        gpus.append("*") # add the possibility to take all the GPUs
+        gpus.append("*")  # add the possibility to take all the GPUs
         if not gpu_n in gpus:
             raise AssertionError("Selected GPU not present on machine")
         else:
-            if gpu_n !=  "*":
+            if gpu_n != "*":
                 os.environ["CUDA_VISIBLE_DEVICES"] = gpu_n
 
     if "CPU" in dev:
@@ -65,16 +66,16 @@ def set_env_vars(dev):
 
 def load_run_inputs(pdfname, n_points, n_exp):
     n = np.linspace(1e5, 1e6, n_points).astype(int).cumsum()
-    
+
     pdfname = "-".join(pdfname.split("/"))
 
     fname = "".join([DIRTMP,  f"input_{pdfname}_{n_points}_{n_exp}_x.npy"])
     x = np.load(fname)
-    x = np.split(x.reshape([n_exp,-1]), n, axis=1)[:-1]
+    x = np.split(x.reshape([n_exp, -1]), n, axis=1)[:-1]
 
     fname = "".join([DIRTMP,  f"input_{pdfname}_{n_points}_{n_exp}_q2.npy"])
-    q2 = np.load(fname) #shape [n_exp, all draws]
-    q2 = np.split(q2.reshape([n_exp,-1]), n, axis=1)[:-1]
+    q2 = np.load(fname)  # shape [n_exp, all draws]
+    q2 = np.split(q2.reshape([n_exp, -1]), n, axis=1)[:-1]
 
     return x, q2
 
@@ -84,9 +85,9 @@ def load_plot_inputs(fname, dev):
                      f"{fname}_{dev}.npy"])
     res = np.load(fname)
 
-    n = res[:,-1]
-    mean = res[:,:-1].mean(1)
-    std = res[:,:-1].std(1)/np.sqrt(len(n))
+    n = res[:, -1]
+    mean = res[:, :-1].mean(1)
+    std = res[:, :-1].std(1)/np.sqrt(len(n))
 
     return {"n": n,
             "mean": mean,
@@ -127,7 +128,8 @@ def accumulate_times(pdfname, points_exp_x, points_exp_q2, no_lhapdf, dev):
     if dev == "TPU":
         print("Running PDFFlow on TPU")
         tpu_address = os.environ["TPU_NAME"]
-        resolver = tf.distribute.cluster_resolver.TPUClusterResolver(tpu=tpu_address)
+        resolver = tf.distribute.cluster_resolver.TPUClusterResolver(
+            tpu=tpu_address)
         tf.config.experimental_connect_to_cluster(resolver)
         tf.tpu.experimental.initialize_tpu_system(resolver)
         strategy = tf.distribute.TPUStrategy(resolver)
@@ -146,9 +148,9 @@ def accumulate_times(pdfname, points_exp_x, points_exp_q2, no_lhapdf, dev):
     t_pdf = []
     t_lha = None if no_lhapdf else []
     n = []
-    
+
     for exp_x, exp_q2 in tqdm.tqdm(zip(points_exp_x, points_exp_q2)):
-        #iterate over n_points query lengths
+        # iterate over n_points query lengths
         tp = []
         tl = None if no_lhapdf else []
         n.append(exp_x.shape[-1])
@@ -163,7 +165,7 @@ def accumulate_times(pdfname, points_exp_x, points_exp_q2, no_lhapdf, dev):
             t_lha.append(tl)
     # t_pdf is a list with shape [n_points, n_exp]
     # n is a list with shape [n_points]
-    return np.array(n)[:,None], np.array(t_pdf), np.array(t_lha)
+    return np.array(n)[:, None], np.array(t_pdf), np.array(t_lha)
 
 
 def make_plots(fname, no_tex, args):
@@ -179,19 +181,19 @@ def make_plots(fname, no_tex, args):
     fig = plt.figure()
     gs = fig.add_gridspec(nrows=3, ncols=1, hspace=0.1)
 
-    ax = fig.add_subplot(gs[:-1,:])
+    ax = fig.add_subplot(gs[:-1, :])
     for v in args:
         n = v["n"]
         avg = v["mean"]
         err = v["std"]
-        ax.errorbar(n,avg,yerr=err,label=v["label"],
+        ax.errorbar(n, avg, yerr=err, label=v["label"],
                     linestyle='--', color=v["color"],
                     marker=v["marker"])
     PDFFLOW = "PDFFlow" if no_tex else r"\texttt{PDFFlow}"
-    ax.title.set_text('%s - LHAPDF performances'%PDFFLOW)
+    ax.title.set_text('%s - LHAPDF performances' % PDFFLOW)
     ax.set_ylabel(r'$t [s]$', fontsize=20)
-    ticks = list(np.linspace(1e5,1e6,10))
-    labels = [r'%d'%i for i in range(1,11)]
+    ticks = list(np.linspace(1e5, 1e6, 10))
+    labels = [r'%d' % i for i in range(1, 11)]
     ax.xaxis.set_major_locator(mpl.ticker.FixedLocator(ticks))
     ax.xaxis.set_major_formatter(mpl.ticker.FixedFormatter(labels))
     ax.tick_params(axis='x', direction='in',
@@ -202,11 +204,11 @@ def make_plots(fname, no_tex, args):
                    right=True, labelright=False)
     ax.legend(frameon=False)
 
-    ax = fig.add_subplot(gs[-1,:])
-    
+    ax = fig.add_subplot(gs[-1, :])
+
     def unc(avg_l, std_l, avg_p, std_p):
         return np.sqrt((std_l/avg_p)**2 + (avg_l*std_p/(avg_p)**2)**2)
-    
+
     for v in args:
         if v["label"] == "LHAPDF":
             continue
@@ -214,7 +216,7 @@ def make_plots(fname, no_tex, args):
         avg = v["mean"]
         std = v["std"]
         err = unc(args[0]["mean"], args[0]["std"], avg, std)
-        ax.errorbar(n,args[0]["mean"]/avg,yerr=err,label=v["label"],
+        ax.errorbar(n, args[0]["mean"]/avg, yerr=err, label=v["label"],
                     linestyle='--', color=v["color"],
                     marker=v["marker"])
     xlabel = '$x10^{5}$' if no_tex else r'$[\times 10^{5}]$'
@@ -253,16 +255,16 @@ def generate(pdfname, n_points, n_exp):
     q2 = []
     for j in range(n_exp):
         for i in n:
-            x.append(np.random.uniform(xmin, xmax,[i,]))
+            x.append(np.random.uniform(xmin, xmax, [i, ]))
             q2.append(np.exp(np.random.uniform(np.log(q2min),
-                                        np.log(q2max),[i,])))
+                                               np.log(q2max), [i, ])))
     x = np.concatenate(x)
     q2 = np.concatenate(q2)
-    
+
     pdfname = "-".join(pdfname.split("/"))
     fname = "".join([DIRTMP,  f"input_{pdfname}_{n_points}_{n_exp}_x"])
     np.save(fname, x)
-    
+
     fname = "".join([DIRTMP,  f"input_{pdfname}_{n_points}_{n_exp}_q2"])
     np.save(fname, q2)
 
@@ -284,13 +286,16 @@ def run(pdfname, n_points, n_exp, no_lhapdf, dev, ext=None):
 
     pdfname = "-".join(pdfname.split("/"))
     if ext == None:
-        fname = "".join([DIRTMP,  f"results_{pdfname}_{n_points}_{n_exp}_{dev}"])
+        fname = "".join(
+            [DIRTMP,  f"results_{pdfname}_{n_points}_{n_exp}_{dev}"])
     else:
-        fname = "".join([DIRTMP,  f"results_{pdfname}_{n_points}_{n_exp}_{ext}"])
+        fname = "".join(
+            [DIRTMP,  f"results_{pdfname}_{n_points}_{n_exp}_{ext}"])
     np.save(fname, np.concatenate([res_pdf, n], 1))
 
     if not no_lhapdf:
-        fname = "".join([DIRTMP,  f"results_{pdfname}_{n_points}_{n_exp}_lhapdf"])
+        fname = "".join(
+            [DIRTMP,  f"results_{pdfname}_{n_points}_{n_exp}_lhapdf"])
         np.save(fname, np.concatenate([res_lha, n], 1))
 
 
@@ -298,7 +303,7 @@ def plot(in_fname, out_fname, no_tex, args):
     print("Collect results and plotting...")
     mpl.rcParams['text.usetex'] = not no_tex
     mpl.rcParams['savefig.format'] = 'pdf'
-    mpl.rcParams['figure.figsize'] = [7,8]
+    mpl.rcParams['figure.figsize'] = [7, 8]
     mpl.rcParams['axes.titlesize'] = 20
     mpl.rcParams['ytick.labelsize'] = 17
     mpl.rcParams['xtick.labelsize'] = 17
@@ -325,16 +330,16 @@ def main(pdfname, mode, n_exp, n_points, no_lhapdf, tensorboard, dev, no_tex,
         texpdf = "PDFFlow" if no_tex else r"\texttt{PDFFlow}"
         args = [
             {
-            "ext": "lhapdf", # extension to input file name
-            "label": "LHAPDF",
-            "color": "blue",
-            "marker": "o"
+                "ext": "lhapdf",  # extension to input file name
+                "label": "LHAPDF",
+                "color": "blue",
+                "marker": "o"
             },
             {
-            "ext": "CPU:0",
-            "label": "%s: cpu"%texpdf,
-            "color": "lime",
-            "marker": "^"
+                "ext": "CPU:0",
+                "label": "%s: cpu" % texpdf,
+                "color": "lime",
+                "marker": "^"
             }
         ]
         plot(in_name, fname, no_tex, args)
