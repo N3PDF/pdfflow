@@ -430,7 +430,7 @@ class PDF:
         return self.xfxQ2(pid, a_x, a_q2)
 
     # Python version of the above functions with the correct casting to tf
-    def py_xfxQ2_allpid(self, arr_x, arr_q2):
+    def py_xfxQ2_allpid(self, arr_x, arr_q2, strategy=None):
         """
         Python interface for pdfflow
         The input gets converted to the right tensorflow type
@@ -440,6 +440,9 @@ class PDF:
         The output of the function is of shape
         (members, number_of_points, all_flavours)
         but note that dimensions of size 1 will be squeezed out.
+
+        Provide an appropriately initialized strategy argument in order
+        to deploy the algorithm on TPU
 
         Example
         -------
@@ -459,6 +462,8 @@ class PDF:
                 grid on x where to compute the PDF
             arr_q2: np.array
                 grid on q^2 where to compute the PDF
+            strategy: tf.distribute.TPUStrategy
+                strategy to deploy pdfflow on TPU
         Returns
         -------
             pdf: tensor
@@ -466,9 +471,11 @@ class PDF:
         """
         a_x = float_me(arr_x)
         a_q2 = float_me(arr_q2)
+        if strategy is not None:
+            return strategy(self.xfxQ2_all_pid, args=(a_x, a_q2))
         return self.xfxQ2_allpid(a_x, a_q2)
 
-    def py_xfxQ2(self, pid, arr_x, arr_q2):
+    def py_xfxQ2(self, pid, arr_x, arr_q2, strategy=None):
         """
         Python interface for pdfflow
         The input gets converted to the right tensorflow type
@@ -495,7 +502,9 @@ class PDF:
         array([[0.05569674, 0.19323399],
             [0.05352555, 0.18965438],
             [0.04515956, 0.18704451]])>
-
+        
+        Provide an appropriately initialized strategy argument in order
+        to deploy the algorithm on TPU
 
         Parameters
         ----------
@@ -505,6 +514,8 @@ class PDF:
                 grid on x where to compute the PDF
             arr_q2: np.array
                 grid on q^2 where to compute the PDF
+            strategy: tf.distribute.TPUStrategy
+                strategy to deploy pdfflow on TPU
         Returns
         -------
             pdf: tensor
@@ -517,6 +528,8 @@ class PDF:
         tensor_pid = tf.reshape(int_me(pid), (-1,))
         a_x = float_me(arr_x)
         a_q2 = float_me(arr_q2)
+        if strategy is not None:
+            return strategy(self.xfxQ2, args=(tensor_pid, a_x, a_q2))
         return self.xfxQ2(tensor_pid, a_x, a_q2)
 
     @tf.function(input_signature=[GRID_F])
@@ -656,9 +669,17 @@ class PDF:
         # Perform the actual computation
         return self.alphasQ(a_q)
 
-    def trace(self):
+    def trace(self, strategy=None):
         """
         Builds all the needed graph in advance of interpolations
+
+        Provide an appropriately initialized strategy argument in order
+        to deploy the algorithm on TPU
+        
+        Parameters
+        ----------
+            strategy: tf.distribute.TPUStrategy
+                strategy to deploy pdfflow on TPU
         """
         logger.info("Building tf.Graph, this can take a while...")
         x = []
@@ -709,9 +730,15 @@ class PDF:
         x = np.array(x)
         q2 = np.array(q2)
 
-        # trigger retracings
-        self.py_xfxQ2_allpid(x, q2)
-        self.py_xfxQ2(21, x, q2)
+        # trigger tracings
+        if strategy is not None:
+            x = float_me(x)
+            q2 = float_me(q2)
+            self.py_xfxQ2_allpid(x, q2, strategy)
+            self.py_xfxQ2(21, x, q2, strategy)
+        else:
+            self.py_xfxQ2_allpid(x, q2)
+            self.py_xfxQ2(21, x, q2)
 
     def alphas_trace(self):
         """

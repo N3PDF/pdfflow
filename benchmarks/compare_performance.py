@@ -102,14 +102,8 @@ def test_pdfflow(p, a_x, a_q2, strategy):
         a_q2: numpy array of inputs
         strategy: TPUStrategy, allows TPU computation
     """
-    if strategy == None:
-        start = time()
-        p.py_xfxQ2_allpid(a_x, a_q2)
-    else:
-        start = time()
-        a_x = float_me(a_x)
-        a_q2 = float_me(a_q2)
-        strategy.run(p.xfxQ2_allpid, args=(a_x, a_q2))
+    start = time()
+    p.py_xfxQ2_allpid(a_x, a_q2, strategy)
     return time() - start
 
 
@@ -140,7 +134,7 @@ def accumulate_times(pdfname, points_exp_x, points_exp_q2, no_lhapdf, dev):
     else:
         strategy = None
     p = pdf.mkPDF(pdfname, DIRNAME)
-    p.trace()
+    p.trace(strategy)
 
     l_pdf = None if no_lhapdf else lhapdf.mkPDF(pdfname)
 
@@ -224,7 +218,7 @@ def make_plots(fname, no_tex, args):
                     linestyle='--', color=v["color"],
                     marker=v["marker"])
     xlabel = '$x10^{5}$' if no_tex else r'$[\times 10^{5}]$'
-    ax.set_xlabel(''.join([r'Number of $(x,Q)$ points drawn', xlabel]),
+    ax.set_xlabel(''.join([r'Number of $(x,Q)$ points drawn ', xlabel]),
                   fontsize=18)
     ax.set_ylabel(r'Ratio to LHAPDF',
                   fontsize=18)
