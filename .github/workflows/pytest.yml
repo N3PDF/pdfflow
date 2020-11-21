@@ -14,7 +14,7 @@ jobs:
     steps:
     - uses: actions/checkout@v1
     - name: Setup Conda 
-      uses: goanpeca/setup-miniconda@v1
+      uses: conda-incubator/setup-miniconda@v2
       with:
           python-version: ${{ matrix.python-version }}
           auto-update-conda: true
@@ -25,13 +25,6 @@ jobs:
         python -m pip install --upgrade pip
         pip install .
         conda install -y lhapdf -c https://packages.nnpdf.science/conda
-# This will wait until the merge happens
-#     - name: Lint with pylint
-#       run: |
-#         pip install pylint
-#         # Error out only in actual errors
-#         pylint src/*/*.py -E
-#         pylint src/*/*.py --exit-zero
     - name: Test with pytest
       shell: bash --login {0}
       run: |
