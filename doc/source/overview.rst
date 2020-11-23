@@ -106,7 +106,7 @@ lower level ``tf.functions`` such as ``xfxQ2``:
 
 .. code-block:: python
 
-	from pdfflow import mkPDFs, flaot_me, int_me
+	from pdfflow import mkPDFs, float_me, int_me
 	
 	pdf = mkPDFs(pdfset, [0,1,2])
 	x = float_me([10**i for i in range(-6,-1)])
