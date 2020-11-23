@@ -720,21 +720,21 @@ class PDF:
         logger.info("Building tf.Graph ...")
         q2 = []
 
-        q2min = float(tf.math.exp(self.alphas_subgrids[0].log_q2min))
+        q2min = np.exp(self.alphas_subgrids[0].log_q2min)
 
         # Q2 < Q2min
         q2 += [q2min * 0.99]
 
         for s in self.alphas_subgrids:
 
-            q2min = float(tf.math.exp(s.log_q2min))
-            q2max = float(tf.math.exp(s.log_q2max))
+            q2min = np.exp(s.log_q2min)
+            q2max = np.exp(s.log_q2max)
 
             # points inside the grid
             q2 += [(q2min + q2max) * 0.5]
 
         # Get the upper boundary
-        q2max = float(self.alphas_subgrids[-1].log_q2max)
+        q2max = np.exp(self.alphas_subgrids[-1].log_q2max)
 
         # Q2 > Q2max
         q2 += [q2max * 1.01]

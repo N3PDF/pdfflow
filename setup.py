@@ -41,10 +41,17 @@ setup(name='pdfflow',
       ],
       install_requires=requirements,
       extras_require={
+          'capi' : [
+            'cffi',
+            ],
           'docs' : [
             'sphinx_rtd_theme',
             'recommonmark',
             'sphinxcontrib-bibtex',
+            ],
+          'examples' : [
+            'matplotlib',
+            'vegasflow',
             ],
           },
       python_requires='>=3.6',

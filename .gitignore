@@ -130,3 +130,7 @@ dmypy.json
 
 # Benchmark output files
 benchmarks/*.png
+
+# cffi stuff
+*.pc
+cpdfflow.c
