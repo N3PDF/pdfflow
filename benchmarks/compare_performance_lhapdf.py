@@ -156,10 +156,9 @@ def main(pdfname=None, n_draws=10, pid=21, no_lhapdf=False,
     gs = fig.add_gridspec(nrows=3, ncols=1, hspace=0.1)
 
     ax = fig.add_subplot(gs[:-1,:])
-    PDFFLOW = r'\texttt{PDFFlow}' if no_tex else r'PDFFlow'
-    ax.errorbar(n,avg_p0,yerr=std_p0,label=r'%s: %s'%(PDFFLOW, label0),
+    ax.errorbar(n,avg_p0,yerr=std_p0/k,label=r'\texttt{PDFFlow}: %s'%label0,
                 linestyle='--', color='b', marker='^')
-    ax.errorbar(n,avg_p1,yerr=std_p1,label=r'%s: %s'%(PDFFLOW, label1),
+    ax.errorbar(n,avg_p1,yerr=std_p1/k,label=r'\texttt{PDFFlow}: %s'%label1,
                 linestyle='--', color='#ff7f0e', marker='s')
     ax.errorbar(n,avg_l,yerr=std_l/k,label=r'LHAPDF (CPU)',
                 linestyle='--', color='g', marker='o')
