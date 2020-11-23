@@ -41,9 +41,7 @@ def partial_lo(pa, pb, p1, p2):
 
 
 # Leading Order matrix element
-factor_lo = float_me(
-    1.0702411577062499e-4
-)  # there is no alpha_s, alpha_ew computed at Mz val
+factor_lo = float_me(1.0702411577062499e-4)  # there is no alpha_s, alpha_ew computed at Mz val
 
 
 @tf.function(input_signature=4 * [TFLOAT4])
@@ -80,8 +78,7 @@ def partial_qq_h_qQg(pa, pb, p1, p2, p3):
     return amp * rmcom
 
 
-factor_re = float_me(4.0397470069216974e-004)  # TODO compute alphas
-
+factor_re = float_me(4.0397470069216974e-004) 
 
 @tf.function(input_signature=[TFLOAT4] * 5)
 def qq_h_r(pa, pb, p1, p2, p3):
@@ -90,10 +87,8 @@ def qq_h_r(pa, pb, p1, p2, p3):
     q = p2
     g = p3
     """
-
     r1 = partial_qq_h_qQg(pa, pb, p1, p2, p3)
     r2 = partial_qq_h_qQg(pb, pa, p2, p1, p3)
-
     return (r1 + r2) * factor_re
 
 

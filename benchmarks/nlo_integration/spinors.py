@@ -29,7 +29,6 @@ def calc_ap(pa):
     return tf.complex(ap, fzero)
 
 
-@tf.function(input_signature=[TFLOAT4, TFLOAT4, tf.TensorSpec(shape=[], dtype=bool)])
 def zA(pa, pb, cross=False):  # cross == when only one of (pa,pb) is initial-state
     """ <ab> spinor """
     ap = calc_ap(pa)
@@ -42,7 +41,6 @@ def zA(pa, pb, cross=False):  # cross == when only one of (pa,pb) is initial-sta
     return zval * zi
 
 
-@tf.function(input_signature=[TFLOAT4, TFLOAT4, tf.TensorSpec(shape=[], dtype=bool)])
 def zB(pa, pb, cross=False):
     """ [ab] spinor """
     return tf.math.conj(zA(pa, pb, cross=cross))
