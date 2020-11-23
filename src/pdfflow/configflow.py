@@ -3,7 +3,7 @@ Define some constants, header style
 """
 # Most of this can be moved to a yaml file without loss of generality
 import os
-
+import logging
 import numpy as np
 
 # Set TF to only log errors
@@ -13,13 +13,14 @@ import tensorflow as tf
 # uncomment this line for debugging to avoid compiling any tf.function
 # tf.config.run_functions_eagerly(True)
 
-def run_eager(flag = True):
-    """ Wraper around `run_functions_eagerly` """
-    tf.config.run_functions_eagerly(flag)
+def run_eager(flag=True):
+    """ Wrapper around `run_functions_eagerly` """
+    if tf.__version__ < '2.3.0':
+        tf.config.experimental_run_functions_eagerly(flag)
+    else:
+        tf.config.run_functions_eagerly(flag)
 
 # Configure pdfflow logging
-import logging
-
 module_name = __name__.split(".")[0]
 logger = logging.getLogger(module_name)
 

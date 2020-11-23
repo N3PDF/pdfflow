@@ -4,7 +4,6 @@
 """
 
 import tensorflow as tf
-import tensorflow_probability as tfp
 from pdfflow.configflow import DTYPE, DTYPEINT
 
 
@@ -46,8 +45,20 @@ def four_neighbour_knots(a_x, a_q2, padded_x, padded_q2, actual_values):
             (first None is for query points, second None is for query pids)
     """
     # print('nk')
-    x_id = tfp.stats.find_bins(a_x, padded_x[1:-1], dtype=DTYPEINT) + 1
-    q2_id = tfp.stats.find_bins(a_q2, padded_q2[1:-1], dtype=DTYPEINT) + 1
+    x_id = tf.searchsorted(padded_x[1:-1], a_x, out_type=DTYPEINT, side='right')
+    q2_id = tf.searchsorted(padded_q2[1:-1], a_q2, out_type=DTYPEINT, side='right')
+
+    s_x = tf.size(padded_x, out_type=DTYPEINT)
+    s = tf.size(padded_q2, out_type=DTYPEINT)
+
+    x_id = tf.clip_by_value(x_id, tf.constant([0], dtype=DTYPEINT), s_x-3)
+    q2_id = tf.clip_by_value(q2_id, tf.constant([0], dtype=DTYPEINT), s-3)
+
+    s_x = tf.size(padded_x, out_type=DTYPEINT)
+    s = tf.size(padded_q2, out_type=DTYPEINT)
+
+    x_id = tf.clip_by_value(x_id, tf.constant([0], dtype=DTYPEINT), s_x-3)
+    q2_id = tf.clip_by_value(q2_id, tf.constant([0], dtype=DTYPEINT), s-3)
 
     piu = tf.reshape(tf.range(-1, 3, dtype=DTYPEINT), (4, 1))
     corn_x_id = tf.repeat(tf.reshape(x_id, (1, -1)), 4, axis=0) + piu
@@ -56,7 +67,6 @@ def four_neighbour_knots(a_x, a_q2, padded_x, padded_q2, actual_values):
     corn_x = tf.gather(padded_x, corn_x_id, name="fnk_1")
     corn_q2 = tf.gather(padded_q2, corn_q2_id, name="fnk_2")
 
-    s = tf.size(padded_q2, out_type=DTYPEINT)
 
     pdf_idx = tf.reshape(x_id * s + q2_id, (1, -1))
 
@@ -98,14 +108,14 @@ def alphas_neighbour_knots(a_q2, padded_q2, actual_values):
             alphas values of the 4 grid knots around the query point
     """
     # print('nk')
-    q2_id = tfp.stats.find_bins(a_q2, padded_q2[1:-1], dtype=DTYPEINT) + 1
+    q2_id = tf.searchsorted(padded_q2[1:-1], a_q2, out_type=DTYPEINT)
+    s = tf.size(padded_q2, out_type=DTYPEINT)
+    q2_id = tf.clip_by_value(q2_id, tf.constant([0], dtype=DTYPEINT), s-3)
 
     piu = tf.reshape(tf.range(-1, 3, dtype=DTYPEINT), (4, 1))
     corn_q2_id = tf.repeat(tf.reshape(q2_id, (1, -1)), 4, axis=0) + piu
 
     corn_q2 = tf.gather(padded_q2, corn_q2_id, name="fnk_2")
-
-    s = tf.size(padded_q2, out_type=DTYPEINT)
 
     A = tf.gather(actual_values, corn_q2_id, name="fnk_3")
 
