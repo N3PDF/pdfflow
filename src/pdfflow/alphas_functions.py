@@ -24,6 +24,7 @@
 import tensorflow as tf
 from pdfflow.configflow import DTYPE, int_me
 from pdfflow.alphas_region_interpolator import alphas_interpolate
+from pdfflow.functions import _condition_to_idx
 
 def alphas_inner_subgrid(
     shape,
@@ -50,16 +51,13 @@ def alphas_inner_subgrid(
         tf.tensor of shape `shape`
         alphas interpolated values for each query point
     """
-
-    #print('alphas inner subgrid')
     res = tf.zeros(shape, dtype=DTYPE)
 
     # --------------------------------------------------------------------
     # normal interpolation
 
-    stripe = tf.math.logical_and(a_q2 >= log_q2min, a_q2 < log_q2max)
-    f_idx = int_me(tf.where(stripe))
-    if tf.size(f_idx) != 0:
+    stripe, f_idx = _condition_to_idx(a_q2 >= log_q2min, a_q2 < log_q2max)
+    if tf.math.equal(f_idx, 0) is not None:
         in_q2 = tf.boolean_mask(a_q2, stripe)
         ff_f = alphas_interpolate(in_q2, padded_q2, s_q2, actual_padded)
         res = tf.tensor_scatter_nd_update(res, f_idx, ff_f)
@@ -92,15 +90,13 @@ def alphas_first_subgrid(
         tf.tensor of shape `shape`
         alphas interpolated values for each query point
     """
-    #print('alphas first subgrid')
     res = tf.zeros(shape, dtype=DTYPE)
 
     # --------------------------------------------------------------------
     # normal interpolation
 
-    stripe = tf.math.logical_and(a_q2 >= log_q2min, a_q2 < log_q2max)
-    f_idx = int_me(tf.where(stripe))
-    if tf.size(f_idx) != 0:
+    stripe, f_idx = _condition_to_idx(a_q2 >= log_q2min, a_q2 < log_q2max)
+    if tf.math.equal(f_idx, 0) is not None:
         in_q2 = tf.boolean_mask(a_q2, stripe)
         ff_f = alphas_interpolate(in_q2, padded_q2, s_q2, actual_padded)
         res = tf.tensor_scatter_nd_update(res, f_idx, ff_f)
@@ -110,7 +106,7 @@ def alphas_first_subgrid(
 
     stripe = a_q2 < log_q2min
     f_idx = int_me(tf.where(stripe))
-    if tf.size(f_idx) != 0:
+    if tf.math.equal(f_idx, 0) is not None:
         in_q2 = tf.boolean_mask(a_q2, stripe)
         m = tf.math.log(actual_padded[2]/actual_padded[1])\
             /(padded_q2[2] - padded_q2[1])
@@ -150,15 +146,12 @@ def alphas_last_subgrid(
             alphas interpolated values for each query point
     """
     # Generate all conditions for all stripes
-    #print('alphas last subgrid')
-
     res = tf.zeros(shape, dtype=DTYPE)
 
     # --------------------------------------------------------------------
     # normal interpolation
-    stripe = tf.math.logical_and(a_q2 >= log_q2min, a_q2 <= log_q2max)
-    f_idx = int_me(tf.where(stripe))
-    if tf.size(f_idx) != 0:
+    stripe, f_idx = _condition_to_idx(a_q2 >= log_q2min, a_q2 <= log_q2max)
+    if tf.math.equal(f_idx, 0) is not None:
         # Check whether there are any points in this region
         # if there are, execute normal_interpolation
         in_q2 = tf.boolean_mask(a_q2, stripe)
@@ -169,7 +162,7 @@ def alphas_last_subgrid(
     # high q2
     stripe = a_q2 > log_q2max
     f_idx = int_me(tf.where(stripe))
-    if tf.size(f_idx) != 0:
+    if tf.math.equal(f_idx, 0) is not None:
         ff_f = tf.ones_like(f_idx[:,0], dtype=DTYPE)*actual_padded[-2]
         res = tf.tensor_scatter_nd_update(res, f_idx, ff_f)
 
