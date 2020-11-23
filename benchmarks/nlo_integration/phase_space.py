@@ -22,6 +22,8 @@ from parameters import (
     higgs_mass,
     pt2_cut,
     rdistance,
+    deltaycut,
+    m2jj_cut,
 )
 import spinors
 
@@ -29,11 +31,11 @@ import spinors
 UNIT_PHASE = False
 
 # Constants
-tfpi = float_me(np.pi)
+tfpi = float_me(3.1415926535897932385)
 costhmax = fone
-costhmin = -1.0 * fone
+costhmin = float_me(-1.0) * fone
 phimin = fzero
-phimax = 2.0 * tfpi
+phimax = float_me(2.0) * tfpi
 
 # Jet separation
 @tf.function
@@ -43,7 +45,7 @@ def rapidity_dif(p1, p2):
     """
     num = (p1[0, :] + p1[3, :]) * (p2[0, :] - p2[3, :])
     den = (p1[0, :] - p1[3, :]) * (p2[0, :] + p2[3, :])
-    return 0.5 * tf.math.log(num / den)
+    return float_me(0.5) * tf.math.log(num / den)
 
 
 @tf.function
@@ -51,9 +53,11 @@ def azimuth_dif(p1, p2):
     """ Compute the difference in the azimuthal angle between p1 and p2
     theta = atan(y/x)
     """
-    theta_1 = tf.math.atan2(p1[2, :], p1[1, :])
-    theta_2 = tf.math.atan2(p2[2, :], p2[1, :])
-    return theta_1 - theta_2
+    theta_1 = tf.math.atan2(p1[2, :], p1[1, :])  # + float_me(np.pi)
+    theta_2 = tf.math.atan2(p2[2, :], p2[1, :])  # + float_me(np.pi)
+    res = tf.abs(theta_1 - theta_2)
+    res = tf.where(res > tfpi, phimax - res, res)
+    return res
 
 
 @tf.function
@@ -63,14 +67,12 @@ def jet_separation(pg, pj, pgt2, pjt2):
     """
     ydif = tf.square(rapidity_dif(pg, pj))
     adif = tf.square(azimuth_dif(pg, pj))
-    if pjt2 is None:
-        return ydif + adif
-    else:
-        minpt = tf.where(pgt2 > pjt2, 1.0 / pgt2, 1.0 / pjt2)
-        return (ydif + adif) * minpt * pgt2
+    delta_ij2 = ydif + adif
+    kmin = fone  # /tf.reduce_max([pgt2, pjt2], axis=0)
+    res = kmin * delta_ij2 / rdistance
+    return res
 
 
-# Cut function
 @tf.function
 def pt2(fourp):
     """ Returns px^2 + py^2 """
@@ -78,30 +80,78 @@ def pt2(fourp):
 
 
 @tf.function
+def pt2many(allpt):
+    return tf.square(allpt[:, 1, :]) + tf.square(allpt[:, 2, :])
+
+
+@tf.function
+def deltay_cut(p1, p2):
+    deltay = tf.abs(rapidity_dif(p1, p2))
+    return deltay > deltaycut
+
+
+@tf.function
+def mjj_cut(p1, p2):
+    val = abs_dot(p1, p2) * 2.0
+    return val > m2jj_cut
+
+
+@tf.function
+def rcone_cut(p1, p2, p3=None):
+    """ Check that the jets 1, 2 (and 3) are separated at least sqrt(rdistance) using the Cambridge-Aachen algorithm
+    """
+    pt2_1 = pt2(p1)
+    pt2_2 = pt2(p2)
+    if p3 is not None:
+        pt2_3 = pt2(p3)
+    pt2_1, pt2_2, pt2_3 = 3 * [None]
+    r12 = jet_separation(p1, p2, pt2_1, pt2_2)
+    if p3 is not None:
+        r13 = jet_separation(p1, p3, pt2_1, pt2_3)
+        r23 = jet_separation(p2, p3, pt2_2, pt2_3)
+        dij = tf.reduce_min([r12, r13, r23], axis=0)
+        dib = fone  # tf.reduce_max([pt2_1, pt2_2, pt2_3], axis=0)
+    else:
+        dij = r12
+        dib = fone  # tf.reduce_max([pt2_1, pt2_2], axis=0)
+    return dij > dib
+
+
+@tf.function
 def pt_cut_2of2(p1, p2):
     """ Ensures that both p1 and p2 pass the pt_cut
     returns a boolean mask and the list of true indices
     """
-    p1pass = pt2(p1) > pt2_cut
-    p2pass = pt2(p2) > pt2_cut
-    stripe, idx = _condition_to_idx(p1pass, p2pass)
-    return stripe, idx
+    pt21 = pt2(p1)
+    pt22 = pt2(p2)
+    p1pass = pt21 > pt2_cut
+    p2pass = pt22 > pt2_cut
+    deltaypass = deltay_cut(p1, p2)
+    mjjpass = mjj_cut(p1, p2)
+    jetpass = tf.reduce_all([p1pass, p2pass, deltaypass], axis=0)
+    stripe, idx = _condition_to_idx(jetpass, mjjpass)
+    return stripe, idx, tf.reduce_max([pt21, pt22], axis=0)
+
+
+@tf.function
+def abs_dot(a, b):
+    return tf.abs(spinors.dot_product(a, b))
 
 
 @tf.function
 def invariant_cut(pa, pb, p1, p2, p3):
     """ Ensures that all invariants are above the technical cut
     in order to avoid instabilities """
-    shat_cut = spinors.dot_product(pa, pb)*TECH_CUT/2.0
-    sa1 = spinors.dot_product(pa, p1) > shat_cut
-    sa2 = spinors.dot_product(pa, p2) > shat_cut
-    sa3 = spinors.dot_product(pa, p3) > shat_cut
-    sb1 = spinors.dot_product(pb, p1) > shat_cut
-    sb2 = spinors.dot_product(pb, p2) > shat_cut
-    sb3 = spinors.dot_product(pb, p3) > shat_cut
-    s12 = spinors.dot_product(p1, p2) > shat_cut
-    s13 = spinors.dot_product(p1, p3) > shat_cut
-    s23 = spinors.dot_product(p2, p3) > shat_cut
+    shat_cut = abs_dot(pa, pb) * TECH_CUT / 2.0
+    sa1 = abs_dot(pa, p1) > shat_cut
+    sa2 = abs_dot(pa, p2) > shat_cut
+    sa3 = abs_dot(pa, p3) > shat_cut
+    sb1 = abs_dot(pb, p1) > shat_cut
+    sb2 = abs_dot(pb, p2) > shat_cut
+    sb3 = abs_dot(pb, p3) > shat_cut
+    s12 = abs_dot(p1, p2) > shat_cut
+    s13 = abs_dot(p1, p3) > shat_cut
+    s23 = abs_dot(p2, p3) > shat_cut
     return tf.reduce_all([sa1, sa2, sa3, sb1, sb2, sb3, s12, s13, s23], 0)
 
 
@@ -110,46 +160,59 @@ def pt_cut_2of3(pa, pb, p1, p2, p3):
     """ Ensures that at least two of the three jets
     pass the pt cut
     """
-    p1t2 = pt2(p1)
-    p2t2 = pt2(p2)
-    p3t2 = pt2(p3)
-    p1pass = p1t2 > pt2_cut
-    p2pass = p2t2 > pt2_cut
-    p3pass = p3t2 > pt2_cut
-    p1e2 = tf.logical_and(p1pass, p2pass)
-    p1e3 = tf.logical_and(p1pass, p3pass)
-    p2e1 = tf.logical_and(p2pass, p1pass)
-    ptpass = tf.reduce_any([p1e2, p1e3, p2e1], 0)
+    # Put all pt on a stack
+    all_p = tf.stack([p1, p2, p3])
+    # First check that all 3 pass the pt cut
+    all_pt2 = pt2many(all_p)
+    # Now select the two hardest jets and apply the rest of the cuts on those two
+    pts, idx = tf.math.top_k(tf.transpose(all_pt2), k=2, sorted=True)
+    ptpass = pts[:, 1] > pt2_cut
+    pjsT = tf.gather(tf.transpose(all_p, perm=[2, 0, 1]), idx, batch_dims=1)
+    pjs = tf.transpose(pjsT, perm=[1, 2, 0])
+
+    # Check that the two hardest jets pass the rapidity delta cut
+    ypass = deltay_cut(pjs[0], pjs[1])
+    # and the mjj cut
+    mjjpass = mjj_cut(pjs[0], pjs[1])
+
+    # Check that all two jets pass the rdistance check
+    rpass = rcone_cut(pjs[0], pjs[1])
+
+    # Ensure that all invariants are above some threshold
     tech_cut_pass = invariant_cut(pa, pb, p1, p2, p3)
-    stripe, idx = _condition_to_idx(ptpass, tech_cut_pass)
-    return stripe, idx
+    jetpass = tf.reduce_all([rpass, tech_cut_pass, ypass, mjjpass], axis=0)
+    stripe, idx = _condition_to_idx(ptpass, jetpass)
+    return stripe, idx, pts[:, 0]
 
 
 @tf.function
-def pt_cut_3of3(p1, p2, p3, r=False, pa=None, pb=None):
+def pt_cut_3of3(pa, pb, p1, p2, p3):
     """ Ensures that both p1 and p2 pass the pt_cut
     returns a boolean mask and the list of true indices
     """
-    p1t2 = pt2(p1)
-    p2t2 = pt2(p2)
-    p3t2 = pt2(p3)
-    p1pass = p1t2 > pt2_cut
-    p2pass = p2t2 > pt2_cut
-    p3pass = p3t2 > pt2_cut
-    ptpass = tf.reduce_all([p1pass, p2pass, p3pass], 0)
-    if r:
-        # Check only the gluon is its own jet
-        r31pass = jet_separation(p3, p1, p3t2, p1t2) > rdistance
-        r32pass = jet_separation(p3, p2, p3t2, p2t2) > rdistance
-        # Now ensure that the two quarks are not too close
-        r12pass = jet_separation(p1, p2, p1t2, p2t2) > rdistance
-        rpass = tf.reduce_all([r31pass, r32pass, r12pass], 0)
-        tech_cut_pass = invariant_cut(pa, pb, p1, p2, p3)
-        jetpass = tf.logical_and(rpass, tech_cut_pass)
-    else:
-        raise ValueError("When asking for 3 jets of 3 a jet radious is needed")
+    # Put all pt on a stack
+    all_p = tf.stack([p1, p2, p3])
+    # First check that all 3 pass the pt cut
+    all_pt2 = pt2many(all_p)
+    ptpass = tf.reduce_all(all_pt2 > pt2_cut, axis=0)
+    # Now select the two hardest jets and apply the rest of the cuts on those two
+    pts, idx = tf.math.top_k(tf.transpose(all_pt2), k=2, sorted=False)
+    pjsT = tf.gather(tf.transpose(all_p, perm=[2, 0, 1]), idx, batch_dims=1)
+    pjs = tf.transpose(pjsT, perm=[1, 2, 0])
+
+    # Check that the two hardest jets pass the rapidity delta cut
+    ypass = deltay_cut(pjs[0], pjs[1])
+    # and the mjj cut
+    mjjpass = mjj_cut(pjs[0], pjs[1])
+
+    # Check that all jets pass the rdistance check
+    rpass = rcone_cut(p1, p2, p3)
+
+    # Ensure that all invariants are above some threshold
+    tech_cut_pass = invariant_cut(pa, pb, p1, p2, p3)
+    jetpass = tf.reduce_all([rpass, tech_cut_pass, ypass, mjjpass], axis=0)
     stripe, idx = _condition_to_idx(ptpass, jetpass)
-    return stripe, idx
+    return stripe, idx, pts[:, 0]
 
 
 # Utility functions
@@ -289,6 +352,7 @@ def sample_linear_all(x, nfspartons=2):
     for i in range(1, nfspartons):
         j = i * 3 - 1
         prev_smax = smax
+        wgt = tf.where(smin + TECH_CUT > prev_smax, fzero, wgt)
         smax, jac = pick_within(x[:, j], smin, prev_smax)
         wgt *= jac
         cos12, jac = pick_within(x[:, j + 1], costhmin, costhmax)
@@ -430,15 +494,9 @@ def pcommon1to2(sin, pin, s1, s2, costh, phi):
 
     omgdv = (gamma - fone) / v2
     bmatE = tf.stack([gamma, -gamma * vx, -gamma * vy, -gamma * vz])
-    bmatx = tf.stack(
-        [-gamma * vx, omgdv * vx * vx + fone, omgdv * vx * vy, omgdv * vx * vz]
-    )
-    bmaty = tf.stack(
-        [-gamma * vy, omgdv * vy * vx, omgdv * vy * vy + fone, omgdv * vy * vz]
-    )
-    bmatz = tf.stack(
-        [-gamma * vz, omgdv * vz * vx, omgdv * vz * vy, omgdv * vz * vz + fone]
-    )
+    bmatx = tf.stack([-gamma * vx, omgdv * vx * vx + fone, omgdv * vx * vy, omgdv * vx * vz])
+    bmaty = tf.stack([-gamma * vy, omgdv * vy * vx, omgdv * vy * vy + fone, omgdv * vy * vz])
+    bmatz = tf.stack([-gamma * vz, omgdv * vz * vx, omgdv * vz * vy, omgdv * vz * vz + fone])
     bmat = tf.stack([bmatE, bmatx, bmaty, bmatz])
 
     # Now unboost
@@ -487,9 +545,7 @@ def map_3to2(pa, p1, p3):
     """ Maps a 2 -> 3 ps into a 2 -> 2 ps
     where particle 3 goes unresolved between a and 1
     """
-    omx2 = spinors.dot_product(p1, p3) / (
-        spinors.dot_product(pa, p1) + spinors.dot_product(pa, p3)
-    )
+    omx2 = spinors.dot_product(p1, p3) / (spinors.dot_product(pa, p1) + spinors.dot_product(pa, p3))
     xx2 = 1 - omx2
     newpa = xx2 * pa
     newp1 = p1 + p3 - omx2 * pa
