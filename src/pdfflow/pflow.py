@@ -221,6 +221,7 @@ class PDF:
 
             subgrids = [Subgrid(grid, i, len(grids)) for i, grid in enumerate(grids)]
             self.grids.append(subgrids)
+        self.members = members
 
         # Get the flavour scheme from the info file
         flavor_scheme = np.array(self.info.get("Flavors", None))
@@ -261,10 +262,15 @@ class PDF:
         return np.exp(q2min)
 
     @property
+    def nmembers(self):
+        """ Number of members for this PDF """
+        return len(self.members)
+
+    @property
     def active_members(self):
         """ List of all member files """
         member_list = []
-        for member in members:
+        for member_int in self.members:
             member = str(member_int).zfill(4)
             member_list.append(f"{self.fname}_{member}.dat")
         return member_list
