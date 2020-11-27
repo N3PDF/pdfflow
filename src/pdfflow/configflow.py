@@ -24,8 +24,8 @@ def run_eager(flag=True):
 module_name = __name__.split(".")[0]
 logger = logging.getLogger(module_name)
 
-# Read the log level from environment, 3 (default) == debug, 2 == info, 1 == warning, 0 == error
-DEFAULT_LOG_LEVEL = "3"
+# Read the log level from environment, 3 == debug, 2 (default) == info, 1 == warning, 0 == error
+DEFAULT_LOG_LEVEL = "2"
 log_level_idx = os.environ.get("PDFFLOW_LOG_LEVEL", DEFAULT_LOG_LEVEL)
 log_dict = {"0": logging.ERROR, "1": logging.WARNING, "2": logging.INFO, "3": logging.DEBUG}
 bad_log_warning = None
