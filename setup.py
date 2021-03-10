@@ -4,7 +4,7 @@ import os
 import re
 
 
-requirements = ['numpy', 'pyyaml', 'tensorflow']
+requirements = ['numpy', 'pyyaml', 'tensorflow>2.1']
 
 PACKAGE = 'pdfflow'
 
