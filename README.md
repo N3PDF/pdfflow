@@ -32,6 +32,12 @@ or if you are planning to extend or develop code just use:
 python setup.py develop
 ```
 
+**⚠ Note: Use the latest version of TensorFlow!**
+
+TensorFlow is updated frequently and a later version of TensorFlow will often
+offer better performance in both GPUs and CPUs.
+Although it can be made to work with earlier versions, `PDFFlow` is only supported for TensorFlow>2.1.
+
 ## Minimal Working Example
 
 Below a minimalistic example where `PDFFlow` is used to generate a 10 values of the PDF
