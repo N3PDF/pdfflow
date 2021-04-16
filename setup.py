@@ -1,10 +1,17 @@
 # Installation script for python
 from setuptools import setup, find_packages
+from sys import version_info
 import os
 import re
 
 
-requirements = ['numpy', 'pyyaml', 'tensorflow>2.1']
+requirements = ['numpy', 'pyyaml']
+if version_info.major >=3 and version_info.minor >= 9:
+    # For python above 3.9 the only existing TF is 2.5 which works well (even pre releases)
+    tf_pack = "tensorflow"
+else:
+    tf_pack = "tensorflow>2.1"
+requirements.append(tf_pack)
 
 PACKAGE = 'pdfflow'
 
