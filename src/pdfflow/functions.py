@@ -95,7 +95,7 @@ def inner_subgrid(
         in_x = tf.boolean_mask(a_x, stripe)
         in_q2 = tf.boolean_mask(a_q2, stripe)
         ff_f = interpolate(in_x, in_q2, padded_x, s_x, padded_q2, s_q2, actual_padded,)
-        res = tf.tensor_scatter_nd_update(res, f_idx, ff_f)
+        res += tf.scatter_nd(f_idx, ff_f, shape)
 
     # --------------------------------------------------------------------
     # lowx
@@ -106,7 +106,7 @@ def inner_subgrid(
         ff_f = lowx_extrapolation(
             in_x, in_q2, padded_x, s_x, padded_q2, s_q2, actual_padded,
         )
-        res = tf.tensor_scatter_nd_update(res, f_idx, ff_f)
+        res += tf.scatter_nd(f_idx, ff_f, shape)
 
     return res
 
@@ -162,7 +162,7 @@ def first_subgrid(
         in_x = tf.boolean_mask(a_x, stripe)
         in_q2 = tf.boolean_mask(a_q2, stripe)
         ff_f = interpolate(in_x, in_q2, padded_x, s_x, padded_q2, s_q2, actual_padded,)
-        res = tf.tensor_scatter_nd_update(res, f_idx, ff_f)
+        res += tf.scatter_nd(f_idx, ff_f, shape)
 
     # --------------------------------------------------------------------
     # lowx
@@ -173,7 +173,7 @@ def first_subgrid(
         ff_f = lowx_extrapolation(
             in_x, in_q2, padded_x, s_x, padded_q2, s_q2, actual_padded,
         )
-        res = tf.tensor_scatter_nd_update(res, f_idx, ff_f)
+        res += tf.scatter_nd(f_idx, ff_f, shape)
 
     # --------------------------------------
     # low q2
@@ -184,7 +184,7 @@ def first_subgrid(
         ff_f = lowq2_extrapolation(
             in_x, in_q2, padded_x, s_x, padded_q2, s_q2, actual_padded,
         )
-        res = tf.tensor_scatter_nd_update(res, f_idx, ff_f)
+        res += tf.scatter_nd(f_idx, ff_f, shape)
 
     # --------------------------------------------------------------------
     # low x low q2
@@ -195,7 +195,7 @@ def first_subgrid(
         ff_f = lowx_lowq2_extrapolation(
             in_x, in_q2, padded_x, s_x, padded_q2, s_q2, actual_padded,
         )
-        res = tf.tensor_scatter_nd_update(res, f_idx, ff_f)
+        res += tf.scatter_nd(f_idx, ff_f, shape)
 
     return res
 
@@ -252,7 +252,7 @@ def last_subgrid(
         in_x = tf.boolean_mask(a_x, stripe)
         in_q2 = tf.boolean_mask(a_q2, stripe)
         ff_f = interpolate(in_x, in_q2, padded_x, s_x, padded_q2, s_q2, actual_padded,)
-        res = tf.tensor_scatter_nd_update(res, f_idx, ff_f)
+        res += tf.scatter_nd(f_idx, ff_f, shape)
 
     # --------------------------------------------------------------------
     # lowx
@@ -263,7 +263,7 @@ def last_subgrid(
         ff_f = lowx_extrapolation(
             in_x, in_q2, padded_x, s_x, padded_q2, s_q2, actual_padded,
         )
-        res = tf.tensor_scatter_nd_update(res, f_idx, ff_f)
+        res += tf.scatter_nd(f_idx, ff_f, shape)
 
     # --------------------------------------------------------------------
     # high q2
@@ -274,7 +274,7 @@ def last_subgrid(
         ff_f = highq2_extrapolation(
             in_x, in_q2, padded_x, s_x, padded_q2, s_q2, actual_padded,
         )
-        res = tf.tensor_scatter_nd_update(res, f_idx, ff_f)
+        res += tf.scatter_nd(f_idx, ff_f, shape)
 
     # --------------------------------------------------------------------
     # low x high q2
@@ -285,6 +285,6 @@ def last_subgrid(
         ff_f = lowx_highq2_extrapolation(
             in_x, in_q2, padded_x, s_x, padded_q2, s_q2, actual_padded,
         )
-        res = tf.tensor_scatter_nd_update(res, f_idx, ff_f)
+        res += tf.scatter_nd(f_idx, ff_f, shape)
 
     return res
