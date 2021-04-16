@@ -100,7 +100,9 @@ def test_multimember():
     run_eager(False)
     members = 5
     pdf = mkPDFs(PDFNAME, range(members))
+    assert pdf.nmembers == members
     pdf.trace()
+    assert len(pdf.active_members) == members
     pdfflow_tester(pdf, members=members)
 
 

@@ -1,5 +1,12 @@
 """
     Main pdfflow module
+
+    Example
+    -------
+    >>> import pdfflow
+    >>> pdf = pdfflow.mkPDFs("NNPDF31_nnlo_as_0118", members=[0,3])
+    >>> pdf.trace()
+    >>> pdf.py_xfxQ2([3,2], [0.3, 0.5], [1.5, 120.4])
 """
 import logging
 import collections
@@ -81,19 +88,16 @@ def _load_alphas(info_file):
 
     Parameters
     ----------
-        pdf_file: str
-            Metadata .info file
+        info_file: dict
+            Dictionary containg the .info file information
 
     Returns
     -------
         grids: list(tuple(np.array))
             list of tuples of arrays (Q2, alphas values)
     """
-    with open(info_file, "r") as ifile:
-        idict = yaml.load(ifile, Loader=yaml.FullLoader)
-
-    alpha_qs = np.array(idict["AlphaS_Qs"])
-    alpha_vals = np.array(idict["AlphaS_Vals"])
+    alpha_qs = np.array(info_file["AlphaS_Qs"])
+    alpha_vals = np.array(info_file["AlphaS_Vals"])
 
     grids = []
 
@@ -110,7 +114,7 @@ def _load_alphas(info_file):
     return grids
 
 
-def mkPDFs(fname, members, dirname=None):
+def mkPDFs(fname, members=None, dirname=None):
     """Wrapper to generate a multimember PDF
     Needs a name and a directory where to find the grid files.
 
@@ -192,33 +196,42 @@ class PDF:
 
         self.dirname = dirname
         self.fname = fname
-        self.members = members
         self.grids = []
+        info_file = os.path.join(self.dirname, self.fname, f"{fname}.info")
+
+        # Load the info file
+        with open(info_file, "r") as ifile:
+            self.info = yaml.load(ifile, Loader=yaml.FullLoader)
+
+        if members is None:
+            total_members = self.info.get("NumMembers", 1)
+            members = range(total_members)
+
+        if len(members) == 1:
+            logger.info("Loading member %d from %s", members[0], self.fname)
+        else:
+            logger.info("Loading %d members from %s", len(members), self.fname)
 
         for member_int in members:
             member = str(member_int).zfill(4)
             filename = os.path.join(self.dirname, fname, f"{fname}_{member}.dat")
 
-            logger.info("loading %s", filename)
+            logger.debug("Loading %s", filename)
             grids = _load_data(filename)
 
             subgrids = [Subgrid(grid, i, len(grids)) for i, grid in enumerate(grids)]
             self.grids.append(subgrids)
+        self.members = members
 
-        # TODO: Here we are now assuming flavour schemes should match across all members
-        # and across all subgrids. We definitely should error out here instead of printing a warning
-        # [(x,Q2,flav,knots), ...]
-        flav = list(map(lambda g: g[2], grids))
-        for i in range(len(flav) - 1):
-            if not np.all(flav[i] == flav[i + 1]):
-                # TODO: should this be an error?
-                logger.warning(
-                    "Flavor schemes do not match across all the subgrids --> algorithm will break!"
-                )
+        # Get the flavour scheme from the info file
+        flavor_scheme = np.array(self.info.get("Flavors", None))
+        if flavor_scheme is None:
+            # fallback to getting the scheme from the first grid, as all grids should have the same number of flavours
+            # if there's a failure here it should be the grid fault so no need to check from our side?
+            flavor_scheme = grids[0].flav
 
         # Look at the flavor_scheme and ensure that it is sorted
         # save the whole thing in case it is not sorted
-        flavor_scheme = grids[0].flav
         self.flavor_scheme = int_me(flavor_scheme)
 
         flavor_scheme[flavor_scheme == PID_G.numpy()] = 0
@@ -230,12 +243,8 @@ class PDF:
             self.flavors_sorted = False
             self.flavor_shift = 0
 
-        # now load metadata from info file
-        logger.info("Enabling computation of alpha")
-        self.fname = os.path.join(self.dirname, fname, f"{fname}.info")
-
-        logger.info("loading %s", self.fname)
-        alpha_grids = _load_alphas(self.fname)
+        # Finalize by loading the alpha information form the .info file
+        alpha_grids = _load_alphas(self.info)
         self.alphas_subgrids = [
             Subgrid(grid, i, len(grids), alpha_s=True) for i, grid in enumerate(alpha_grids)
         ]
@@ -253,10 +262,15 @@ class PDF:
         return np.exp(q2min)
 
     @property
+    def nmembers(self):
+        """ Number of members for this PDF """
+        return len(self.members)
+
+    @property
     def active_members(self):
         """ List of all member files """
         member_list = []
-        for member in members:
+        for member_int in self.members:
             member = str(member_int).zfill(4)
             member_list.append(f"{self.fname}_{member}.dat")
         return member_list
