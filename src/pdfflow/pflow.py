@@ -134,7 +134,7 @@ def mkPDFs(fname, members=None, dirname=None):
     """
     if dirname is None:
         if lhapdf is None:
-            raise ValueError("mkPDF needs a PDF name if lhapdf-python is not installed")
+            raise ValueError("mkPDF needs a directory path if lhapdf-python is not installed")
         lhapdf_cmd = ["lhapdf-config", "--datadir"]
         # Check the python version in order to use the right subprocess call
         if sys.version_info.major == 3 and sys.version_info.minor < 7:
