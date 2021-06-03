@@ -18,7 +18,7 @@ import numpy as np
 import os, sys
 
 # import configflow before tf to set some tf options
-from pdfflow.configflow import DTYPE, DTYPEINT, int_me, izero, float_me
+from pdfflow.configflow import DTYPE, DTYPEINT, int_me, izero, float_me, find_pdf_path
 import tensorflow as tf
 from pdfflow.subgrid import Subgrid
 
