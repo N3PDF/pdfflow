@@ -11,9 +11,13 @@ logger = logging.getLogger("pdfflow.test")
 import os
 # Run tests in CPU
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
-import lhapdf
 import numpy as np
 import subprocess as sp
+
+try:
+    import lhapdf
+except ModuleNotFoundError as e:
+    raise ModuleNotFoundError("Tests against alpha_s need an installation of LHAPDF")
 
 # Utility to install lhapdf sets
 def install_lhapdf(pdfset):

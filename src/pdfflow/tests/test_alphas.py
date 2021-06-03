@@ -7,9 +7,13 @@ import os
 import logging
 import subprocess as sp
 import numpy as np
-import lhapdf
 import pdfflow.pflow as pdf
 from pdfflow.configflow import run_eager
+
+try:
+    import lhapdf
+except ModuleNotFoundError as e:
+    raise ModuleNotFoundError("Tests of alpha_s need an installation of LHAPDF")
 
 logger = logging.getLogger("pdfflow.test")
 
