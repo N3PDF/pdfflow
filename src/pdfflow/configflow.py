@@ -2,7 +2,10 @@
     Encapsulate the definition of constant, logging behaviour and environment variables in one single module
 """
 import os
+import sys
+import pathlib
 import logging
+import subprocess as sp
 import numpy as np
 
 # Log levels
@@ -10,8 +13,11 @@ LOG_DICT = {"0": logging.ERROR, "1": logging.WARNING, "2": logging.INFO, "3": lo
 
 # Read the PDFFLOW environment variables
 _log_level_idx = os.environ.get("PDFFLOW_LOG_LEVEL")
+_data_path = os.environ.get("PDFFLOW_DATA_PATH")
+_lhapdf_data_path = os.environ.get("LHAPDF_DATA_PATH")
 _float_env = os.environ.get("PDFFLOW_FLOAT", "64")
 _int_env = os.environ.get("PDFFLOW_INT", "32")
+
 
 # Logging
 _bad_log_warning = None
@@ -90,3 +96,48 @@ ione = int_me(1)
 izero = int_me(0)
 fone = float_me(1)
 fzero = float_me(0)
+
+# PDF paths
+def find_pdf_path(pdfname):
+    """Look in all possible directories for the given `pdfname`
+    if the pdfname is not found anywhere, fail with error
+    """
+    all_paths = []
+    if _data_path:
+        all_paths.append(_data_path)
+    if _lhapdf_data_path:
+        all_paths.append(_lhapdf_data_path)
+    try:
+        import lhapdf
+
+        lhapdf_cmd = ["lhapdf-config", "--datadir"]
+        # Check the python version in order to use the right subprocess call
+        if sys.version_info.major == 3 and sys.version_info.minor < 7:
+            dirname_raw = sp.run(lhapdf_cmd, check=True, stdout=sp.PIPE)
+            dirname = dirname_raw.stdout.decode().strip()
+        else:
+            dirname_raw = sp.run(lhapdf_cmd, capture_output=True, text=True, check=True)
+            dirname = dirname_raw.stdout.strip()
+        all_paths.append(dirname)
+    except ModuleNotFoundError:
+        # If lhapdf is not installed, make a note and continue
+        lhapdf = None
+
+    # Return whatever path has the pdf inside
+    for path in all_paths:
+        if pathlib.Path(f"{path}/{pdfname}").exists():
+            return path
+
+    # If none of them do, fail but inform the user
+    error_msg = f"The PDF set {pdfname} could not be found"
+    if lhapdf is not None:
+        error_msg += f"\nIt can be installed with ~$ lhapdf install {pdfname}"
+    elif _data_path is not None:
+        error_msg += f"\nPlease, download it and uncompress it in {_data_path}"
+    elif _lhapdf_data_path is not None:
+        error_msg += f"\nPlease, download it and uncompress it in {_lhapdf_data_path}"
+    else:
+        error_msg += f"""
+Please, either download the set to an appropiate folder and make the environment variable
+PDFFLOW_DATA_PATH point to it or install the lhapdf python wrapper"""
+    raise ValueError(error_msg)
