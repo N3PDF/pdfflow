@@ -17,13 +17,8 @@ import numpy as np
 
 import os, sys
 
-try:
-    import lhapdf
-except ModuleNotFoundError:
-    lhapdf = None
-
 # import configflow before tf to set some tf options
-from pdfflow.configflow import DTYPE, DTYPEINT, int_me, izero, float_me
+from pdfflow.configflow import DTYPE, DTYPEINT, int_me, izero, float_me, find_pdf_path
 import tensorflow as tf
 from pdfflow.subgrid import Subgrid
 
@@ -133,16 +128,10 @@ def mkPDFs(fname, members=None, dirname=None):
             instantiated member of the PDF class
     """
     if dirname is None:
-        if lhapdf is None:
-            raise ValueError("mkPDF needs a directory path if lhapdf-python is not installed")
-        lhapdf_cmd = ["lhapdf-config", "--datadir"]
-        # Check the python version in order to use the right subprocess call
-        if sys.version_info.major == 3 and sys.version_info.minor < 7:
-            dirname_raw = sp.run(lhapdf_cmd, check=True, stdout=sp.PIPE)
-            dirname = dirname_raw.stdout.decode().strip()
-        else:
-            dirname_raw = sp.run(lhapdf_cmd, capture_output=True, text=True, check=True)
-            dirname = dirname_raw.stdout.strip()
+        try:
+            dirname = find_pdf_path(fname)
+        except ValueError as e:
+            raise ValueError(f"mkPDFs need a directory") from e
     return PDF(dirname, fname, members)
 
 

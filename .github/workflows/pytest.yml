@@ -24,9 +24,17 @@ jobs:
         conda info
         python -m pip install --upgrade pip
         pip install .
+        # Install LHAPDF
         conda install -y lhapdf -c https://packages.nnpdf.science/conda
+        # Download and install a PDF set to ensure that the environment paths are working
+        wget http://pcteserver.mi.infn.it/~nnpdf/nnpdf31/NNPDF31_nnlo_as_0118.tar.gz
+        mkdir -p pdfsets
+        tar xvfz NNPDF31_nnlo_as_0118.tar.gz
+        mv NNPDF31_nnlo_as_0118 pdfsets/
     - name: Test with pytest
       shell: bash --login {0}
       run: |
+        # Download the PDF set
+        export PDFFLOW_DATA_PATH="pdfsets"
         pip install pytest
         pytest

@@ -2,6 +2,10 @@
     Checks pdflow can run with no errors
 
     This file also checks that functions can indeed compile
+
+    Note that this test file does not install LHAPDF and (should)
+    use a PDF set that is not installed by any other test.
+    This ensures that pdfflow can indeed run independently of LHAPDF
 """
 from pdfflow.pflow import mkPDF, mkPDFs
 from pdfflow.configflow import run_eager, int_me, float_me
@@ -11,15 +15,12 @@ logger = logging.getLogger("pdfflow.test")
 import os
 import subprocess as sp
 import numpy as np
-from pdfflow.tests.test_lhapdf import install_lhapdf
 
 # Run tests in CPU
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 import tensorflow as tf
 
-# PDFNAME = "NNPDF31_nlo_as_0118"
-PDFNAME = "NNPDF31_nlo_as_0118_1000"
-install_lhapdf(PDFNAME)
+PDFNAME = "NNPDF31_nnlo_as_0118"
 
 
 def pdfflow_tester(pdf, members=None):
