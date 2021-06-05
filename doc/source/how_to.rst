@@ -55,6 +55,7 @@ the `nvidia official documentation <https://docs.nvidia.com/deeplearning/framewo
 - ``CUDA_VISIBLE_DEVICES``: set the devices that are visible for ``TensorFlow``. If unset it will try to use all GPUs available. In order to force the code to run on CPU it needs to be set to ``""``. In a multi-GPU system you can choose, by index, the GPUs available for ``TensorFlow``, e.g. ``export CUDA_VISIBLE_DEVICES=0,1``.
 - ``PDFFLOW_FLOAT``: controls the ``PDFFlow`` float precision. Default is 64 for 64-bits. Accepts: 64, 32.
 - ``PDFFLOW_INT``: controls the ``PDFFlow`` integer precision. Default is 32 for 32-bits. Accepts: 64, 32.
+- ``PDFFLOW_DATA_PATH``: folder where to find the PDF sets, equivalent to ``LHAPDF_DATA_PATH``
 
 
 Building the graph ahead of time
