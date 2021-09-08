@@ -84,7 +84,7 @@ def pdfflow_tester(pdf, members=None):
 
 
 def test_onemember():
-    """ Test the one-central-member of pdfflow """
+    """Test the one-central-member of pdfflow"""
     # Check the central member
     pdf = mkPDF(f"{PDFNAME}/0")
     pdfflow_tester(pdf)
@@ -97,7 +97,7 @@ def test_onemember():
 
 
 def test_multimember():
-    """ Test the multi-member capabilities of pdfflow """
+    """Test the multi-member capabilities of pdfflow"""
     run_eager(False)
     members = 5
     pdf = mkPDFs(PDFNAME, range(members))
@@ -108,7 +108,7 @@ def test_multimember():
 
 
 def test_one_multi():
-    """ Test that the multimember-I is indeed the same as just the Ith instance """
+    """Test that the multimember-I is indeed the same as just the Ith instance"""
     run_eager(True)
     pdf = mkPDF(f"{PDFNAME}/0")
     multi_pdf = mkPDFs(PDFNAME, [4, 0, 6])

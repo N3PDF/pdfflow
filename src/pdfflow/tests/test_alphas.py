@@ -7,6 +7,8 @@ import os
 import logging
 import subprocess as sp
 import numpy as np
+from lhapdf_management import pdf_install
+from lhapdf_management.configuration import environment
 import pdfflow.pflow as pdf
 from pdfflow.configflow import run_eager
 
@@ -26,7 +28,7 @@ def install_lhapdf(pdfset):
     try:
         lhapdf.mkPDF(pdfset)
     except RuntimeError:
-        sp.run(["lhapdf", "install", pdfset])
+        pdf_install(pdfset)
 
 
 SIZE = 200
@@ -34,7 +36,7 @@ SIZE = 200
 # Set up the PDF
 LIST_PDF = ["NNPDF31_nnlo_as_0118", "cteq6"]
 MEMBERS = 2
-DIRNAME = sp.run(["lhapdf-config", "--datadir"], stdout=sp.PIPE).stdout.strip().decode()
+DIRNAME = environment.datapath
 
 # Install the pdfs if they don't exist
 for pdfset in LIST_PDF:
@@ -45,12 +47,12 @@ QS = [(1, 10), (100, 10000), (10, 100)]
 
 # utilities
 def gen_q2(qmin, qmax):
-    """ generate an array of q2 between qmin and qmax """
+    """generate an array of q2 between qmin and qmax"""
     return np.random.rand(SIZE) * (qmax - qmin) + qmin
 
 
 def get_alphavals(q2arr, pdfset, sq2=False):
-    """ Generate an array of alphas(q) values from LHAPDF """
+    """Generate an array of alphas(q) values from LHAPDF"""
     lhapdf_pdf = lhapdf.mkPDF(pdfset)
     if sq2:
         return np.array([lhapdf_pdf.alphasQ2(iq) for iq in q2arr])
@@ -59,7 +61,7 @@ def get_alphavals(q2arr, pdfset, sq2=False):
 
 
 def test_accuracy_alphas(atol=1e-6):
-    """ Check the accuracy for all PDF sets for all members given
+    """Check the accuracy for all PDF sets for all members given
     when computing alpha_s given Q is compatible within atol
     between pdfflow and LHAPDF.
     This test run eagerly
@@ -80,8 +82,9 @@ def test_accuracy_alphas(atol=1e-6):
                 np.testing.assert_allclose(flow_values, lhapdf_values, atol=atol)
     run_eager(False)
 
+
 def test_alphas_q2(atol=1e-6):
-    """ Check the accuracy for all PDF sets for all members given
+    """Check the accuracy for all PDF sets for all members given
     when computing alpha_s given Q is compatible within atol
     between pdfflow and LHAPDF
     This test does not run eagerly
@@ -100,8 +103,9 @@ def test_alphas_q2(atol=1e-6):
                 lhapdf_values = get_alphavals(q2arr, pdfset, sq2=True)
                 np.testing.assert_allclose(flow_values, lhapdf_values, atol=atol)
 
+
 def test_alpha_trace():
-    """ Check that the alpha_s can be traced and then instantiated """
+    """Check that the alpha_s can be traced and then instantiated"""
     # Ensure the functions are not run eagerly
     run_eager(False)
     setname = LIST_PDF[0]
@@ -112,7 +116,6 @@ def test_alpha_trace():
     # Do it for many replicas
     pex2 = pdf.mkPDFs(setname, [0, 1, 2])
     pex2.alphas_trace()
-
 
 
 if __name__ == "__main__":

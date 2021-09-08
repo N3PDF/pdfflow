@@ -38,6 +38,16 @@ TensorFlow is updated frequently and a later version of TensorFlow will often
 offer better performance in both GPUs and CPUs.
 Although it can be made to work with earlier versions, `PDFFlow` is only supported for TensorFlow>2.1.
 
+## PDF set management
+
+PDFFlow does not do management of PDF sets, which is left to LHAPDF and so a lhapdf installation is needed.
+A full lhapdf installation can be obtained by utilizing the `lhapdf_management` library.
+
+```bash
+  python3 -m pip install lhapdf_management
+  lhapdf_management install NNPDF31_nnlo_as_0118
+```
+
 ## Minimal Working Example
 
 Below a minimalistic example where `PDFFlow` is used to generate a 10 values of the PDF
