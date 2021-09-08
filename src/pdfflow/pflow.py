@@ -18,7 +18,7 @@ import numpy as np
 
 import os, sys
 
-from pdfflow_management.pdfset import PDF as LHA_PDF
+from lhapdf_management.pdfsets import PDF as LHA_PDF
 
 # import configflow before tf to set some tf options
 from pdfflow.configflow import DTYPE, DTYPEINT, int_me, izero, float_me, find_pdf_path
@@ -164,7 +164,7 @@ class PDF:
             logger.info("Loading %d members from %s", len(members), self.fname)
 
         for member_int in members:
-            grids = pdf.get_member_grids(member)
+            grids = lhapdf_pdf.get_member_grids(member_int)
             subgrids = [Subgrid(grid, i, len(grids)) for i, grid in enumerate(grids)]
             self.grids.append(subgrids)
         self.members = members

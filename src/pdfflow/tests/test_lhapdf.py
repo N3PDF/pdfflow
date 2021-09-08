@@ -30,7 +30,7 @@ LIST_PDF = [
     "NNPDF31_nlo_as_0118",  # some problem for the first bin
     "MSTW2008lo68cl_nf3",
     "NNPDF30_nnlo_as_0121_nf_6",
-    "cteq6",
+    "cteq61",
 ]
 MEMBERS = 2
 FLAVS = list(range(-3, 4))

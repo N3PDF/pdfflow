@@ -34,7 +34,7 @@ def install_lhapdf(pdfset):
 SIZE = 200
 
 # Set up the PDF
-LIST_PDF = ["NNPDF31_nnlo_as_0118", "cteq6"]
+LIST_PDF = ["NNPDF31_nnlo_as_0118", "cteq61"]
 MEMBERS = 2
 DIRNAME = environment.datapath
 
