@@ -5,7 +5,7 @@ import os
 import re
 
 
-requirements = ['numpy', 'pyyaml']
+requirements = ['numpy', 'pyyaml', 'lhapdf_management']
 if version_info.major >=3 and version_info.minor >= 9:
     # For python above 3.9 the only existing TF is 2.5 which works well (even pre releases)
     tf_pack = "tensorflow"

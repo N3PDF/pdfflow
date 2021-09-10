@@ -11,11 +11,14 @@
 import logging
 import collections
 import yaml
+from pathlib import Path
 
 import subprocess as sp
 import numpy as np
 
 import os, sys
+
+from lhapdf_management.pdfsets import PDF as LHA_PDF
 
 # import configflow before tf to set some tf options
 from pdfflow.configflow import DTYPE, DTYPEINT, int_me, izero, float_me, find_pdf_path
@@ -32,44 +35,6 @@ logger = logging.getLogger(__name__)
 # create the Grid namedtuple
 GridTuple = collections.namedtuple("Grid", ["x", "q2", "flav", "grid"])
 AlphaTuple = collections.namedtuple("Alpha", ["q2", "grid"])
-
-
-def _load_data(pdf_file):
-    """
-    Reads pdf from file and retrieves a list of grids
-    Each grid is a tuple containing numpy arrays (x,Q2, flavours, pdf)
-
-    Note:
-        the input q array in LHAPDF is just q, this functions
-        squares the result and q^2 is used everwhere in the code
-
-    Parameters
-    ----------
-        pdf_file: str
-            PDF .dat file
-
-    Returns
-    -------
-        grids: list(tuple(np.array))
-            list of tuples of arrays (x, Q2, flavours, pdf values)
-    """
-    with open(pdf_file, "r") as pfile:
-        n = []
-        count = 0
-        for line in pfile:
-            if "---" in line:
-                n += [count]
-            count += 1
-
-    grids = []
-    for i in range(len(n) - 1):
-        x = np.loadtxt(pdf_file, skiprows=(n[i] + 1), max_rows=1)
-        q2 = pow(np.loadtxt(pdf_file, skiprows=(n[i] + 2), max_rows=1), 2)
-        flav = np.loadtxt(pdf_file, skiprows=(n[i] + 3), max_rows=1)
-        grid = np.loadtxt(pdf_file, skiprows=(n[i] + 4), max_rows=(n[i + 1] - n[i] - 4))
-        grids += [GridTuple(x, q2, flav, grid)]
-
-    return grids
 
 
 def _load_alphas(info_file):
@@ -186,11 +151,8 @@ class PDF:
         self.dirname = dirname
         self.fname = fname
         self.grids = []
-        info_file = os.path.join(self.dirname, self.fname, f"{fname}.info")
-
-        # Load the info file
-        with open(info_file, "r") as ifile:
-            self.info = yaml.load(ifile, Loader=yaml.FullLoader)
+        lhapdf_pdf = LHA_PDF(Path(self.dirname) / fname)
+        self.info = lhapdf_pdf.info
 
         if members is None:
             total_members = self.info.get("NumMembers", 1)
@@ -202,12 +164,7 @@ class PDF:
             logger.info("Loading %d members from %s", len(members), self.fname)
 
         for member_int in members:
-            member = str(member_int).zfill(4)
-            filename = os.path.join(self.dirname, fname, f"{fname}_{member}.dat")
-
-            logger.debug("Loading %s", filename)
-            grids = _load_data(filename)
-
+            grids = lhapdf_pdf.get_member_grids(member_int)
             subgrids = [Subgrid(grid, i, len(grids)) for i, grid in enumerate(grids)]
             self.grids.append(subgrids)
         self.members = members
@@ -240,24 +197,24 @@ class PDF:
 
     @property
     def q2max(self):
-        """ Upper boundary in q2 of the first grid """
+        """Upper boundary in q2 of the first grid"""
         q2max = self.grids[0][-1].log_q2max
         return np.exp(q2max)
 
     @property
     def q2min(self):
-        """ Lower boundary in q2 of the first grid """
+        """Lower boundary in q2 of the first grid"""
         q2min = self.grids[0][0].log_q2min
         return np.exp(q2min)
 
     @property
     def nmembers(self):
-        """ Number of members for this PDF """
+        """Number of members for this PDF"""
         return len(self.members)
 
     @property
     def active_members(self):
-        """ List of all member files """
+        """List of all member files"""
         member_list = []
         for member_int in self.members:
             member = str(member_int).zfill(4)
