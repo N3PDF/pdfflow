@@ -23,7 +23,7 @@ jobs:
       run: |
         conda info
         python -m pip install --upgrade pip
-        pip install .
+        pip install .[tf-cpu]
         # Install LHAPDF
         conda install -y lhapdf -c https://packages.nnpdf.science/conda
         # Download and install a PDF set to ensure that the environment paths are working

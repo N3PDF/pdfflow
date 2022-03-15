@@ -5,7 +5,6 @@
 ![pytest](https://github.com/N3PDF/pdfflow/workflows/pytest/badge.svg)
 [![AUR](https://img.shields.io/aur/version/python-pdfflow)](https://aur.archlinux.org/packages/python-pdfflow)
 
-
 # PDFFlow
 
 PDFFlow is parton distribution function interpolation library written in Python and based on the [TensorFlow](https://www.tensorflow.org/) framework. It is developed with a focus on speed and efficiency, enabling researchers to perform very expensive calculation as quick and easy as possible.
@@ -19,24 +18,42 @@ The documentation for PDFFlow can be consulted in the readthedocs page: [pdfflow
 ## Installation
 
 The package can be installed with pip:
-```
-python3 -m pip install pdfflow
+
+```bash
+python3 -m pip install pdfflow[MODE]
 ```
 
-If you prefer a manual installation just use:
+If you prefer a manual installation just `cd` in the cloned folder and use:
+
+```bash
+pip install .[MODE]
 ```
-python setup.py install
+
+or if you are planning to extend or develop code just install the package in
+editable mode:
+
+```bash
+pip install -e .[MODE]
 ```
-or if you are planning to extend or develop code just use:
-```
-python setup.py develop
-```
+
+`PDFFlow` assumes that the user has already installed the most optimized version
+of TensorFlow for his platform. As such, by default, `pip` will not check it as
+a requirement.
+
+However, the user can also install it specifying a `MODE` option in the
+`pip` command. The list below summarizes the valid choices for the `MODE` flag:
+
+- `tf`: installs the `tensorflow` package
+- `tf-cpu`: installs the `tensorflow-cpu` package
+- `tf-gpu`: installs the `tensorflow-gpu` package
+- `tf-arm`: installs the `tensorflow-rocm` package
 
 **⚠ Note: Use the latest version of TensorFlow!**
 
 TensorFlow is updated frequently and a later version of TensorFlow will often
 offer better performance in both GPUs and CPUs.
-Although it can be made to work with earlier versions, `PDFFlow` is only supported for TensorFlow>2.1.
+Although it can be made to work with earlier versions, `PDFFlow` is only
+supported for TensorFlow>2.1.
 
 ## PDF set management
 
@@ -71,6 +88,7 @@ For convenience, we ship two functions, `int_me` and `float_me` which are simply
 wrappers to `tf.cast` with the right types.
 
 These wrappers can be used over TensorFlow types but also numpy values:
+
 ```python
 from pdfflow import mkPDFs, int_me, float_me
 import tensorflow as tf
@@ -87,5 +105,6 @@ result = pdf.xfxQ2(pid, x, q2)
 ## Citation policy
 
 If you use the package pelase cite the following paper and zenodo references:
+
 - https://doi.org/10.5281/zenodo.3964190
 - https://arxiv.org/abs/2009.06635
