@@ -46,7 +46,7 @@ However, the user can also install it specifying a `MODE` option in the
 - `tf`: installs the `tensorflow` package
 - `tf-cpu`: installs the `tensorflow-cpu` package
 - `tf-gpu`: installs the `tensorflow-gpu` package
-- `tf-arm`: installs the `tensorflow-rocm` package
+- `tf-amd`: installs the `tensorflow-rocm` package
 
 **⚠ Note: Use the latest version of TensorFlow!**
 
