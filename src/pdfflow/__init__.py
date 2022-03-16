@@ -5,6 +5,6 @@ from importlib.metadata import metadata
 from pdfflow.configflow import int_me, float_me, run_eager
 from pdfflow.pflow import mkPDF, mkPDFs
 
-PACKAGE = 'pdfflow'
+PACKAGE = "pdfflow"
 
-__version__ = metadata(PACKAGE)['version']
+__version__ = metadata(PACKAGE)["version"]
