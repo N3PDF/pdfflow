@@ -1,7 +1,7 @@
 [![DOI](https://zenodo.org/badge/238731330.svg)](https://zenodo.org/badge/latestdoi/238731330)
 [![arxiv](https://img.shields.io/badge/arXiv-hep--ph%2F2009.06635-%23B31B1B.svg)](https://arxiv.org/abs/2009.06635)
 
-[![Documentation Status](https://readthedocs.org/projects/pdfflow/badge/?version=latest)](https://pdfflow.readthedocs.io/en/latest/?badge=latest)
+[![Documentation Status](https://readthedocs.org/projects/pdfflow/badge/?version=stable)](https://pdfflow.readthedocs.io/en/latest/?badge=stable)
 ![pytest](https://github.com/N3PDF/pdfflow/workflows/pytest/badge.svg)
 [![AUR](https://img.shields.io/aur/version/python-pdfflow)](https://aur.archlinux.org/packages/python-pdfflow)
 
