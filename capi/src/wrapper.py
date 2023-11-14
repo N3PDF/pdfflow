@@ -1,6 +1,7 @@
 # This file is part of
 from cpdfflow import ffi
 from pdfflow import pflow
+import numpy as np
 
 pdf = None
 
@@ -21,7 +22,9 @@ def xfxq2(pid, x, q2):
 
 
 @ffi.def_extern()
-def alphasq2(q2):
+def alphasq2(q2, n):
     """Returns the alpha strong coupling at specific q2 value."""
     global pdf
-    return pdf.alphasQ2([q2])
+    q2_numpy = np.frombuffer(ffi.buffer(q2, n*ffi.sizeof('double')), dtype='double')
+    ret = pdf.alphasQ2(q2_numpy).numpy()
+    return ffi.cast("double*", ffi.from_buffer(ret))
