@@ -7,9 +7,12 @@ int main() {
     mkpdf("NNPDF31_nlo_as_0118/0", "/usr/share/lhapdf/LHAPDF/");
 
     // test xfxq2 and alphasq2
-    const double x = 0.1, q2 = 1.65;
-    for (int fl=-5; fl <=5; fl++)
-        printf("flv=%d - xfx = %f\n", fl, xfxq2(fl, x, q2));
+    int pid[] = {-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5};
+    double xs[] = {0.1};
+    double q2s[] = {1.65};
+    double *xf_vectorized = xfxq2(pid, 11, xs, 1, q2s, 1);
+    for (int fl = 0; fl < 11; fl++)
+        printf("flv=%d - xfx = %f\n", fl-5, xf_vectorized[fl]);
 
     double q2_vectorized[] = {1.65, 10.65};
     double* as_vectorized = alphasq2(q2_vectorized, 2);
