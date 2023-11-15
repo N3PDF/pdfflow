@@ -15,10 +15,14 @@ void mkpdf_(const char *fname, const char *dirname) {
    mkpdf(fname, dirname);
 }
 
-void alphasq2_(double *q2, int *n, double *alphas) {
-   alphas = alphasq2(q2, *n);
+void alphasq2_(double *q2, const int *n, double *alphas) {
+   double *as = alphasq2(q2, *n);
+   for (int i = 0; i < *n; i++)
+      alphas[i] = as[i];
 }
 
 void xfxq2_(int *pid, const int *n, double *x, const int *m, double *q2, const int *o, double *f) {
-   f = xfxq2(pid, *n, x, *m, q2, *o);
+   double *xf = xfxq2(pid, *n, x, *m, q2, *o);
+   for (int i = 0; i < *n * *m * *o; i++)
+      f[i] = xf[i];
 }
