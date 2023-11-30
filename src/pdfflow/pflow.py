@@ -108,6 +108,7 @@ def mkPDF(fname, dirname=None):
     ----------
         fname: str
             PDF name and member in the format '<set_name>/<set member number>'
+            If the set number is not given, assume member 0
         dirname: str
             LHAPDF datadir, if None will try to guess from LHAPDF
 
@@ -116,8 +117,12 @@ def mkPDF(fname, dirname=None):
         PDF: pdfflow.PDF
             instantiated member of the PDF class
     """
-    fname_sp, member = fname.split("/")
-    member = int(member)
+    try:
+        fname_sp, member = fname.split("/")
+        member = int(member)
+    except ValueError:
+        fname_sp = fname
+        member = 0
     return mkPDFs(fname_sp, [member], dirname=dirname)
 
 

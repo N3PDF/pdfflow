@@ -4,7 +4,7 @@
 
 int main() {
     // load pdf
-    mkpdf("NNPDF31_nlo_as_0118/0", "/usr/share/lhapdf/LHAPDF/");
+    mkpdf("NNPDF40_nnlo_as_01180/0", "/usr/share/lhapdf/LHAPDF/");
 
     // test xfxq2 and alphasq2
     int pid[] = {-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5};

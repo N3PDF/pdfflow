@@ -134,3 +134,5 @@ benchmarks/*.png
 # cffi stuff
 *.pc
 cpdfflow.c
+# example executables
+example

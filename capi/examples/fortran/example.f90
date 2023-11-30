@@ -10,7 +10,7 @@ program example
    real(dp) :: alpha_s, q2(0:1), x(0:1), xfx(0:11)
    real(dp) :: q2_vectorized(0:2), as_vectorized(0:2)
 
-   character(kind=c_char, len=21) :: ss = "NNPDF31_nlo_as_0118/0"
+   character(kind=c_char, len=23) :: ss = "NNPDF40_nnlo_as_01180/0"
    character(kind=c_char, len=24) :: pp = "/usr/share/lhapdf/LHAPDF/"
 
    call mkPDF(ss, pp)
