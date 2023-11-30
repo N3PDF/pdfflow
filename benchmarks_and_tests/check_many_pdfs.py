@@ -43,6 +43,10 @@ def _compare_w_lhapdf(pdf, npoints=1000, tolerance=1e-6):
     lres = np.array(lhapdf_results)
     pres = pdfflow_pdf.py_xfxQ2_allpid(xx, qq).numpy()
 
+    # This is not still implemented as part of pdfflow, but need to be careful during the check
+    if pdf.info.get("ForcePositive", 0) > 0:
+        pres = np.maximum(pres, 1e-10)
+
     np.testing.assert_allclose(pres, lres, rtol=tolerance, atol=tolerance)
 
 
