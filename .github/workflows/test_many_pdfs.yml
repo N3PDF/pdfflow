@@ -1,0 +1,24 @@
+name: Check interpolation for many PDFs
+on: [push]
+
+jobs:
+  test_of_pdfs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Conda 
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+            python-version: "3.11"
+            auto-update-conda: true
+      - name: Install dependencies, package and LHAPDF
+        shell: bash --login {0}
+        run: |
+          conda install lhapdf -c conda-forge
+          pip install .[tf]
+          lhapdf-management update --init
+      - name: Test a random assortment of 50 PDFs
+        shell: bash -l {0}
+        run: |
+          export PDFFLOW_LOG_LEVEL=0
+          python benchmarks_and_tests/check_many_pdfs.py --yes --verbose -n 50
