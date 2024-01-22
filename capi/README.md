@@ -25,7 +25,7 @@ If you installed to a non-standard location, you need to set up the `PKG_CONFIG_
 ```bash
 export PKG_CONFIG_PATH=${VIRTUAL_ENV}/lib/pkgconfig/:${PKG_CONFIG_PATH}:
 export LD_LIBRARY_PATH=${VIRTUAL_ENV}/lib/:${LD_LIBRARY_PATH}:
-export DYLD_LIBRARY_PATH=${VIRTUAL_ENV}/lib:${DYLD_LIBRARY_PATH}Ñ
+export DYLD_LIBRARY_PATH=${VIRTUAL_ENV}/lib:${DYLD_LIBRARY_PATH}:
 ```
 
 
