@@ -21,10 +21,11 @@ pkg-config pdfflow --cflags
 pkg-config pdfflow --libs
 ```
 
-If you installed to a non-standard location, you need to set up the `PKG_CONFIG_PATH` and `LD_LIBRARY_PATH`, e.g.:
+If you installed to a non-standard location, you need to set up the `PKG_CONFIG_PATH` and `LD_LIBRARY_PATH`, e.g., for a `VIRTUAL_ENV`:
 ```bash
 export PKG_CONFIG_PATH=${VIRTUAL_ENV}/lib/pkgconfig/:${PKG_CONFIG_PATH}:
 export LD_LIBRARY_PATH=${VIRTUAL_ENV}/lib/:${LD_LIBRARY_PATH}:
+export DYLD_LIBRARY_PATH=${VIRTUAL_ENV}/lib:${DYLD_LIBRARY_PATH}:
 ```
 
 
